@@ -266,8 +266,9 @@ def pos_buscar_tutores_mascotas():
 
     filtros = [Tutor.nombre_busqueda.ilike(f"%{normalizado}%")]
     if len(digitos) >= 3:
-        filtros.append(Tutor.documento.ilike(f"%{digitos}%"))
-        filtros.append(Tutor.telefono_norm.ilike(f"%{digitos}%"))
+        filtros.append(Tutor.numero_documento.ilike(f"%{digitos}%"))
+        filtros.append(Tutor.telefono.ilike(f"%{digitos}%"))
+        filtros.append(Tutor.whatsapp.ilike(f"%{digitos}%"))
 
     consulta = (
         select(Tutor)
@@ -286,7 +287,7 @@ def pos_buscar_tutores_mascotas():
         resultado.append({
             "id": t.id,
             "nombre": t.nombre_completo,
-            "documento": t.documento or "Sin documento",
+            "documento": t.documento_texto or "Sin documento",
             "telefono": t.telefono,
             "mascotas": mascotas,
         })

@@ -9,11 +9,12 @@ from datetime import datetime, time, timedelta
 from typing import Optional
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+from decorators import agenda_spa_required, admin_required, spa_required
 from flask_login import current_user, login_required
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from forms import CambioEstadoSpaForm, CitaSpaForm, SoloCsrfForm, ServicioSpaForm
+from forms import CambioEstadoSpaForm, CitaSpaForm, ServicioSpaForm, SoloCsrfForm, VincularVentaSpaForm
 from models import (
     ESTADOS_SPA,
     CitaSpa,
@@ -21,6 +22,7 @@ from models import (
     ServicioSpa,
     Tutor,
     Usuario,
+    Venta,
     db,
 )
 from utils import ZONA_BOGOTA, hoy_bogota, obtener_hora_bogota
@@ -35,6 +37,7 @@ bp = Blueprint("spa", __name__, url_prefix="/spa")
 
 @bp.route("/servicios", methods=["GET"])
 @login_required
+@admin_required
 def servicios_lista():
     servicios = db.session.execute(
         select(ServicioSpa).order_by(ServicioSpa.activo.desc(), ServicioSpa.nombre)
@@ -45,6 +48,7 @@ def servicios_lista():
 
 @bp.route("/servicio/nuevo", methods=["GET", "POST"])
 @login_required
+@admin_required
 def servicio_nuevo():
 
     form = ServicioSpaForm()
@@ -73,6 +77,7 @@ def servicio_nuevo():
 
 @bp.route("/servicio/<int:id>/editar", methods=["GET", "POST"])
 @login_required
+@admin_required
 def servicio_editar(id: int):
 
     servicio = db.session.get(ServicioSpa, id)
@@ -109,6 +114,7 @@ def servicio_editar(id: int):
 
 @bp.route("/agenda", methods=["GET"])
 @login_required
+@agenda_spa_required
 def agenda():
     fecha_str = request.args.get("fecha")
     estado_filtro = (request.args.get("estado") or "").strip()
@@ -153,6 +159,7 @@ def agenda():
 
 @bp.route("/cita/nueva", methods=["GET", "POST"])
 @login_required
+@agenda_spa_required
 def cita_nueva():
     form = CitaSpaForm()
 
@@ -177,7 +184,7 @@ def cita_nueva():
 
     if not form.is_submitted():
         form.fecha.data = hoy_bogota()
-        form.hora.data = datetime.now(ZONA_BOGOTA).time().replace(second=0, microsecond=0)
+        form.hora.data = obtener_hora_bogota().time().replace(second=0, microsecond=0)
 
     if form.validate_on_submit():
         try:
@@ -208,6 +215,7 @@ def cita_nueva():
 
 @bp.route("/cita/<int:id>", methods=["GET"])
 @login_required
+@agenda_spa_required
 def cita_detalle(id: int):
     cita = db.session.execute(
         select(CitaSpa)
@@ -227,11 +235,56 @@ def cita_detalle(id: int):
         return redirect(url_for("spa.agenda"))
 
     form_estado = CambioEstadoSpaForm(obj=cita)
-    return render_template("spa/cita_detalle.html", cita=cita, form_estado=form_estado)
+    form_venta = VincularVentaSpaForm()
+    return render_template("spa/cita_detalle.html", cita=cita, form_estado=form_estado, form_venta=form_venta)
+
+
+@bp.route("/cita/<int:id>/vincular-venta", methods=["POST"])
+@login_required
+@spa_required
+def cita_vincular_venta(id: int):
+    """Asocia una factura ya cobrada en el POS a la cita (requisito para poder entregar)."""
+    cita = db.session.get(CitaSpa, id)
+    if not cita:
+        flash("La cita de spa no existe.", "danger")
+        return redirect(url_for("spa.agenda"))
+
+    form = VincularVentaSpaForm()
+    if form.validate_on_submit():
+        numero = form.numero_factura.data.strip().upper()
+        venta = db.session.execute(select(Venta).filter_by(numero_factura=numero)).scalar_one_or_none()
+        if venta is None:
+            form.numero_factura.errors.append("No existe ninguna factura con ese número.")
+        elif venta.estado == "anulada":
+            form.numero_factura.errors.append("Esa factura está anulada y no se puede vincular.")
+        elif venta.tutor_id != cita.tutor_id:
+            form.numero_factura.errors.append("La factura pertenece a otro tutor; verifica el número.")
+        else:
+            ya_vinculada = db.session.execute(
+                select(CitaSpa.id).filter_by(venta_id=venta.id)
+            ).scalar_one_or_none()
+            if ya_vinculada and ya_vinculada != cita.id:
+                form.numero_factura.errors.append("Esa factura ya está vinculada a otra cita de spa.")
+            else:
+                try:
+                    cita.venta_id = venta.id
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    current_app.logger.exception("Error al vincular venta a la cita %d", id)
+                    flash("No se pudo vincular la factura. Inténtalo de nuevo.", "danger")
+                else:
+                    flash(f"Factura {venta.numero_factura} vinculada correctamente.", "success")
+                return redirect(url_for("spa.cita_detalle", id=id))
+
+    for errores in form.numero_factura.errors:
+        flash(errores, "danger")
+    return redirect(url_for("spa.cita_detalle", id=id))
 
 
 @bp.route("/cita/<int:id>/estado", methods=["POST"])
 @login_required
+@spa_required
 def cita_cambiar_estado(id: int):
     cita = db.session.get(CitaSpa, id)
     if not cita:
@@ -240,6 +293,15 @@ def cita_cambiar_estado(id: int):
 
     nuevo_estado = request.form.get("estado")
     notas_salida = request.form.get("notas_salida", "").strip()
+
+    # Regla de negocio: una orden no puede entregarse sin estar pagada
+    # (asociada a una venta). Evita que la mascota salga sin cobrar el servicio.
+    if nuevo_estado == "entregado" and not cita.venta_id:
+        flash(
+            "No se puede entregar sin cobrar. Registra el pago en el Punto de Venta y asócialo a esta cita antes de continuar.",
+            "danger",
+        )
+        return redirect(url_for("spa.cita_detalle", id=id))
 
     if nuevo_estado in ESTADOS_SPA:
         try:
@@ -266,10 +328,16 @@ def cita_cambiar_estado(id: int):
 
 @bp.route("/cita/<int:id>/notificado-wa", methods=["POST"])
 @login_required
+@spa_required
 def cita_marcar_wa(id: int):
     cita = db.session.get(CitaSpa, id)
-    if cita:
+    if not cita:
+        return jsonify(error="Cita no encontrada"), 404
+    try:
         cita.notificado_whatsapp = True
         db.session.commit()
-        return jsonify(ok=True)
-    return jsonify(error="Cita no encontrada"), 404
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al marcar como notificada la cita %d", id)
+        return jsonify(error="No se pudo registrar la notificación."), 500
+    return jsonify(ok=True)

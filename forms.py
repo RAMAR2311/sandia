@@ -384,6 +384,23 @@ class AnularVentaForm(FlaskForm):
     enviar = SubmitField("Confirmar anulación")
 
 
+class AprobarPrecioForm(FlaskForm):
+    precio_aprobado = DecimalField(
+        "Precio a autorizar (COP)",
+        places=2,
+        validators=[DataRequired("Indica el precio a autorizar."), NumberRange(min=Decimal("0"))],
+    )
+    enviar = SubmitField("Aprobar")
+
+
+class RechazarPrecioForm(FlaskForm):
+    motivo_rechazo = TextAreaField(
+        "Motivo del rechazo",
+        validators=[DataRequired("Explica brevemente por qué se rechaza."), Length(max=500)],
+    )
+    enviar = SubmitField("Rechazar")
+
+
 # ---------------------------------------------------------------------------
 # Fase 5: Spa & Peluquería de Mascotas (Grooming)
 # ---------------------------------------------------------------------------
@@ -426,6 +443,16 @@ class CambioEstadoSpaForm(FlaskForm):
     )
     notas_salida = TextAreaField("Observaciones de salida / entrega (opcional)", validators=[Optional(), Length(max=1000)])
     enviar = SubmitField("Actualizar estado")
+
+
+class VincularVentaSpaForm(FlaskForm):
+    """Asocia una venta ya cobrada en el POS a la cita de spa (requisito para entregar)."""
+
+    numero_factura = StringField(
+        "Número de factura",
+        validators=[DataRequired("Escribe el número de factura, por ejemplo VET-20260914-0007.")],
+    )
+    enviar = SubmitField("Vincular pago")
 
 
 # ---------------------------------------------------------------------------

@@ -19,7 +19,7 @@ from flask import (
 from flask_login import current_user, login_required
 from sqlalchemy import or_, select
 
-from decorators import admin_required, recepcion_required
+from decorators import admin_required
 from forms import (
     AjusteStockForm,
     ImportarExcelForm,
@@ -175,7 +175,7 @@ def lista():
 
 @bp.route("/nuevo", methods=["GET", "POST"])
 @login_required
-@recepcion_required
+@admin_required
 def nuevo():
     form = ProductoForm()
     form.proveedor_id.choices = _opciones_proveedores()
@@ -253,7 +253,7 @@ def detalle(producto_id):
 
 @bp.route("/<int:producto_id>/editar", methods=["GET", "POST"])
 @login_required
-@recepcion_required
+@admin_required
 def editar(producto_id):
     producto = db.session.get(Producto, producto_id)
     if producto is None:
@@ -310,7 +310,7 @@ def editar(producto_id):
 
 @bp.route("/<int:producto_id>/estado", methods=["POST"])
 @login_required
-@recepcion_required
+@admin_required
 def cambiar_estado(producto_id):
     producto = db.session.get(Producto, producto_id)
     if producto is None:
@@ -341,7 +341,7 @@ def cambiar_estado(producto_id):
 
 @bp.route("/<int:producto_id>/variantes/nueva", methods=["POST"])
 @login_required
-@recepcion_required
+@admin_required
 def variante_nueva(producto_id):
     producto = db.session.get(Producto, producto_id)
     if producto is None:
@@ -390,7 +390,7 @@ def variante_nueva(producto_id):
 
 @bp.route("/<int:producto_id>/lotes/nuevo", methods=["POST"])
 @login_required
-@recepcion_required
+@admin_required
 def lote_nuevo(producto_id):
     producto = db.session.get(Producto, producto_id)
     if producto is None:
@@ -467,7 +467,7 @@ def lote_nuevo(producto_id):
 
 @bp.route("/<int:producto_id>/ajuste", methods=["POST"])
 @login_required
-@recepcion_required
+@admin_required
 def registrar_ajuste(producto_id):
     producto = db.session.get(Producto, producto_id)
     if producto is None:
@@ -754,6 +754,7 @@ def importar_excel():
 
 @bp.route("/plantilla-excel")
 @login_required
+@admin_required
 def plantilla_excel():
     datos = [
         {
@@ -803,6 +804,7 @@ def plantilla_excel():
 
 @bp.route("/proveedores")
 @login_required
+@admin_required
 def proveedores_lista():
     texto = request.args.get("q", "").strip()
     consulta = select(Proveedor)
@@ -822,7 +824,7 @@ def proveedores_lista():
 
 @bp.route("/proveedores/nuevo", methods=["GET", "POST"])
 @login_required
-@recepcion_required
+@admin_required
 def proveedor_nuevo():
     form = ProveedorForm()
     if form.validate_on_submit():
@@ -852,7 +854,7 @@ def proveedor_nuevo():
 
 @bp.route("/proveedores/<int:proveedor_id>/editar", methods=["GET", "POST"])
 @login_required
-@recepcion_required
+@admin_required
 def proveedor_editar(proveedor_id):
     prov = db.session.get(Proveedor, proveedor_id)
     if prov is None:

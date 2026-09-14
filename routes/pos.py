@@ -9,14 +9,17 @@ from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+from decorators import admin_required, caja_required
 from flask_login import current_user, login_required
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from forms import AnularVentaForm, AperturaCajaForm, CierreCajaForm, SoloCsrfForm
+from forms import AnularVentaForm, AperturaCajaForm, AprobarPrecioForm, CierreCajaForm, RechazarPrecioForm, SoloCsrfForm
 from models import (
     ESTADOS_VENTA,
     METODOS_PAGO,
+    AprobacionPrecio,
+    ConfiguracionSistema,
     DetalleVenta,
     Lote,
     Mascota,
@@ -65,6 +68,58 @@ def generar_numero_factura() -> str:
     return f"{prefijo}{secuencia:04d}"
 
 
+def _buscar_aprobacion_activa(usuario_id: int, producto_id: int, variante_id, precio_unitario: Decimal):
+    """Aprobación ya autorizada y sin usar para exactamente este precio (regla 8.1)."""
+    return db.session.execute(
+        select(AprobacionPrecio)
+        .where(
+            AprobacionPrecio.solicitante_id == usuario_id,
+            AprobacionPrecio.producto_id == producto_id,
+            AprobacionPrecio.variante_id == variante_id,
+            AprobacionPrecio.estado == "aprobado",
+            AprobacionPrecio.venta_id.is_(None),
+            AprobacionPrecio.precio_aprobado == precio_unitario,
+        )
+        .order_by(AprobacionPrecio.id.desc())
+    ).scalars().first()
+
+
+def _resolver_solicitud_precio(usuario, producto, variante, descripcion, precio_minimo, precio_solicitado):
+    """Reutiliza una solicitud pendiente/rechazada al mismo precio, o crea una nueva pendiente.
+
+    Se ejecuta después de descartar (rollback) los cambios de la venta en curso,
+    así que hace su propio commit aislado: la solicitud debe quedar visible para
+    el admin aunque la venta que la originó no se haya completado.
+    """
+    variante_id = variante.id if variante else None
+    existente = db.session.execute(
+        select(AprobacionPrecio)
+        .where(
+            AprobacionPrecio.solicitante_id == usuario.id,
+            AprobacionPrecio.producto_id == producto.id,
+            AprobacionPrecio.variante_id == variante_id,
+            AprobacionPrecio.precio_solicitado == precio_solicitado,
+            AprobacionPrecio.estado.in_(("pendiente", "rechazado")),
+        )
+        .order_by(AprobacionPrecio.id.desc())
+    ).scalars().first()
+    if existente is not None:
+        return existente
+
+    solicitud = AprobacionPrecio(
+        solicitante_id=usuario.id,
+        producto_id=producto.id,
+        variante_id=variante_id,
+        descripcion=descripcion,
+        precio_original=precio_minimo,
+        precio_solicitado=precio_solicitado,
+        estado="pendiente",
+    )
+    db.session.add(solicitud)
+    db.session.commit()
+    return solicitud
+
+
 # ---------------------------------------------------------------------------
 # Gestión de Caja
 # ---------------------------------------------------------------------------
@@ -72,6 +127,7 @@ def generar_numero_factura() -> str:
 
 @bp.route("/caja", methods=["GET"])
 @login_required
+@caja_required
 def caja_estado():
     turno_activo = obtener_turno_activo(current_user.id)
     form_apertura = AperturaCajaForm()
@@ -132,6 +188,7 @@ def caja_estado():
 
 @bp.route("/caja/abrir", methods=["POST"])
 @login_required
+@caja_required
 def abrir_caja():
     turno_activo = obtener_turno_activo(current_user.id)
     if turno_activo:
@@ -163,6 +220,7 @@ def abrir_caja():
 
 @bp.route("/caja/cerrar", methods=["POST"])
 @login_required
+@caja_required
 def cerrar_caja():
     turno_activo = obtener_turno_activo(current_user.id)
     if not turno_activo:
@@ -224,6 +282,7 @@ def cerrar_caja():
 
 @bp.route("/terminal", methods=["GET"])
 @login_required
+@caja_required
 def terminal():
     turno_activo = obtener_turno_activo(current_user.id)
     if not turno_activo:
@@ -235,6 +294,7 @@ def terminal():
 
 @bp.route("/venta/procesar", methods=["POST"])
 @login_required
+@caja_required
 def procesar_venta():
     turno_activo = obtener_turno_activo(current_user.id)
     if not turno_activo:
@@ -253,10 +313,13 @@ def procesar_venta():
     if not pagos_req:
         return jsonify(error="Debes agregar al menos un medio de pago."), 400
 
+    descuenta_stock = ConfiguracionSistema.obtener("descontar_stock_ventas", True)
+
     try:
         subtotal_venta = Decimal("0.00")
         detalles_a_crear = []
         movimientos_kardex_a_crear = []
+        aprobaciones_a_consumir = []
 
         # 1. Procesar cada ítem del carrito
         for item in items:
@@ -297,7 +360,54 @@ def procesar_venta():
             variante = db.session.get(VarianteProducto, variante_id) if variante_id else None
             descripcion = f"{producto.nombre} ({variante.nombre_variante})" if variante else producto.nombre
 
-            if producto.controla_lote:
+            # Regla de negocio: un cajero no puede vender bajo el precio mínimo
+            # sin aprobación del admin. El admin no tiene esta restricción.
+            precio_minimo_aplicable = variante.precio_minimo if variante else producto.precio_minimo
+            if not current_user.es_admin and precio_unitario < precio_minimo_aplicable:
+                aprobacion_activa = _buscar_aprobacion_activa(
+                    current_user.id, producto.id, variante.id if variante else None, precio_unitario
+                )
+                if aprobacion_activa is None:
+                    db.session.rollback()
+                    solicitud = _resolver_solicitud_precio(
+                        current_user, producto, variante, descripcion, precio_minimo_aplicable, precio_unitario
+                    )
+                    return jsonify(
+                        ok=False,
+                        requiere_aprobacion=True,
+                        aprobacion_id=solicitud.id,
+                        estado_aprobacion=solicitud.estado,
+                        motivo_rechazo=solicitud.motivo_rechazo,
+                        precio_minimo=float(precio_minimo_aplicable),
+                        producto_id=producto.id,
+                        variante_id=variante.id if variante else None,
+                        mensaje=(
+                            f"'{descripcion}' está por debajo del precio mínimo "
+                            f"(${precio_minimo_aplicable:,.2f}). Se envió la solicitud al administrador."
+                            if solicitud.estado == "pendiente"
+                            else f"La solicitud anterior para '{descripcion}' fue rechazada: {solicitud.motivo_rechazo or 'sin motivo indicado'}."
+                        ),
+                    ), 409
+                aprobaciones_a_consumir.append(aprobacion_activa)
+
+            if not descuenta_stock:
+                # El ajuste "Descontar inventario automáticamente" está apagado:
+                # se registra la venta sin tocar cantidades de stock ni kardex.
+                linea_subtotal = (cantidad_req * precio_unitario) - descuento_item
+                subtotal_venta += linea_subtotal
+                detalles_a_crear.append({
+                    "producto_id": producto.id,
+                    "variante_id": variante.id if variante else None,
+                    "lote_id": None,
+                    "descripcion": descripcion,
+                    "tipo_item": "producto",
+                    "cantidad": cantidad_req,
+                    "precio_unitario": precio_unitario,
+                    "subtotal": cantidad_req * precio_unitario,
+                    "descuento": descuento_item,
+                    "total_linea": linea_subtotal,
+                })
+            elif producto.controla_lote:
                 # Descuento FEFO por lotes
                 lotes_disponibles = producto.lotes_disponibles
                 stock_lotes = sum((l.cantidad_disponible for l in lotes_disponibles), Decimal("0.00"))
@@ -448,6 +558,12 @@ def procesar_venta():
             p.venta_id = venta.id
             db.session.add(p)
 
+        # Marcar como usadas las aprobaciones de precio consumidas en esta venta:
+        # no pueden reutilizarse en otra factura.
+        for aprobacion in aprobaciones_a_consumir:
+            aprobacion.estado = "utilizada"
+            aprobacion.venta_id = venta.id
+
         db.session.commit()
 
         return jsonify(
@@ -474,6 +590,7 @@ def procesar_venta():
 
 @bp.route("/ventas", methods=["GET"])
 @login_required
+@caja_required
 def ventas_lista():
     q = (request.args.get("q") or "").strip()
     estado = (request.args.get("estado") or "").strip()
@@ -507,6 +624,7 @@ def ventas_lista():
 
 @bp.route("/venta/<int:id>", methods=["GET"])
 @login_required
+@caja_required
 def venta_detalle(id: int):
     venta = db.session.execute(
         select(Venta)
@@ -531,6 +649,7 @@ def venta_detalle(id: int):
 
 @bp.route("/venta/<int:id>/anular", methods=["POST"])
 @login_required
+@admin_required
 def anular_venta(id: int):
 
     venta = db.session.get(Venta, id)
@@ -540,6 +659,15 @@ def anular_venta(id: int):
 
     if venta.estado == "anulada":
         flash("Esta venta ya se encuentra anulada.", "warning")
+        return redirect(url_for("pos.venta_detalle", id=id))
+
+    # Regla de negocio: una vez cerrado (arqueado) el turno de caja de esa
+    # venta, el día queda bloqueado: no se puede anular ni reeditar.
+    if venta.turno_caja and venta.turno_caja.estado == "cerrada":
+        flash(
+            "No se puede anular: la caja del turno en que se registró esta venta ya fue cerrada y arqueada.",
+            "danger",
+        )
         return redirect(url_for("pos.venta_detalle", id=id))
 
     form = AnularVentaForm()
@@ -600,6 +728,7 @@ def anular_venta(id: int):
 
 @bp.route("/venta/<int:id>/ticket", methods=["GET"])
 @login_required
+@caja_required
 def ticket_impresion(id: int):
     venta = db.session.execute(
         select(Venta)
@@ -618,3 +747,124 @@ def ticket_impresion(id: int):
         return redirect(url_for("pos.ventas_lista"))
 
     return render_template("pos/ticket.html", venta=venta)
+
+
+
+# ---------------------------------------------------------------------------
+# Aprobaciones de precio mínimo (regla de negocio crítica #1)
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/aprobaciones/<int:id>/estado", methods=["GET"])
+@login_required
+@caja_required
+def aprobacion_estado(id: int):
+    """El terminal de venta consulta este endpoint cada 5 segundos mientras espera."""
+    aprobacion = db.session.get(AprobacionPrecio, id)
+    if not aprobacion or aprobacion.solicitante_id != current_user.id:
+        return jsonify(error="Solicitud no encontrada."), 404
+    return jsonify(
+        estado=aprobacion.estado,
+        precio_solicitado=float(aprobacion.precio_solicitado),
+        precio_aprobado=float(aprobacion.precio_aprobado) if aprobacion.precio_aprobado is not None else None,
+        motivo_rechazo=aprobacion.motivo_rechazo,
+    )
+
+
+@bp.route("/aprobaciones", methods=["GET"])
+@login_required
+@admin_required
+def aprobaciones_lista():
+    pendientes = db.session.execute(
+        select(AprobacionPrecio)
+        .filter_by(estado="pendiente")
+        .options(selectinload(AprobacionPrecio.solicitante), selectinload(AprobacionPrecio.producto), selectinload(AprobacionPrecio.variante))
+        .order_by(AprobacionPrecio.fecha_solicitud.asc())
+    ).scalars().all()
+    resueltas = db.session.execute(
+        select(AprobacionPrecio)
+        .filter(AprobacionPrecio.estado != "pendiente")
+        .options(selectinload(AprobacionPrecio.solicitante), selectinload(AprobacionPrecio.admin))
+        .order_by(AprobacionPrecio.fecha_resolucion.desc())
+        .limit(20)
+    ).scalars().all()
+    return render_template(
+        "pos/aprobaciones.html",
+        pendientes=pendientes,
+        resueltas=resueltas,
+        form_aprobar=AprobarPrecioForm(),
+        form_rechazar=RechazarPrecioForm(),
+    )
+
+
+@bp.route("/aprobaciones/json", methods=["GET"])
+@login_required
+@admin_required
+def aprobaciones_json():
+    """IDs de solicitudes pendientes, para que el tablero detecte novedades cada 5s."""
+    ids = db.session.execute(
+        select(AprobacionPrecio.id).filter_by(estado="pendiente").order_by(AprobacionPrecio.id)
+    ).scalars().all()
+    return jsonify(ids=ids)
+
+
+@bp.route("/aprobaciones/<int:id>/aprobar", methods=["POST"])
+@login_required
+@admin_required
+def aprobacion_aprobar(id: int):
+    aprobacion = db.session.get(AprobacionPrecio, id)
+    if not aprobacion:
+        flash("La solicitud no existe.", "danger")
+        return redirect(url_for("pos.aprobaciones_lista"))
+    if aprobacion.estado != "pendiente":
+        flash("Esta solicitud ya fue resuelta.", "warning")
+        return redirect(url_for("pos.aprobaciones_lista"))
+
+    form = AprobarPrecioForm()
+    if form.validate_on_submit():
+        try:
+            aprobacion.estado = "aprobado"
+            aprobacion.precio_aprobado = form.precio_aprobado.data
+            aprobacion.admin_id = current_user.id
+            aprobacion.fecha_resolucion = obtener_hora_bogota()
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Error al aprobar la solicitud de precio %d", id)
+            flash("No se pudo aprobar la solicitud.", "danger")
+        else:
+            flash(f"Precio autorizado para '{aprobacion.descripcion}': ${aprobacion.precio_aprobado:,.2f}.", "success")
+    else:
+        flash("Indica un precio válido para autorizar.", "danger")
+    return redirect(url_for("pos.aprobaciones_lista"))
+
+
+@bp.route("/aprobaciones/<int:id>/rechazar", methods=["POST"])
+@login_required
+@admin_required
+def aprobacion_rechazar(id: int):
+    aprobacion = db.session.get(AprobacionPrecio, id)
+    if not aprobacion:
+        flash("La solicitud no existe.", "danger")
+        return redirect(url_for("pos.aprobaciones_lista"))
+    if aprobacion.estado != "pendiente":
+        flash("Esta solicitud ya fue resuelta.", "warning")
+        return redirect(url_for("pos.aprobaciones_lista"))
+
+    form = RechazarPrecioForm()
+    if form.validate_on_submit():
+        try:
+            aprobacion.estado = "rechazado"
+            aprobacion.motivo_rechazo = form.motivo_rechazo.data
+            aprobacion.admin_id = current_user.id
+            aprobacion.fecha_resolucion = obtener_hora_bogota()
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Error al rechazar la solicitud de precio %d", id)
+            flash("No se pudo rechazar la solicitud.", "danger")
+        else:
+            flash(f"Solicitud de '{aprobacion.descripcion}' rechazada.", "info")
+    else:
+        flash("Explica el motivo del rechazo.", "danger")
+    return redirect(url_for("pos.aprobaciones_lista"))

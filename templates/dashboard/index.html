@@ -8,6 +8,37 @@
   <div class="text-secondary">Sesión iniciada como <strong>{{ current_user.rol_etiqueta }}</strong>.</div>
 </section>
 
+{% if vacunas_pendientes %}
+<section class="card mb-4 shadow-sm">
+  <div class="card-header bg-light d-flex align-items-center justify-content-between">
+    <span class="fw-bold"><i class="bi bi-clipboard2-pulse text-danger me-2"></i>Recordatorios de vacunación</span>
+    <span class="badge bg-danger">{{ vacunas_pendientes|length }}</span>
+  </div>
+  <div class="list-group list-group-flush">
+    {% for v in vacunas_pendientes %}
+    <div class="list-group-item d-flex align-items-center justify-content-between gap-2 flex-wrap">
+      <div>
+        <div class="fw-bold">{{ v.mascota.especie_emoji }} {{ v.mascota.nombre }} <span class="text-secondary fw-normal">· {{ v.tutor.nombre_completo }}</span></div>
+        <div class="small">
+          {{ v.nombre_vacuna }} ·
+          {% if v.estado_vencimiento == 'vencida' %}
+            <span class="estado estado--urgente">Vencida el {{ v.fecha_proxima|fecha }}</span>
+          {% else %}
+            <span class="estado estado--alerta">Vence el {{ v.fecha_proxima|fecha }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% if v.enlace_whatsapp %}
+      <a href="{{ v.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-sm btn-success">
+        <i class="bi bi-whatsapp me-1"></i>Avisar
+      </a>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <h2 class="h5 text-secondary text-uppercase fw-bold mb-3" style="letter-spacing: .08em;">Módulos</h2>
 <div class="row g-3">
   {% for modulo in modulos %}

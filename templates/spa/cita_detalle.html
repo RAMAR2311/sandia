@@ -127,9 +127,28 @@
 
         <hr>
 
-        <a href="{{ url_for('pos.terminal') }}" class="btn btn-outline-success w-100 fw-bold">
+        {% if cita.venta %}
+        <div class="alert alert-success d-flex align-items-center gap-2 mb-0" role="alert">
+          <i class="bi bi-check-circle-fill fs-5"></i>
+          <div>
+            Pagada · Factura <a href="{{ url_for('pos.venta_detalle', id=cita.venta_id) }}" class="alert-link">{{ cita.venta.numero_factura }}</a>
+            ({{ cita.venta.total|cop }})
+          </div>
+        </div>
+        {% else %}
+        <a href="{{ url_for('pos.terminal') }}" class="btn btn-outline-success w-100 fw-bold mb-3">
           <i class="bi bi-cart-check me-1"></i>Facturar Servicio en POS
         </a>
+        <div class="alert alert-warning small mb-3" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin pago vinculado: la cita no podrá marcarse como "Entregado" hasta vincular la factura.
+        </div>
+        <form method="post" action="{{ url_for('spa.cita_vincular_venta', id=cita.id) }}" class="d-flex gap-2">
+          {{ form_venta.csrf_token }}
+          {{ form_venta.numero_factura(class="form-control", placeholder="VET-20260914-0007") }}
+          {{ form_venta.enviar(class="btn btn-primary") }}
+        </form>
+        {% for error in form_venta.numero_factura.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+        {% endif %}
       </div>
     </div>
   </div>

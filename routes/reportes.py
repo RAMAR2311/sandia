@@ -3,6 +3,7 @@
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from flask import Blueprint, render_template, request
+from decorators import admin_required
 from flask_login import login_required
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
@@ -58,6 +59,7 @@ def _obtener_rango_fechas(periodo: str, fecha_inicio_str: str = None, fecha_fin_
 
 @bp.route("/", methods=["GET"])
 @login_required
+@admin_required
 def dashboard():
     periodo = request.args.get("periodo", "mes")
     fecha_inicio_str = request.args.get("fecha_inicio")
@@ -124,6 +126,7 @@ def dashboard():
 
 @bp.route("/ventas", methods=["GET"])
 @login_required
+@admin_required
 def ventas():
     periodo = request.args.get("periodo", "mes")
     fecha_inicio_str = request.args.get("fecha_inicio")
@@ -166,6 +169,7 @@ def ventas():
 
 @bp.route("/inventario", methods=["GET"])
 @login_required
+@admin_required
 def inventario():
     productos = db.session.execute(
         select(Producto).filter_by(activo=True).order_by(Producto.nombre.asc())

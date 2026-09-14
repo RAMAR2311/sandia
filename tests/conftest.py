@@ -54,6 +54,7 @@ def limpiar_tablas(app):
     with app.app_context():
         db.session.execute(text("UPDATE configuracion_sistema SET actualizado_por_id = NULL"))
         for tabla in (
+            "aprobaciones_precio",
             "desparasitaciones_mascotas",
             "vacunas_mascotas",
             "consultas_medicas",

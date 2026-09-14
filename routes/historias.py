@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
+from decorators import clinico_required
 from flask_login import current_user, login_required
 from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
@@ -20,6 +21,7 @@ bp = Blueprint("historias", __name__, url_prefix="/historias")
 
 @bp.route("/", methods=["GET"])
 @login_required
+@clinico_required
 def lista():
     q = (request.args.get("q") or "").strip()
     normalizado = normalizar_texto(q)
@@ -47,6 +49,7 @@ def lista():
 
 @bp.route("/mascota/<int:mascota_id>", methods=["GET"])
 @login_required
+@clinico_required
 def ficha_medica(mascota_id: int):
     mascota = db.session.execute(
         select(Mascota)
@@ -75,6 +78,7 @@ def ficha_medica(mascota_id: int):
 
 @bp.route("/mascota/<int:mascota_id>/consulta/nueva", methods=["GET", "POST"])
 @login_required
+@clinico_required
 def consulta_nueva(mascota_id: int):
     mascota = db.session.get(Mascota, mascota_id)
     if not mascota:
@@ -129,6 +133,7 @@ def consulta_nueva(mascota_id: int):
 
 @bp.route("/consulta/<int:id>", methods=["GET"])
 @login_required
+@clinico_required
 def consulta_detalle(id: int):
     consulta = db.session.execute(
         select(ConsultaMedica)
@@ -154,6 +159,7 @@ def consulta_detalle(id: int):
 
 @bp.route("/mascota/<int:mascota_id>/vacuna/nueva", methods=["GET", "POST"])
 @login_required
+@clinico_required
 def vacuna_nueva(mascota_id: int):
     mascota = db.session.get(Mascota, mascota_id)
     if not mascota:
@@ -188,7 +194,7 @@ def vacuna_nueva(mascota_id: int):
             current_app.logger.exception("Error al registrar vacuna")
             flash("Error al registrar la vacuna.", "danger")
     elif form.is_submitted():
-        print("FORM VACUNA ERRORS:", form.errors)
+        current_app.logger.debug("Errores de validación en formulario de vacuna: %s", form.errors)
 
     return render_template("historias/form_vacuna.html", form=form, mascota=mascota)
 
@@ -200,6 +206,7 @@ def vacuna_nueva(mascota_id: int):
 
 @bp.route("/mascota/<int:mascota_id>/desparasitacion/nueva", methods=["GET", "POST"])
 @login_required
+@clinico_required
 def desparasitacion_nueva(mascota_id: int):
     mascota = db.session.get(Mascota, mascota_id)
     if not mascota:

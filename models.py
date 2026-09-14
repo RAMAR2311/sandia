@@ -862,6 +862,66 @@ ESTADOS_VENTA = {
     "anulada": "Anulada",
 }
 
+ESTADOS_APROBACION_PRECIO = {
+    "pendiente": "Pendiente",
+    "aprobado": "Aprobado",
+    "rechazado": "Rechazado",
+    "utilizada": "Utilizada",
+    "cancelada": "Cancelada",
+}
+
+
+class AprobacionPrecio(db.Model):
+    """Solicitud de excepción cuando un cajero intenta vender bajo el precio mínimo.
+
+    El cajero no puede completar la venta hasta que un admin apruebe (con el
+    precio solicitado o una contraoferta) o rechace la solicitud. Una vez usada
+    en una venta, queda marcada ``utilizada`` y no puede reutilizarse.
+    """
+
+    __tablename__ = "aprobaciones_precio"
+    __table_args__ = (
+        db.Index("ix_aprobaciones_precio_estado", "estado"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    solicitante_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
+    producto_id = db.Column(db.Integer, db.ForeignKey("productos.id"), nullable=False)
+    variante_id = db.Column(db.Integer, db.ForeignKey("variantes_producto.id"))
+    descripcion = db.Column(db.String(180), nullable=False)
+
+    precio_original = db.Column(db.Numeric(12, 2), nullable=False)  # precio_minimo vigente al solicitar
+    precio_solicitado = db.Column(db.Numeric(12, 2), nullable=False)  # lo que el cajero quiere cobrar
+    precio_aprobado = db.Column(db.Numeric(12, 2))  # lo que el admin autoriza (puede ser una contraoferta)
+
+    estado = db.Column(db.String(20), nullable=False, default="pendiente")
+    admin_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    motivo = db.Column(db.Text)
+    motivo_rechazo = db.Column(db.Text)
+
+    fecha_solicitud = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    fecha_resolucion = db.Column(db.DateTime(timezone=True))
+    venta_id = db.Column(db.Integer, db.ForeignKey("ventas.id"))
+
+    solicitante = db.relationship("Usuario", foreign_keys=[solicitante_id])
+    admin = db.relationship("Usuario", foreign_keys=[admin_id])
+    producto = db.relationship("Producto")
+    variante = db.relationship("VarianteProducto")
+    venta = db.relationship("Venta")
+
+    @validates("estado")
+    def _validar_estado(self, _clave, valor):
+        if valor not in ESTADOS_APROBACION_PRECIO:
+            raise ValueError(f"Estado de aprobación inválido: {valor!r}")
+        return valor
+
+    @property
+    def estado_etiqueta(self):
+        return ESTADOS_APROBACION_PRECIO.get(self.estado, self.estado)
+
+    def __repr__(self):
+        return f"<AprobacionPrecio {self.id} {self.descripcion} estado={self.estado}>"
+
 
 class TurnoCaja(db.Model):
     __tablename__ = "turnos_caja"
@@ -1151,6 +1211,23 @@ class VacunaMascota(db.Model):
         elif (self.fecha_proxima - hoy).days <= 15:
             return "proxima_vencer"
         return "al_dia"
+
+    @property
+    def mensaje_whatsapp(self) -> str:
+        """Mensaje pre-redactado de recordatorio de vacunación."""
+        nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
+        nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
+        return (
+            f"Hola {nombre_tutor}, te recordamos desde VetCare que a {nombre_mascota} le corresponde "
+            f"la vacuna {self.nombre_vacuna} ({self.fecha_proxima.strftime('%d/%m/%Y')}). "
+            "Agenda cuando puedas. 🐾💉"
+        )
+
+    @property
+    def enlace_whatsapp(self) -> str | None:
+        if not self.tutor or not self.tutor.telefono:
+            return None
+        return enlace_whatsapp(self.tutor.telefono, self.mensaje_whatsapp)
 
     def __repr__(self):
         return f"<VacunaMascota {self.id} mascota={self.mascota_id} vacuna={self.nombre_vacuna!r}>"
