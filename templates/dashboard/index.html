@@ -2,35 +2,136 @@
 {% block titulo %}Inicio{% endblock %}
 
 {% block contenido %}
+<!-- Encabezado / Hero dinámico -->
 <section class="saludo mb-4">
-  <div class="saludo__fecha">{{ ahora|fecha_larga }}</div>
-  <h1 class="titulo-pagina mt-1">Hola, {{ current_user.nombre.split(' ')[0] }}</h1>
-  <div class="text-secondary">Sesión iniciada como <strong>{{ current_user.rol_etiqueta }}</strong>.</div>
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+    <div>
+      <div class="saludo__fecha mb-1"><i class="bi bi-calendar3 me-1"></i>{{ ahora|fecha_larga }}</div>
+      <h1 class="titulo-pagina">¡Hola, {{ current_user.nombre.split(' ')[0] }}! 🐾</h1>
+      <div class="text-secondary mt-1">
+        Sesión iniciada como <span class="badge bg-danger-subtle text-danger-emphasis px-2 py-1 fw-bold">{{ current_user.rol_etiqueta }}</span>
+        {% if metricas and metricas.turno_abierto %}
+          <span class="badge bg-success-subtle text-success-emphasis px-2 py-1 ms-1 fw-bold"><i class="bi bi-cash me-1"></i>Turno de caja abierto</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('mascotas.nueva') }}" class="boton-accion-rapida">
+        <i class="bi bi-plus-circle-fill text-danger"></i>
+        <span>Nueva Mascota</span>
+      </a>
+      {% if current_user.rol in ('admin', 'cajero') %}
+      <a href="{{ url_for('pos.terminal') }}" class="boton-accion-rapida">
+        <i class="bi bi-cart-plus-fill text-success"></i>
+        <span>Punto de Venta</span>
+      </a>
+      {% endif %}
+      {% if current_user.rol in ('admin', 'veterinario', 'auxiliar', 'recepcion') %}
+      <a href="{{ url_for('agenda.nueva') }}" class="boton-accion-rapida">
+        <i class="bi bi-calendar-plus-fill text-info"></i>
+        <span>Agendar Cita</span>
+      </a>
+      {% endif %}
+    </div>
+  </div>
 </section>
 
+<!-- Indicadores y métricas en vivo -->
+{% if metricas %}
+<section class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('agenda.lista') if 'agenda.lista' in modulos|map(attribute='endpoint') else '#' }}" class="tarjeta-metrica">
+      <div class="tarjeta-metrica__icono bg-primary-subtle text-primary">
+        <i class="bi bi-calendar-event"></i>
+      </div>
+      <div>
+        <div class="tarjeta-metrica__valor">{{ metricas.citas_hoy }}</div>
+        <div class="tarjeta-metrica__label">Citas para hoy</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('mascotas.lista') }}" class="tarjeta-metrica">
+      <div class="tarjeta-metrica__icono bg-danger-subtle text-danger">
+        <i class="bi bi-heart-pulse-fill"></i>
+      </div>
+      <div>
+        <div class="tarjeta-metrica__valor">{{ metricas.total_pacientes }}</div>
+        <div class="tarjeta-metrica__label">Pacientes activos</div>
+      </div>
+    </a>
+  </div>
+  {% if current_user.rol == 'admin' %}
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('reportes.dashboard') }}" class="tarjeta-metrica">
+      <div class="tarjeta-metrica__icono bg-success-subtle text-success">
+        <i class="bi bi-currency-dollar"></i>
+      </div>
+      <div>
+        <div class="tarjeta-metrica__valor">{{ metricas.ventas_hoy|cop }}</div>
+        <div class="tarjeta-metrica__label">Ventas hoy</div>
+      </div>
+    </a>
+  </div>
+  {% else %}
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('pos.caja_estado') if current_user.rol == 'cajero' else '#' }}" class="tarjeta-metrica">
+      <div class="tarjeta-metrica__icono {% if metricas.turno_abierto %}bg-success-subtle text-success{% else %}bg-secondary-subtle text-secondary{% endif %}">
+        <i class="bi bi-cash-coin"></i>
+      </div>
+      <div>
+        <div class="tarjeta-metrica__valor" style="font-size: 1.1rem;">{% if metricas.turno_abierto %}Abierto{% else %}Cerrado{% endif %}</div>
+        <div class="tarjeta-metrica__label">Estado de Caja</div>
+      </div>
+    </a>
+  </div>
+  {% endif %}
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('inventario.alertas') if 'inventario.alertas' else url_for('inventario.lista') }}" class="tarjeta-metrica">
+      <div class="tarjeta-metrica__icono {% if metricas.stock_critico > 0 %}bg-warning-subtle text-warning{% else %}bg-secondary-subtle text-secondary{% endif %}">
+        <i class="bi bi-exclamation-diamond-fill"></i>
+      </div>
+      <div>
+        <div class="tarjeta-metrica__valor">{{ metricas.stock_critico }}</div>
+        <div class="tarjeta-metrica__label">Stock bajo / alerta</div>
+      </div>
+    </a>
+  </div>
+</section>
+{% endif %}
+
+<!-- Recordatorios de vacunación prioritarios -->
 {% if vacunas_pendientes %}
-<section class="card mb-4 shadow-sm">
-  <div class="card-header bg-light d-flex align-items-center justify-content-between">
-    <span class="fw-bold"><i class="bi bi-clipboard2-pulse text-danger me-2"></i>Recordatorios de vacunación</span>
-    <span class="badge bg-danger">{{ vacunas_pendientes|length }}</span>
+<section class="card mb-4 border-danger-subtle shadow-sm overflow-hidden">
+  <div class="card-header bg-danger-subtle d-flex align-items-center justify-content-between py-2 px-3">
+    <span class="fw-bold text-danger-emphasis">
+      <i class="bi bi-bell-fill text-danger me-2 animate-bounce"></i>Recordatorios de vacunación por vencer
+    </span>
+    <span class="badge bg-danger rounded-pill px-2">{{ vacunas_pendientes|length }}</span>
   </div>
   <div class="list-group list-group-flush">
     {% for v in vacunas_pendientes %}
-    <div class="list-group-item d-flex align-items-center justify-content-between gap-2 flex-wrap">
+    <div class="list-group-item d-flex align-items-center justify-content-between gap-2 flex-wrap py-2">
       <div>
-        <div class="fw-bold">{{ v.mascota.especie_emoji }} {{ v.mascota.nombre }} <span class="text-secondary fw-normal">· {{ v.tutor.nombre_completo }}</span></div>
+        <div class="fw-bold">
+          <span class="me-1">{{ v.mascota.especie_emoji }}</span>
+          <a href="{{ url_for('mascotas.detalle', mascota_id=v.mascota.id) }}" class="text-decoration-none text-body fw-bold">
+            {{ v.mascota.nombre }}
+          </a>
+          <span class="text-secondary fw-normal">· {{ v.tutor.nombre_completo }}</span>
+        </div>
         <div class="small">
-          {{ v.nombre_vacuna }} ·
+          <span class="badge bg-light text-dark border me-1">{{ v.nombre_vacuna }}</span>
           {% if v.estado_vencimiento == 'vencida' %}
-            <span class="estado estado--urgente">Vencida el {{ v.fecha_proxima|fecha }}</span>
+            <span class="estado estado--urgente"><i class="bi bi-x-circle-fill"></i> Vencida el {{ v.fecha_proxima|fecha }}</span>
           {% else %}
-            <span class="estado estado--alerta">Vence el {{ v.fecha_proxima|fecha }}</span>
+            <span class="estado estado--alerta"><i class="bi bi-clock-fill"></i> Vence el {{ v.fecha_proxima|fecha }}</span>
           {% endif %}
         </div>
       </div>
       {% if v.enlace_whatsapp %}
-      <a href="{{ v.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-sm btn-success">
-        <i class="bi bi-whatsapp me-1"></i>Avisar
+      <a href="{{ v.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-sm btn-success px-3 shadow-sm">
+        <i class="bi bi-whatsapp me-1"></i>Avisar al Tutor
       </a>
       {% endif %}
     </div>
@@ -39,19 +140,67 @@
 </section>
 {% endif %}
 
-<h2 class="h5 text-secondary text-uppercase fw-bold mb-3" style="letter-spacing: .08em;">Módulos</h2>
-<div class="row g-3">
-  {% for modulo in modulos %}
-  <div class="col-12 col-sm-6 col-lg-4">
-    <a class="tarjeta-modulo" href="{{ url_for(modulo.endpoint) }}">
-      <span class="tarjeta-modulo__icono"><i class="bi {{ modulo.icono }}"></i></span>
-      <span>
-        <span class="tarjeta-modulo__titulo d-block">{{ modulo.nombre }}</span>
-        <span class="tarjeta-modulo__descripcion d-block">{{ modulo.descripcion }}</span>
-      </span>
-      <i class="bi bi-chevron-right ms-auto text-secondary"></i>
-    </a>
+<!-- Módulos del Sistema con buscador instantáneo -->
+<section>
+  <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
+    <h2 class="h5 text-secondary text-uppercase fw-bold m-0" style="letter-spacing: .08em;">
+      <i class="bi bi-grid-fill me-2 text-danger"></i>Módulos del Sistema
+    </h2>
+    <div class="buscador-modulos d-flex align-items-center gap-2 w-100 w-sm-auto" style="min-width: 250px;">
+      <i class="bi bi-search text-secondary"></i>
+      <input type="text" id="filtroModulos" placeholder="Buscar módulo rápido (ej. caja, citas)..." autocomplete="off">
+    </div>
   </div>
-  {% endfor %}
-</div>
+
+  <div class="row g-3" id="grillaModulos">
+    {% for modulo in modulos %}
+    <div class="col-12 col-sm-6 col-lg-4 item-modulo" data-nombre="{{ modulo.nombre|lower }}" data-desc="{{ modulo.descripcion|lower }}">
+      <a class="tarjeta-modulo" href="{{ url_for(modulo.endpoint) }}" data-modulo="{{ modulo.clave }}">
+        <span class="tarjeta-modulo__icono">
+          <i class="bi {{ modulo.icono }}"></i>
+        </span>
+        <span class="flex-grow-1 min-w-0">
+          <span class="tarjeta-modulo__titulo d-block text-truncate">{{ modulo.nombre }}</span>
+          <span class="tarjeta-modulo__descripcion d-block">{{ modulo.descripcion }}</span>
+        </span>
+        <i class="bi bi-arrow-right-short tarjeta-modulo__flecha text-secondary"></i>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div id="sinModulosMensaje" class="alert alert-light border text-center my-4 py-4 d-none">
+    <i class="bi bi-search fs-3 text-secondary d-block mb-2"></i>
+    <span class="fw-bold">No se encontraron módulos coincidentes.</span>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Filtro instantáneo de tarjetas de módulo
+  const inputFiltro = document.getElementById('filtroModulos');
+  const items = document.querySelectorAll('.item-modulo');
+  const sinModulos = document.getElementById('sinModulosMensaje');
+
+  if (inputFiltro) {
+    inputFiltro.addEventListener('input', function () {
+      const q = this.value.trim().toLowerCase();
+      let visibles = 0;
+      items.forEach(function (item) {
+        const nombre = item.getAttribute('data-nombre') || '';
+        const desc = item.getAttribute('data-desc') || '';
+        if (!q || nombre.includes(q) || desc.includes(q)) {
+          item.classList.remove('d-none');
+          visibles++;
+        } else {
+          item.classList.add('d-none');
+        }
+      });
+      if (sinModulos) {
+        sinModulos.classList.toggle('d-none', visibles > 0);
+      }
+    });
+  }
+</script>
 {% endblock %}

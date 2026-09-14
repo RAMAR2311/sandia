@@ -307,5 +307,11 @@ def _registrar_comandos(app: Flask) -> None:
             raise click.ClickException(f"No se pudo crear el administrador: {exc}") from exc
         click.echo(f"Administrador {usuario.email} creado correctamente.")
 
+    @app.cli.command("sembrar-datos")
+    def comando_sembrar_datos():
+        """Siembra datos de prueba realistas en todos los módulos de la aplicación."""
+        from sembrar import sembrar
+        sembrar()
+
     from commands import backup_cli
     app.cli.add_command(backup_cli)

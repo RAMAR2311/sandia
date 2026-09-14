@@ -1,14 +1,25 @@
 """Tablero principal y registro de módulos visibles por rol."""
 
-from datetime import timedelta
+from datetime import datetime, time, timedelta
+from decimal import Decimal
 
 from flask import Blueprint, current_app, jsonify, render_template
 from flask_login import current_user, login_required
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import selectinload
 
-from models import ROLES_TODOS, Mascota, VacunaMascota, db
-from utils import hoy_bogota
+from models import (
+    ROLES_TODOS,
+    Cita,
+    CitaSpa,
+    Mascota,
+    Producto,
+    TurnoCaja,
+    VacunaMascota,
+    Venta,
+    db,
+)
+from utils import ZONA_BOGOTA, hoy_bogota
 
 bp = Blueprint("dashboard", __name__)
 
@@ -209,8 +220,73 @@ def index():
     vacunas_pendientes = []
     if current_user.rol in ("admin", "veterinario", "auxiliar"):
         vacunas_pendientes = vacunas_por_vencer()
+
+    hoy = hoy_bogota()
+    inicio_dia = datetime.combine(hoy, time.min, tzinfo=ZONA_BOGOTA)
+    fin_dia = datetime.combine(hoy, time.max, tzinfo=ZONA_BOGOTA)
+
+    # Métricas clave del día según rol
+    metricas = {
+        "citas_hoy": 0,
+        "ventas_hoy": Decimal("0.00"),
+        "stock_critico": 0,
+        "turno_abierto": False,
+        "turno_caja_actual": None,
+        "total_pacientes": 0,
+    }
+
+    try:
+        # Citas programadas hoy (médicas o spa)
+        citas_count = db.session.execute(
+            select(func.count(Cita.id)).where(Cita.fecha_hora >= inicio_dia, Cita.fecha_hora <= fin_dia)
+        ).scalar() or 0
+        citas_spa_count = db.session.execute(
+            select(func.count(CitaSpa.id)).where(CitaSpa.fecha_hora >= inicio_dia, CitaSpa.fecha_hora <= fin_dia)
+        ).scalar() or 0
+        metricas["citas_hoy"] = citas_count + citas_spa_count
+
+        # Total pacientes activos
+        metricas["total_pacientes"] = db.session.execute(
+            select(func.count(Mascota.id)).where(Mascota.activo.is_(True), Mascota.fallecido.is_(False))
+        ).scalar() or 0
+
+        # Turno de caja abierto (para admin y cajero)
+        if current_user.rol in ("admin", "cajero"):
+            turno = db.session.execute(
+                select(TurnoCaja)
+                .where(TurnoCaja.usuario_id == current_user.id, TurnoCaja.estado.in_(("abierta", "abierto")))
+                .order_by(TurnoCaja.fecha_apertura.desc())
+            ).scalars().first()
+            if turno:
+                metricas["turno_abierto"] = True
+                metricas["turno_caja_actual"] = turno
+
+        # Ventas de hoy (para admin)
+        if current_user.rol == "admin":
+            ventas_hoy_val = db.session.execute(
+                select(func.coalesce(func.sum(Venta.total), Decimal("0.00")))
+                .where(Venta.fecha_venta >= inicio_dia, Venta.fecha_venta <= fin_dia, Venta.estado == "completada")
+            ).scalar()
+            metricas["ventas_hoy"] = ventas_hoy_val or Decimal("0.00")
+
+        # Alertas de stock crítico
+        if current_user.rol in ("admin", "veterinario", "auxiliar", "cajero"):
+            productos_alerta = db.session.execute(
+                select(func.count(Producto.id)).where(
+                    Producto.activo.is_(True),
+                    Producto.tipo == "producto",
+                    Producto.cantidad_stock <= Producto.stock_minimo,
+                )
+            ).scalar() or 0
+            metricas["stock_critico"] = productos_alerta
+    except Exception:
+        pass
+
     return render_template(
-        "dashboard/index.html", modulos=modulos_para(current_user.rol), vacunas_pendientes=vacunas_pendientes
+        "dashboard/index.html",
+        modulos=modulos_para(current_user.rol),
+        vacunas_pendientes=vacunas_pendientes,
+        metricas=metricas,
     )
 
 
