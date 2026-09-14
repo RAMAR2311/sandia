@@ -32,6 +32,19 @@ CONVENCION_NOMBRES = {
 db = SQLAlchemy(metadata=MetaData(naming_convention=CONVENCION_NOMBRES))
 
 
+class BaseModel(db.Model):
+    """Clase base abstracta para todos los modelos de VetCare.
+
+    Proporciona soporte de inicialización con kwargs para analizadores
+    estáticos (PyLance/Pyright).
+    """
+
+    __abstract__ = True
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 # ---------------------------------------------------------------------------
 # Roles
 # ---------------------------------------------------------------------------
@@ -47,7 +60,7 @@ ROLES = {
 ROLES_TODOS = tuple(ROLES.keys())
 
 
-class Usuario(UserMixin, db.Model):
+class Usuario(UserMixin, BaseModel):
     __tablename__ = "usuarios"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -124,7 +137,7 @@ GRUPOS_CONFIGURACION = {
 }
 
 
-class ConfiguracionSistema(db.Model):
+class ConfiguracionSistema(BaseModel):
     __tablename__ = "configuracion_sistema"
 
     TIPOS = ("bool", "int", "decimal", "str")
@@ -262,7 +275,7 @@ class ConfiguracionSistema(db.Model):
 # ---------------------------------------------------------------------------
 
 
-class IntentoLogin(db.Model):
+class IntentoLogin(BaseModel):
     __tablename__ = "intentos_login"
     __table_args__ = (db.Index("ix_intentos_login_ip_fecha", "ip", "fecha"),)
 
@@ -324,7 +337,7 @@ TIPOS_DOCUMENTO = {
 }
 
 
-class Raza(db.Model):
+class Raza(BaseModel):
     __tablename__ = "razas"
     __table_args__ = (db.UniqueConstraint("especie", "nombre", name="uq_razas_especie_nombre"),)
 
@@ -356,7 +369,7 @@ class Raza(db.Model):
 # ---------------------------------------------------------------------------
 
 
-class Tutor(db.Model):
+class Tutor(BaseModel):
     __tablename__ = "tutores"
     __table_args__ = (
         db.Index("ix_tutores_nombre_busqueda", "nombre_busqueda"),
@@ -439,7 +452,7 @@ class Tutor(db.Model):
 # ---------------------------------------------------------------------------
 
 
-class Mascota(db.Model):
+class Mascota(BaseModel):
     __tablename__ = "mascotas"
     __table_args__ = (
         db.Index("ix_mascotas_nombre_busqueda", "nombre_busqueda"),
@@ -552,7 +565,7 @@ class Mascota(db.Model):
         return f"<Mascota {self.id} {self.nombre}>"
 
 
-class RegistroPeso(db.Model):
+class RegistroPeso(BaseModel):
     __tablename__ = "registros_peso"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -618,7 +631,7 @@ UNIDADES_MEDIDA = {
 }
 
 
-class Proveedor(db.Model):
+class Proveedor(BaseModel):
     __tablename__ = "proveedores"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -653,7 +666,7 @@ class Proveedor(db.Model):
         return f"<Proveedor {self.id} {self.nombre}>"
 
 
-class Producto(db.Model):
+class Producto(BaseModel):
     __tablename__ = "productos"
     __table_args__ = (
         db.Index("ix_productos_sku", "sku", unique=True),
@@ -747,7 +760,7 @@ class Producto(db.Model):
         return f"<Producto {self.id} {self.sku} {self.nombre}>"
 
 
-class VarianteProducto(db.Model):
+class VarianteProducto(BaseModel):
     __tablename__ = "variantes_producto"
     __table_args__ = (
         db.Index("ix_variantes_sku", "sku", unique=True, postgresql_where=text("sku IS NOT NULL")),
@@ -784,7 +797,7 @@ class VarianteProducto(db.Model):
         return f"<VarianteProducto {self.id} {self.nombre_variante}>"
 
 
-class Lote(db.Model):
+class Lote(BaseModel):
     __tablename__ = "lotes"
     __table_args__ = (
         db.Index("ix_lotes_producto_vencimiento", "producto_id", "fecha_vencimiento"),
@@ -818,7 +831,7 @@ class Lote(db.Model):
         return f"<Lote {self.id} {self.numero_lote} vence {self.fecha_vencimiento}>"
 
 
-class MovimientoStock(db.Model):
+class MovimientoStock(BaseModel):
     __tablename__ = "movimientos_stock"
     __table_args__ = (
         db.Index("ix_movimientos_producto_fecha", "producto_id", "fecha"),
@@ -877,7 +890,7 @@ ESTADOS_APROBACION_PRECIO = {
 }
 
 
-class AprobacionPrecio(db.Model):
+class AprobacionPrecio(BaseModel):
     """Solicitud de excepción cuando un cajero intenta vender bajo el precio mínimo.
 
     El cajero no puede completar la venta hasta que un admin apruebe (con el
@@ -929,7 +942,7 @@ class AprobacionPrecio(db.Model):
         return f"<AprobacionPrecio {self.id} {self.descripcion} estado={self.estado}>"
 
 
-class TurnoCaja(db.Model):
+class TurnoCaja(BaseModel):
     __tablename__ = "turnos_caja"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -958,7 +971,7 @@ class TurnoCaja(db.Model):
         return f"<TurnoCaja {self.id} usuario={self.usuario_id} estado={self.estado}>"
 
 
-class Venta(db.Model):
+class Venta(BaseModel):
     __tablename__ = "ventas"
     __table_args__ = (
         db.Index("ix_ventas_numero_factura", "numero_factura", unique=True),
@@ -999,7 +1012,7 @@ class Venta(db.Model):
         return f"<Venta {self.id} {self.numero_factura} total={self.total}>"
 
 
-class DetalleVenta(db.Model):
+class DetalleVenta(BaseModel):
     __tablename__ = "detalles_venta"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -1025,7 +1038,7 @@ class DetalleVenta(db.Model):
         return f"<DetalleVenta {self.id} {self.descripcion} qty={self.cantidad}>"
 
 
-class PagoVenta(db.Model):
+class PagoVenta(BaseModel):
     __tablename__ = "pagos_venta"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -1058,7 +1071,7 @@ ESTADOS_SPA = {
 }
 
 
-class ServicioSpa(db.Model):
+class ServicioSpa(BaseModel):
     __tablename__ = "servicios_spa"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -1074,7 +1087,7 @@ class ServicioSpa(db.Model):
         return f"<ServicioSpa {self.id} {self.nombre}>"
 
 
-class CitaSpa(db.Model):
+class CitaSpa(BaseModel):
     __tablename__ = "citas_spa"
     __table_args__ = (
         db.Index("ix_citas_spa_fecha", "fecha_hora"),
@@ -1136,7 +1149,7 @@ class CitaSpa(db.Model):
 # ---------------------------------------------------------------------------
 
 
-class ConsultaMedica(db.Model):
+class ConsultaMedica(BaseModel):
     __tablename__ = "consultas_medicas"
     __table_args__ = (
         db.Index("ix_consultas_medicas_mascota_fecha", "mascota_id", "fecha_hora"),
@@ -1184,7 +1197,7 @@ class ConsultaMedica(db.Model):
         return f"<ConsultaMedica {self.id} mascota={self.mascota_id} fecha={self.fecha_hora}>"
 
 
-class EnmiendaConsulta(db.Model):
+class EnmiendaConsulta(BaseModel):
     """Corrección de una consulta ya firmada: la consulta original nunca se
     edita ni se borra (rule 8); toda corrección queda registrada aparte,
     con autor y fecha, y se muestra anexada al final del reporte."""
@@ -1204,7 +1217,7 @@ class EnmiendaConsulta(db.Model):
         return f"<EnmiendaConsulta {self.id} consulta={self.consulta_id}>"
 
 
-class VacunaMascota(db.Model):
+class VacunaMascota(BaseModel):
     __tablename__ = "vacunas_mascotas"
     __table_args__ = (
         db.Index("ix_vacunas_mascotas_mascota_proxima", "mascota_id", "fecha_proxima"),
@@ -1262,7 +1275,7 @@ class VacunaMascota(db.Model):
         return f"<VacunaMascota {self.id} mascota={self.mascota_id} vacuna={self.nombre_vacuna!r}>"
 
 
-class DesparasitacionMascota(db.Model):
+class DesparasitacionMascota(BaseModel):
     __tablename__ = "desparasitaciones_mascotas"
     __table_args__ = (
         db.Index("ix_desparasitaciones_mascotas_mascota", "mascota_id", "fecha_aplicacion"),
@@ -1330,7 +1343,7 @@ ESTADOS_CITA = {
 }
 
 
-class Cita(db.Model):
+class Cita(BaseModel):
     """Agenda médica general: consultas, vacunación, cirugía y controles.
     Es independiente de ``CitaSpa`` (agenda de grooming)."""
 
@@ -1415,7 +1428,7 @@ ESTADOS_HOSPITALIZACION = {
 }
 
 
-class Hospitalizacion(db.Model):
+class Hospitalizacion(BaseModel):
     __tablename__ = "hospitalizaciones"
     __table_args__ = (db.Index("ix_hospitalizaciones_estado", "estado"),)
 
@@ -1470,7 +1483,7 @@ class Hospitalizacion(db.Model):
         return f"<Hospitalizacion {self.id} mascota={self.mascota_id} estado={self.estado}>"
 
 
-class EvolucionHospitalaria(db.Model):
+class EvolucionHospitalaria(BaseModel):
     __tablename__ = "evoluciones_hospitalarias"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -1495,7 +1508,7 @@ class EvolucionHospitalaria(db.Model):
 # ---------------------------------------------------------------------------
 
 
-class Cirugia(db.Model):
+class Cirugia(BaseModel):
     __tablename__ = "cirugias"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -1536,7 +1549,7 @@ ESTADOS_EXAMEN = {
 }
 
 
-class ExamenLaboratorio(db.Model):
+class ExamenLaboratorio(BaseModel):
     __tablename__ = "examenes_laboratorio"
     __table_args__ = (db.Index("ix_examenes_laboratorio_estado", "estado"),)
 
@@ -1591,7 +1604,7 @@ CATEGORIAS_GASTO = {
 }
 
 
-class Gasto(db.Model):
+class Gasto(BaseModel):
     __tablename__ = "gastos"
     __table_args__ = (db.Index("ix_gastos_fecha", "fecha_gasto"),)
 
@@ -1641,7 +1654,7 @@ class Gasto(db.Model):
 ESTADOS_FACTURA_PROVEEDOR = {"pendiente": "Pendiente", "pagada": "Pagada", "vencida": "Vencida", "anulada": "Anulada"}
 
 
-class FacturaProveedor(db.Model):
+class FacturaProveedor(BaseModel):
     __tablename__ = "facturas_proveedor"
     __table_args__ = (db.Index("ix_facturas_proveedor_estado", "estado"),)
 
@@ -1687,7 +1700,7 @@ class FacturaProveedor(db.Model):
         return f"<FacturaProveedor {self.id} {self.numero_factura} saldo={self.saldo_pendiente}>"
 
 
-class PagoProveedor(db.Model):
+class PagoProveedor(BaseModel):
     __tablename__ = "pagos_proveedor"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -1712,7 +1725,7 @@ class PagoProveedor(db.Model):
 ESTADOS_FACTURA_TUTOR = {"pendiente": "Pendiente", "pagada": "Pagada", "anulada": "Anulada"}
 
 
-class CuentaTutor(db.Model):
+class CuentaTutor(BaseModel):
     """Factura a crédito de un tutor (fía) con sus abonos. Distinta de una
     ``Venta`` de contado; se usa para clientes con crédito autorizado."""
 
@@ -1761,7 +1774,7 @@ class CuentaTutor(db.Model):
         return f"<CuentaTutor {self.id} tutor={self.tutor_id} saldo={self.saldo_pendiente}>"
 
 
-class AbonoCuentaTutor(db.Model):
+class AbonoCuentaTutor(BaseModel):
     __tablename__ = "abonos_cuenta_tutor"
 
     id = db.Column(db.Integer, primary_key=True)
