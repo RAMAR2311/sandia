@@ -22,7 +22,7 @@
         <div class="d-flex justify-content-center gap-2 mb-3">
           <span class="badge bg-secondary">{{ mascota.sexo_etiqueta }}</span>
           {% if mascota.edad %}<span class="badge bg-info text-dark">{{ mascota.edad }}</span>{% endif %}
-          {% if mascota.peso_actual %}<span class="badge bg-success">{{ mascota.peso_actual }} kg</span>{% endif %}
+          {% if mascota.peso_actual %}<span class="badge bg-success">{{ mascota.peso_actual.peso_kg|kg }}</span>{% endif %}
         </div>
       </div>
       <ul class="list-group list-group-flush small">

@@ -564,6 +564,12 @@ class RegistroPeso(db.Model):
     mascota = db.relationship("Mascota", back_populates="registros_peso")
     registrado_por = db.relationship("Usuario", foreign_keys=[registrado_por_id])
 
+    def __str__(self):
+        return f"{self.peso_kg}"
+
+    def __float__(self):
+        return float(self.peso_kg)
+
     def __repr__(self):
         return f"<RegistroPeso {self.mascota_id} {self.peso_kg} kg>"
 

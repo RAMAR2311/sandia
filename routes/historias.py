@@ -137,7 +137,7 @@ def consulta_nueva(mascota_id: int):
     if not form.is_submitted():
         # Prellenar peso actual si existe
         if mascota.peso_actual:
-            form.peso_kg.data = mascota.peso_actual
+            form.peso_kg.data = mascota.peso_actual.peso_kg
 
     if form.validate_on_submit():
         try:
@@ -165,7 +165,7 @@ def consulta_nueva(mascota_id: int):
             db.session.add(consulta)
 
             # Actualizar peso de la mascota si se registró uno nuevo
-            if form.peso_kg.data and form.peso_kg.data != mascota.peso_actual:
+            if form.peso_kg.data and (not mascota.peso_actual or form.peso_kg.data != mascota.peso_actual.peso_kg):
                 mascota.peso_actual = form.peso_kg.data
 
             db.session.commit()
@@ -266,7 +266,7 @@ def desparasitacion_nueva(mascota_id: int):
     if not form.is_submitted():
         form.fecha_aplicacion.data = hoy_bogota()
         if mascota.peso_actual:
-            form.peso_kg.data = mascota.peso_actual
+            form.peso_kg.data = mascota.peso_actual.peso_kg
 
     if form.validate_on_submit():
         try:
