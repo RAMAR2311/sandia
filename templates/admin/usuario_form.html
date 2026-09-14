@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo, campo_select, campo_switch, encabezado %}
+{% block titulo %}{{ 'Editar usuario' if usuario else 'Nuevo usuario' }}{% endblock %}
+
+{% block contenido %}
+{{ encabezado('Editar usuario' if usuario else 'Nuevo usuario', usuario.email if usuario else 'Crea una cuenta para un miembro del equipo') }}
+<div class="card" style="max-width: 640px;">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+      {{ campo(form.nombre, autocomplete="off", autofocus=True) }}
+      {{ campo(form.email, type="email", inputmode="email", autocomplete="off") }}
+      {{ campo(form.telefono, type="tel", inputmode="tel", autocomplete="off") }}
+      {{ campo_select(form.rol, ayuda="Define a qué módulos tiene acceso.") }}
+      {{ campo_switch(form.activo, ayuda="Un usuario inactivo no puede iniciar sesión, pero su historial se conserva.") }}
+      <hr>
+      {{ campo(form.password, autocomplete="new-password", ayuda=("Déjala vacía para no cambiarla." if usuario else "Mínimo 8 caracteres.")) }}
+      {{ campo(form.password_confirmacion, autocomplete="new-password") }}
+      <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+        {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
+        <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('admin.usuarios') }}">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

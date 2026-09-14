@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Ficha Médica de {{ mascota.nombre }} - VetCare{% endblock %}
+
+{% block contenido %}
+{% call encabezado(mascota.nombre, "Ficha médica unificada, historial SOAP y vacunas") %}
+  <a href="{{ url_for('historias.lista') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Volver al directorio
+  </a>
+{% endcall %}
+
+<div class="row g-4 mb-4">
+  <!-- Tarjeta del Paciente -->
+  <div class="col-12 col-lg-4">
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-body text-center">
+        <div class="fs-1 mb-2">{{ mascota.especie_emoji }}</div>
+        <h4 class="fw-bold mb-1">{{ mascota.nombre }}</h4>
+        <p class="text-muted small mb-3">
+          {{ mascota.especie_etiqueta }} {% if mascota.raza %}• {{ mascota.raza.nombre }}{% endif %}
+        </p>
+        <div class="d-flex justify-content-center gap-2 mb-3">
+          <span class="badge bg-secondary">{{ mascota.sexo_etiqueta }}</span>
+          {% if mascota.edad %}<span class="badge bg-info text-dark">{{ mascota.edad }}</span>{% endif %}
+          {% if mascota.peso_actual %}<span class="badge bg-success">{{ mascota.peso_actual }} kg</span>{% endif %}
+        </div>
+      </div>
+      <ul class="list-group list-group-flush small">
+        <li class="list-group-item d-flex justify-content-between">
+          <span class="text-muted">Tutor:</span>
+          <span class="fw-bold">{{ mascota.tutor.nombre_completo }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span class="text-muted">Teléfono / WhatsApp:</span>
+          <span>{{ mascota.tutor.whatsapp_efectivo or 'S/R' }}</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between">
+          <span class="text-muted">Microchip:</span>
+          <span>{{ mascota.microchip or 'Sin registrar' }}</span>
+        </li>
+      </ul>
+      <div class="card-body d-grid gap-2">
+        <a href="{{ url_for('historias.consulta_nueva', mascota_id=mascota.id) }}" class="btn btn-primary fw-bold">
+          <i class="bi bi-plus-circle me-1"></i>Nueva Consulta SOAP
+        </a>
+        <a href="{{ url_for('historias.vacuna_nueva', mascota_id=mascota.id) }}" class="btn btn-outline-success btn-sm fw-bold">
+          <i class="bi bi-shield-plus me-1"></i>Registrar Vacuna
+        </a>
+        <a href="{{ url_for('historias.desparasitacion_nueva', mascota_id=mascota.id) }}" class="btn btn-outline-info btn-sm fw-bold">
+          <i class="bi bi-bug me-1"></i>Registrar Desparasitación
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pestañas de Historial -->
+  <div class="col-12 col-lg-8">
+    <ul class="nav nav-tabs fw-bold mb-3" id="fichaTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="soap-tab" data-bs-toggle="tab" data-bs-target="#soap" type="button" role="tab">
+          <i class="bi bi-journal-medical me-1"></i>Consultas SOAP ({{ mascota.consultas|length }})
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="vacunas-tab" data-bs-toggle="tab" data-bs-target="#vacunas" type="button" role="tab">
+          <i class="bi bi-shield-check me-1"></i>Vacunas ({{ mascota.vacunas|length }})
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="desparasitaciones-tab" data-bs-toggle="tab" data-bs-target="#desparasitaciones" type="button" role="tab">
+          <i class="bi bi-capsule me-1"></i>Desparasitaciones ({{ mascota.desparasitaciones|length }})
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="fichaTabsContent">
+      <!-- Pestaña SOAP -->
+      <div class="tab-pane fade show active" id="soap" role="tabpanel">
+        {% for c in mascota.consultas %}
+        <div class="card shadow-sm mb-3">
+          <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <span class="fw-bold"><i class="bi bi-calendar-event me-1"></i>{{ c.fecha_hora|fecha_hora }}</span>
+            <span class="badge bg-secondary">Dr/a. {{ c.veterinario.nombre }}</span>
+          </div>
+          <div class="card-body">
+            <h6 class="fw-bold text-primary mb-2">Motivo: {{ c.motivo_consulta }}</h6>
+            <div class="row g-2 mb-2 small text-muted">
+              {% if c.peso_kg %}<div><strong>Peso:</strong> {{ c.peso_kg }} kg</div>{% endif %}
+              {% if c.temperatura_c %}<div><strong>Temp:</strong> {{ c.temperatura_c }} °C</div>{% endif %}
+              {% if c.frecuencia_cardiaca %}<div><strong>FC:</strong> {{ c.frecuencia_cardiaca }} lpm</div>{% endif %}
+            </div>
+            <p class="mb-1"><strong>Diagnóstico (A):</strong> {{ c.diagnostico }}</p>
+            <p class="mb-2"><strong>Plan (P):</strong> {{ c.plan_tratamiento }}</p>
+            <a href="{{ url_for('historias.consulta_detalle', id=c.id) }}" class="btn btn-sm btn-link p-0 text-decoration-none">
+              Ver detalle completo y receta <i class="bi bi-chevron-right"></i>
+            </a>
+          </div>
+        </div>
+        {% else %}
+        <div class="alert alert-light text-center py-4 border">
+          No hay consultas médicas registradas para {{ mascota.nombre }}.
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Pestaña Vacunas -->
+      <div class="tab-pane fade" id="vacunas" role="tabpanel">
+        <div class="card shadow-sm">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Vacuna</th>
+                  <th>Aplicación</th>
+                  <th>Próxima</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for v in mascota.vacunas %}
+                <tr>
+                  <td class="fw-bold">{{ v.nombre_vacuna }}</td>
+                  <td>{{ v.fecha_aplicacion|fecha }}</td>
+                  <td>{{ v.fecha_proxima|fecha }}</td>
+                  <td>
+                    {% if v.estado_vencimiento == 'al_dia' %}
+                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Al día</span>
+                    {% elif v.estado_vencimiento == 'proxima_vencer' %}
+                    <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Próxima</span>
+                    {% else %}
+                    <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Vencida</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-center text-muted py-3">Sin vacunas registradas.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pestaña Desparasitaciones -->
+      <div class="tab-pane fade" id="desparasitaciones" role="tabpanel">
+        <div class="card shadow-sm">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Producto</th>
+                  <th>Tipo</th>
+                  <th>Aplicación</th>
+                  <th>Próxima</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for d in mascota.desparasitaciones %}
+                <tr>
+                  <td class="fw-bold">{{ d.producto }}</td>
+                  <td><span class="badge bg-light text-dark border">{{ d.tipo|capitalize }}</span></td>
+                  <td>{{ d.fecha_aplicacion|fecha }}</td>
+                  <td>{{ d.fecha_proxima|fecha if d.fecha_proxima else 'N/R' }}</td>
+                  <td>
+                    {% if d.estado_vencimiento == 'al_dia' %}
+                    <span class="badge bg-success">Al día</span>
+                    {% elif d.estado_vencimiento == 'proxima_vencer' %}
+                    <span class="badge bg-warning text-dark">Próxima</span>
+                    {% else %}
+                    <span class="badge bg-danger">Vencida</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted py-3">Sin desparasitaciones registradas.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

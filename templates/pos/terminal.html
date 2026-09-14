@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+{% block titulo %}Terminal POS - VetCare{% endblock %}
+
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="fw-bold mb-0"><i class="bi bi-cart-check-fill text-success me-2"></i>Terminal de Ventas (POS)</h3>
+    <small class="text-secondary">Turno #{{ turno.id }} - Cajero: {{ current_user.nombre }}</small>
+  </div>
+  <div>
+    <a href="{{ url_for('pos.caja_estado') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-cash-coin me-1"></i>Ver Estado de Caja
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Columna Izquierda: Buscador de Productos y Servicios -->
+  <div class="col-12 col-lg-7">
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="input-group input-group-lg mb-3">
+          <span class="input-group-text bg-white"><i class="bi bi-search text-primary"></i></span>
+          <input type="search" id="inputBusqueda" class="form-control" placeholder="Buscar por SKU, Código de barras o Nombre..." autofocus>
+        </div>
+
+        <div id="gridResultados" class="row g-2" style="max-height: 520px; overflow-y: auto;">
+          <div class="text-center text-muted py-5">
+            <i class="bi bi-box-seam fs-1 d-block mb-2 text-secondary"></i>
+            Escribe en el buscador para buscar productos o servicios.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Columna Derecha: Carrito y Totales -->
+  <div class="col-12 col-lg-5">
+    <div class="card shadow-sm h-100 d-flex flex-column">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0"><i class="bi bi-basket-fill me-2"></i>Carrito de Compras</h5>
+        <button type="button" class="btn btn-link btn-sm text-danger text-decoration-none" onclick="limpiarCarrito()">
+          <i class="bi bi-trash me-1"></i>Vaciar
+        </button>
+      </div>
+
+      <!-- Buscador de Tutor / Mascota -->
+      <div class="card-body border-bottom bg-light py-2">
+        <label class="form-label small fw-bold mb-1">Cliente / Tutor (Opcional)</label>
+        <div class="input-group input-group-sm">
+          <input type="text" id="inputCliente" class="form-control" placeholder="Buscar tutor o cédula...">
+          <button type="button" class="btn btn-outline-secondary" onclick="buscarCliente()"><i class="bi bi-person-search"></i></button>
+        </div>
+        <div id="infoCliente" class="small text-success mt-1 fw-bold d-none"></div>
+      </div>
+
+      <!-- Lista de Ítems del Carrito -->
+      <div class="card-body p-0 flex-grow-1" style="max-height: 340px; overflow-y: auto;">
+        <table class="table table-hover table-sm align-middle mb-0">
+          <thead class="table-light sticky-top">
+            <tr>
+              <th>Ítem</th>
+              <th style="width: 90px;">Cant.</th>
+              <th class="text-end" style="width: 100px;">Total</th>
+              <th style="width: 30px;"></th>
+            </tr>
+          </thead>
+          <tbody id="tablaCarrito">
+            <tr id="filaVacia">
+              <td colspan="4" class="text-center text-muted py-5">El carrito está vacío.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Resumen de Totales -->
+      <div class="card-footer bg-white border-top p-3">
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-secondary">Subtotal:</span>
+          <strong id="lblSubtotal" class="font-monospace">$0.00</strong>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-secondary">Descuento Global:</span>
+          <div class="input-group input-group-sm" style="width: 120px;">
+            <span class="input-group-text">$</span>
+            <input type="number" id="inputDescuento" class="form-control text-end" value="0" min="0" onchange="renderTotales()">
+          </div>
+        </div>
+        <hr class="my-2">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="fs-5 fw-bold">TOTAL A PAGAR:</span>
+          <span id="lblTotal" class="fs-4 fw-bold text-success font-monospace">$0.00</span>
+        </div>
+
+        <button type="button" id="btnCobrar" class="btn btn-success btn-lg w-100 fw-bold py-3" onclick="abrirModalPago()" disabled>
+          <i class="bi bi-credit-card-2-front-fill me-2"></i>PROCESAR PAGO
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Medios de Pago -->
+<div class="modal fade" id="modalPago" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title"><i class="bi bi-cash-stack me-2"></i>Cobro y Registro de Pago</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center mb-3 p-3 bg-light rounded border">
+          <small class="text-secondary d-block">TOTAL FACTURA</small>
+          <span id="lblTotalModal" class="fs-2 fw-bold text-success font-monospace">$0.00</span>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">Medios de Pago</label>
+          <div class="row g-2 align-items-center mb-2">
+            <div class="col-6">
+              <span class="small fw-bold"><i class="bi bi-cash me-1 text-success"></i>Efectivo</span>
+            </div>
+            <div class="col-6">
+              <input type="number" id="pagoEfectivo" class="form-control form-control-sm text-end" placeholder="0.00" oninput="calcularCambio()">
+            </div>
+          </div>
+          <div class="row g-2 align-items-center mb-2">
+            <div class="col-6">
+              <span class="small fw-bold"><i class="bi bi-phone me-1 text-primary"></i>Nequi</span>
+            </div>
+            <div class="col-6">
+              <input type="number" id="pagoNequi" class="form-control form-control-sm text-end" placeholder="0.00" oninput="calcularCambio()">
+            </div>
+          </div>
+          <div class="row g-2 align-items-center mb-2">
+            <div class="col-6">
+              <span class="small fw-bold"><i class="bi bi-phone-fill me-1 text-danger"></i>Daviplata</span>
+            </div>
+            <div class="col-6">
+              <input type="number" id="pagoDaviplata" class="form-control form-control-sm text-end" placeholder="0.00" oninput="calcularCambio()">
+            </div>
+          </div>
+          <div class="row g-2 align-items-center mb-2">
+            <div class="col-6">
+              <span class="small fw-bold"><i class="bi bi-credit-card me-1 text-info"></i>Tarjeta (Datáfono)</span>
+            </div>
+            <div class="col-6">
+              <input type="number" id="pagoTarjeta" class="form-control form-control-sm text-end" placeholder="0.00" oninput="calcularCambio()">
+            </div>
+          </div>
+          <div class="row g-2 align-items-center mb-2">
+            <div class="col-6">
+              <span class="small fw-bold"><i class="bi bi-bank me-1 text-secondary"></i>Transferencia</span>
+            </div>
+            <div class="col-6">
+              <input type="number" id="pagoTransferencia" class="form-control form-control-sm text-end" placeholder="0.00" oninput="calcularCambio()">
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-light rounded border">
+          <div class="d-flex justify-content-between mb-1">
+            <span>Suma Pagos:</span>
+            <strong id="lblSumaPagos" class="font-monospace">$0.00</strong>
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <span>Cambio / Vueltos (Efectivo):</span>
+            <strong id="lblCambio" class="fs-5 text-primary font-monospace">$0.00</strong>
+          </div>
+        </div>
+
+        <div id="alertaPago" class="alert alert-danger mt-3 d-none"></div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" id="btnConfirmarVenta" class="btn btn-success fw-bold py-2 px-4" onclick="confirmarVenta()">
+          <i class="bi bi-check-circle-fill me-1"></i>Finalizar y Generar Factura
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let carrito = [];
+let tutorSeleccionado = null;
+let mascotaSeleccionada = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const busqueda = document.getElementById('inputBusqueda');
+  busqueda.addEventListener('input', debounce(ejecutarBusqueda, 300));
+  ejecutarBusqueda();
+});
+
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
+async function ejecutarBusqueda() {
+  const q = document.getElementById('inputBusqueda').value.trim();
+  const grid = document.getElementById('gridResultados');
+
+  try {
+    const resp = await fetch(`/api/pos/buscar-items?q=${encodeURIComponent(q)}`);
+    const data = await resp.json();
+
+    if (!data || data.length === 0) {
+      grid.innerHTML = '<div class="text-center text-muted py-5">No se encontraron productos ni servicios.</div>';
+      return;
+    }
+
+    grid.innerHTML = data.map(item => `
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 border hover-shadow style="cursor: pointer;" onclick='agregarAlCarrito(${JSON.stringify(item)})'>
+          <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+              <span class="badge ${item.tipo === 'servicio' ? 'bg-info' : 'bg-secondary'}">${item.tipo.toUpperCase()}</span>
+              <small class="text-muted">${item.sku || ''}</small>
+            </div>
+            <h6 class="card-title fw-bold text-truncate mb-1">${item.nombre}</h6>
+            <div class="d-flex justify-content-between align-items-end mt-2">
+              <span class="fs-6 fw-bold text-success">$${item.precio_sugerido.toLocaleString('es-CO')}</span>
+              <small class="${item.stock_total <= 0 && item.tipo !== 'servicio' ? 'text-danger fw-bold' : 'text-muted'}">
+                ${item.tipo === 'servicio' ? 'Servicio' : 'Stock: ' + item.stock_total}
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function agregarAlCarrito(item) {
+  const index = carrito.findIndex(i => i.producto_id === item.id);
+  if (index >= 0) {
+    carrito[index].cantidad += 1;
+  } else {
+    carrito.push({
+      producto_id: item.id,
+      nombre: item.nombre,
+      tipo: item.tipo,
+      precio_unitario: item.precio_sugerido,
+      cantidad: 1,
+      descuento: 0
+    });
+  }
+  renderCarrito();
+}
+
+function renderCarrito() {
+  const tbody = document.getElementById('tablaCarrito');
+  const btnCobrar = document.getElementById('btnCobrar');
+
+  if (carrito.length === 0) {
+    tbody.innerHTML = '<tr id="filaVacia"><td colspan="4" class="text-center text-muted py-5">El carrito está vacío.</td></tr>';
+    btnCobrar.disabled = true;
+    renderTotales();
+    return;
+  }
+
+  btnCobrar.disabled = false;
+  tbody.innerHTML = carrito.map((item, idx) => `
+    <tr>
+      <td>
+        <div class="fw-bold text-truncate" style="max-width: 150px;">${item.nombre}</div>
+        <small class="text-muted">$${item.precio_unitario.toLocaleString('es-CO')}</small>
+      </td>
+      <td>
+        <div class="input-group input-group-sm">
+          <button class="btn btn-outline-secondary" onclick="cambiarCantidad(${idx}, -1)">-</button>
+          <input type="text" class="form-control text-center px-1" value="${item.cantidad}" readonly>
+          <button class="btn btn-outline-secondary" onclick="cambiarCantidad(${idx}, 1)">+</button>
+        </div>
+      </td>
+      <td class="text-end font-monospace">$${(item.cantidad * item.precio_unitario).toLocaleString('es-CO')}</td>
+      <td>
+        <button type="button" class="btn btn-sm text-danger p-0" onclick="eliminarItem(${idx})"><i class="bi bi-x-circle-fill"></i></button>
+      </td>
+    </tr>
+  `).join('');
+
+  renderTotales();
+}
+
+function cambiarCantidad(idx, delta) {
+  carrito[idx].cantidad += delta;
+  if (carrito[idx].cantidad <= 0) {
+    carrito.splice(idx, 1);
+  }
+  renderCarrito();
+}
+
+function eliminarItem(idx) {
+  carrito.splice(idx, 1);
+  renderCarrito();
+}
+
+function limpiarCarrito() {
+  carrito = [];
+  renderCarrito();
+}
+
+function renderTotales() {
+  const subtotal = carrito.reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
+  const descGlobal = parseFloat(document.getElementById('inputDescuento').value || 0);
+  const total = Math.max(0, subtotal - descGlobal);
+
+  document.getElementById('lblSubtotal').innerText = '$' + subtotal.toLocaleString('es-CO');
+  document.getElementById('lblTotal').innerText = '$' + total.toLocaleString('es-CO');
+  document.getElementById('lblTotalModal').innerText = '$' + total.toLocaleString('es-CO');
+}
+
+async function buscarCliente() {
+  const q = document.getElementById('inputCliente').value.trim();
+  if (!q) return;
+
+  try {
+    const resp = await fetch(`/api/pos/tutores-mascotas?q=${encodeURIComponent(q)}`);
+    const data = await resp.json();
+    if (data && data.length > 0) {
+      const tutor = data[0];
+      tutorSeleccionado = tutor.id;
+      mascotaSeleccionada = tutor.mascotas.length > 0 ? tutor.mascotas[0].id : null;
+
+      const div = document.getElementById('infoCliente');
+      div.innerText = `Cliente: ${tutor.nombre}` + (tutor.mascotas.length > 0 ? ` (Mascota: ${tutor.mascotas[0].nombre})` : '');
+      div.classList.remove('d-none');
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function abrirModalPago() {
+  const totalStr = document.getElementById('lblTotal').innerText.replace('$', '').replace(/\./g, '').replace(/,/g, '');
+  const total = parseFloat(totalStr) || 0;
+
+  // Sugerir el monto total en efectivo por defecto
+  document.getElementById('pagoEfectivo').value = total;
+  document.getElementById('pagoNequi').value = '';
+  document.getElementById('pagoDaviplata').value = '';
+  document.getElementById('pagoTarjeta').value = '';
+  document.getElementById('pagoTransferencia').value = '';
+
+  calcularCambio();
+  const modal = new bootstrap.Modal(document.getElementById('modalPago'));
+  modal.show();
+}
+
+function calcularCambio() {
+  const totalStr = document.getElementById('lblTotalModal').innerText.replace('$', '').replace(/\./g, '').replace(/,/g, '');
+  const totalFactura = parseFloat(totalStr) || 0;
+
+  const ef = parseFloat(document.getElementById('pagoEfectivo').value || 0);
+  const nq = parseFloat(document.getElementById('pagoNequi').value || 0);
+  const dv = parseFloat(document.getElementById('pagoDaviplata').value || 0);
+  const tj = parseFloat(document.getElementById('pagoTarjeta').value || 0);
+  const tr = parseFloat(document.getElementById('pagoTransferencia').value || 0);
+
+  const suma = ef + nq + dv + tj + tr;
+  const cambio = Math.max(0, ef - (totalFactura - (nq + dv + tj + tr)));
+
+  document.getElementById('lblSumaPagos').innerText = '$' + suma.toLocaleString('es-CO');
+  document.getElementById('lblCambio').innerText = '$' + cambio.toLocaleString('es-CO');
+
+  const btn = document.getElementById('btnConfirmarVenta');
+  const alerta = document.getElementById('alertaPago');
+
+  if (suma < totalFactura) {
+    btn.disabled = true;
+    alerta.innerText = `Falta por pagar: $${(totalFactura - suma).toLocaleString('es-CO')}`;
+    alerta.classList.remove('d-none');
+  } else {
+    btn.disabled = false;
+    alerta.classList.add('d-none');
+  }
+}
+
+async function confirmarVenta() {
+  const btn = document.getElementById('btnConfirmarVenta');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Procesando...';
+
+  const descGlobal = parseFloat(document.getElementById('inputDescuento').value || 0);
+
+  const pagos = [];
+  const ef = parseFloat(document.getElementById('pagoEfectivo').value || 0);
+  const nq = parseFloat(document.getElementById('pagoNequi').value || 0);
+  const dv = parseFloat(document.getElementById('pagoDaviplata').value || 0);
+  const tj = parseFloat(document.getElementById('pagoTarjeta').value || 0);
+  const tr = parseFloat(document.getElementById('pagoTransferencia').value || 0);
+
+  if (ef > 0) pagos.push({ metodo_pago: 'efectivo', monto: ef });
+  if (nq > 0) pagos.push({ metodo_pago: 'nequi', monto: nq });
+  if (dv > 0) pagos.push({ metodo_pago: 'daviplata', monto: dv });
+  if (tj > 0) pagos.push({ metodo_pago: 'tarjeta_debito', monto: tj });
+  if (tr > 0) pagos.push({ metodo_pago: 'transferencia', monto: tr });
+
+  const payload = {
+    tutor_id: tutorSeleccionado,
+    mascota_id: mascotaSeleccionada,
+    descuento_monto: descGlobal,
+    items: carrito,
+    pagos: pagos
+  };
+
+  try {
+    const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = metaCsrf ? metaCsrf.content : '';
+
+    const resp = await fetch('/pos/venta/procesar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const res = await resp.json();
+    if (res.ok) {
+      window.location.href = res.url;
+    } else {
+      alert('Error: ' + (res.error || 'No se pudo procesar la venta.'));
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Finalizar y Generar Factura';
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Ocurrió un error de conexión.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Finalizar y Generar Factura';
+  }
+}
+</script>
+{% endblock %}

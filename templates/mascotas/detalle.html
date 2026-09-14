@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar_mascota, boton_whatsapp, campo, campo_archivo %}
+{% block titulo %}{{ mascota.nombre }}{% endblock %}
+{% set puede_editar = current_user.rol in ('admin', 'recepcion', 'auxiliar', 'veterinario') %}
+{% set tutor = mascota.tutor %}
+
+{% block contenido %}
+<nav aria-label="Migas de pan" class="small mb-2">
+  <a href="{{ url_for('mascotas.lista') }}" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Mascotas</a>
+</nav>
+
+{% if mascota.fallecido %}
+<div class="alert alert-secondary d-flex align-items-center gap-2" role="alert">
+  <i class="bi bi-heart"></i><div>Fallecido/a el {{ mascota.fecha_fallecimiento|fecha }}. La historia se conserva en modo de solo lectura.</div>
+</div>
+{% elif not mascota.activo %}
+<div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+  <i class="bi bi-slash-circle"></i><div>Ficha desactivada. No aparece en las búsquedas del día a día.</div>
+</div>
+{% endif %}
+
+{# --- Cabecera ------------------------------------------------------------- #}
+<section class="card mb-3 cabecera-mascota">
+  <div class="card-body">
+    <div class="d-flex align-items-start gap-3">
+      {{ avatar_mascota(mascota, 96, 'avatar-mascota--grande') }}
+      <div class="flex-grow-1 min-w-0">
+        <h1 class="titulo-pagina">{{ mascota.especie_emoji }} {{ mascota.nombre }}</h1>
+        <div class="text-secondary">
+          {{ mascota.especie_etiqueta }}{% if mascota.raza %} · {{ mascota.raza.nombre }}{% endif %} · {{ mascota.sexo_etiqueta }}
+        </div>
+        <div class="d-flex flex-wrap gap-1 mt-2">
+          {% if mascota.edad %}<span class="estado estado--neutro"><i class="bi bi-calendar-heart"></i>{{ mascota.edad }}</span>{% endif %}
+          {% if mascota.tamano %}<span class="estado estado--info"><i class="bi bi-rulers"></i>{{ mascota.tamano_etiqueta }}</span>
+          {% else %}<span class="estado estado--alerta"><i class="bi bi-rulers"></i>Sin tamaño</span>{% endif %}
+          {% if mascota.peso_actual %}<span class="estado estado--neutro"><i class="bi bi-speedometer2"></i>{{ mascota.peso_actual.peso_kg|kg }}</span>{% endif %}
+          {% if mascota.esterilizado %}<span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Esterilizado/a</span>{% endif %}
+          {% if mascota.fallecido %}<span class="estado estado--neutro">Fallecido</span>
+          {% elif mascota.activo %}<span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Activo</span>
+          {% else %}<span class="estado estado--neutro">Inactiva</span>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="fila-lista d-flex align-items-center gap-3 mt-3">
+      <span class="avatar-usuario flex-shrink-0">{{ tutor.nombre_completo[:1]|upper }}</span>
+      <div class="flex-grow-1 min-w-0">
+        <div class="small text-secondary">Tutor</div>
+        <a class="fw-bold text-decoration-none text-truncate d-block" href="{{ url_for('tutores.detalle', tutor_id=tutor.id) }}">{{ tutor.nombre_completo }}</a>
+        {% if tutor.telefono %}<div class="small text-secondary">{{ tutor.telefono }}</div>{% endif %}
+      </div>
+      <div class="d-flex gap-1">
+        {% if tutor.telefono %}<a class="btn btn-outline-primary" href="tel:{{ tutor.telefono }}" aria-label="Llamar"><i class="bi bi-telephone-fill"></i></a>{% endif %}
+        {{ boton_whatsapp(tutor, "Hola " ~ tutor.nombre_completo.split(' ')[0] ~ ", te escribimos de " ~ clinica.nombre ~ " sobre " ~ mascota.nombre ~ ".", texto='', clase='btn-success') }}
+      </div>
+    </div>
+
+    {% if puede_editar and not mascota.fallecido %}
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#form-peso" aria-expanded="false" aria-controls="form-peso">
+        <i class="bi bi-speedometer2 me-1"></i>Registrar peso
+      </button>
+      <a class="btn btn-outline-primary" href="{{ url_for('mascotas.editar', mascota_id=mascota.id) }}"><i class="bi bi-pencil me-1"></i>Editar</a>
+      <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#form-foto" aria-expanded="false" aria-controls="form-foto">
+        <i class="bi bi-camera me-1"></i>{{ 'Cambiar foto' if mascota.foto else 'Agregar foto' }}
+      </button>
+    </div>
+
+    <div class="collapse mt-3" id="form-peso">
+      <form method="post" action="{{ url_for('mascotas.registrar_peso', mascota_id=mascota.id) }}" class="fila-lista" novalidate>
+        {{ form_peso.hidden_tag() }}
+        <div class="row g-2 align-items-end">
+          <div class="col-6 col-sm-4">{{ campo(form_peso.peso_kg, type="number", step="0.01", min="0.01", inputmode="decimal", placeholder="4.5", clase_extra="mb-0") }}</div>
+          <div class="col-6 col-sm-4">{{ campo(form_peso.fecha, type="date", clase_extra="mb-0") }}</div>
+          <div class="col-12 col-sm-4 d-grid">{{ form_peso.enviar(class_="btn btn-primary") }}</div>
+        </div>
+      </form>
+    </div>
+
+    <div class="collapse mt-3" id="form-foto">
+      <form method="post" action="{{ url_for('mascotas.subir_foto', mascota_id=mascota.id) }}" enctype="multipart/form-data" class="fila-lista" novalidate>
+        {{ form_foto.hidden_tag() }}
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-sm-8">{{ campo_archivo(form_foto.foto, clase_extra="mb-0", capture="environment") }}</div>
+          <div class="col-12 col-sm-4 d-grid">{{ form_foto.enviar(class_="btn btn-primary") }}</div>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{% if mascota.alergias or mascota.condiciones_preexistentes %}
+<div class="alert alert-warning" role="alert">
+  {% if mascota.alergias %}<div><i class="bi bi-exclamation-triangle-fill me-1"></i><strong>Alergias:</strong> {{ mascota.alergias }}</div>{% endif %}
+  {% if mascota.condiciones_preexistentes %}<div class="{% if mascota.alergias %}mt-1{% endif %}"><i class="bi bi-heart-pulse-fill me-1"></i><strong>Condiciones:</strong> {{ mascota.condiciones_preexistentes }}</div>{% endif %}
+</div>
+{% endif %}
+
+<div class="row g-3">
+  {# --- Datos ------------------------------------------------------------ #}
+  <div class="col-12 col-lg-4">
+    <section class="card h-100">
+      <div class="card-header">Datos</div>
+      <div class="card-body">
+        <dl class="lista-datos mb-0">
+          <dt>Nacimiento</dt><dd>{% if mascota.fecha_nacimiento %}{{ mascota.fecha_nacimiento|fecha }}{% if mascota.fecha_nacimiento_estimada %} <span class="text-secondary">(estimada)</span>{% endif %}{% else %}—{% endif %}</dd>
+          <dt>Color</dt><dd>{{ mascota.color or '—' }}</dd>
+          <dt>Señas</dt><dd>{{ mascota.senas_particulares or '—' }}</dd>
+          <dt>Microchip</dt><dd>{{ mascota.microchip or '—' }}</dd>
+          <dt>Tamaño</dt><dd>{{ mascota.tamano_etiqueta or '—' }}</dd>
+          <dt>Registro</dt><dd>{{ mascota.fecha_registro|fecha }}{% if mascota.creado_por %} · {{ mascota.creado_por.nombre }}{% endif %}</dd>
+        </dl>
+      </div>
+    </section>
+  </div>
+
+  {# --- Peso -------------------------------------------------------------- #}
+  <div class="col-12 col-lg-8">
+    <section class="card h-100" id="peso">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Curva de peso</span>
+        {% if mascota.peso_actual %}<span class="small text-secondary">Último: {{ mascota.peso_actual.peso_kg|kg }} · {{ mascota.peso_actual.fecha|fecha }}</span>{% endif %}
+      </div>
+      <div class="card-body">
+        <div id="grafica-peso" class="grafica-peso" data-puntos='{{ datos_peso|tojson }}' aria-label="Gráfica de peso"></div>
+        {% if mascota.registros_peso %}
+        <div class="table-responsive mt-3">
+          <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Fecha</th><th>Peso</th><th>Registró</th>{% if current_user.es_admin %}<th></th>{% endif %}</tr></thead>
+            <tbody>
+              {% for peso in mascota.registros_peso|reverse %}
+              <tr>
+                <td>{{ peso.fecha|fecha_hora }}</td>
+                <td class="fw-bold">{{ peso.peso_kg|kg }}</td>
+                <td class="text-secondary">{{ peso.registrado_por.nombre if peso.registrado_por else '—' }}</td>
+                {% if current_user.es_admin %}
+                <td class="text-end">
+                  <form method="post" action="{{ url_for('mascotas.eliminar_peso', mascota_id=mascota.id, peso_id=peso.id) }}" data-confirmar="¿Eliminar este registro de peso?">
+                    {{ form_csrf.hidden_tag() }}
+                    <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Eliminar registro"><i class="bi bi-trash"></i></button>
+                  </form>
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-secondary text-center my-3 mb-0">Aún no hay pesos registrados.</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  {# --- Línea de tiempo ------------------------------------------------- #}
+  <div class="col-12">
+    <section class="card">
+      <div class="card-header">Línea de tiempo</div>
+      <div class="card-body">
+        <ol class="linea-tiempo">
+          {% for evento in eventos %}
+          <li class="linea-tiempo__evento">
+            <span class="linea-tiempo__icono estado--{{ evento.color }}"><i class="bi {{ evento.icono }}"></i></span>
+            <div class="linea-tiempo__contenido">
+              <div class="d-flex flex-wrap justify-content-between gap-1">
+                <span class="fw-bold">{% if evento.url %}<a href="{{ evento.url }}" class="text-decoration-none">{{ evento.titulo }}</a>{% else %}{{ evento.titulo }}{% endif %}</span>
+                <span class="small text-secondary">{{ evento.fecha|fecha_hora }}</span>
+              </div>
+              {% if evento.detalle %}<div class="small text-secondary">{{ evento.detalle }}</div>{% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+    </section>
+  </div>
+</div>
+
+{# --- Zona sensible ------------------------------------------------------- #}
+{% if puede_editar %}
+<div class="mt-4 d-flex flex-wrap justify-content-end gap-2">
+  {% if mascota.fallecido %}
+  <form method="post" action="{{ url_for('mascotas.deshacer_fallecimiento', mascota_id=mascota.id) }}" data-confirmar="¿Deshacer el registro de fallecimiento?">
+    {{ form_csrf.hidden_tag() }}
+    <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="bi bi-arrow-counterclockwise me-1"></i>Deshacer fallecimiento</button>
+  </form>
+  {% else %}
+  <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#form-fallecimiento" aria-expanded="false" aria-controls="form-fallecimiento">
+    <i class="bi bi-heart me-1"></i>Registrar fallecimiento
+  </button>
+  <form method="post" action="{{ url_for('mascotas.cambiar_estado', mascota_id=mascota.id) }}"
+        data-confirmar="{{ '¿Desactivar esta ficha? Se conserva todo el historial.' if mascota.activo else '¿Reactivar esta ficha?' }}">
+    {{ form_csrf.hidden_tag() }}
+    <button class="btn btn-sm btn-outline-{{ 'danger' if mascota.activo else 'success' }}" type="submit">
+      <i class="bi {{ 'bi-slash-circle' if mascota.activo else 'bi-check-circle' }} me-1"></i>{{ 'Desactivar ficha' if mascota.activo else 'Reactivar ficha' }}
+    </button>
+  </form>
+  {% endif %}
+</div>
+{% if not mascota.fallecido %}
+<div class="collapse mt-2" id="form-fallecimiento">
+  <form method="post" action="{{ url_for('mascotas.registrar_fallecimiento', mascota_id=mascota.id) }}" class="fila-lista ms-auto" style="max-width: 420px;" novalidate>
+    {{ form_fallecimiento.hidden_tag() }}
+    <div class="row g-2 align-items-end">
+      <div class="col-7">{{ campo(form_fallecimiento.fecha_fallecimiento, type="date", clase_extra="mb-0") }}</div>
+      <div class="col-5 d-grid">{{ form_fallecimiento.enviar(class_="btn btn-outline-danger") }}</div>
+    </div>
+  </form>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/grafica_peso.js') }}"></script>
+{% endblock %}

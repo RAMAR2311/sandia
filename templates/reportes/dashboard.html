@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Reportes & Métricas - VetCare{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Reportes & Métricas Ejecutivas", "Análisis de ventas, volumen de servicios e inventario") %}
+  <a href="{{ url_for('reportes.ventas') }}" class="btn btn-outline-primary fw-bold">
+    <i class="bi bi-file-earmark-spreadsheet me-1"></i>Reporte Detallado de Ventas
+  </a>
+  <a href="{{ url_for('reportes.inventario') }}" class="btn btn-outline-info fw-bold">
+    <i class="bi bi-box-seam me-1"></i>Reporte de Inventario
+  </a>
+{% endcall %}
+
+<!-- Filtro por Rango de Fechas -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-12 col-md-3">
+        <label class="form-label fw-bold small">Periodo</label>
+        <select name="periodo" class="form-select" onchange="this.form.submit()">
+          <option value="hoy" {% if periodo == 'hoy' %}selected{% endif %}>Hoy</option>
+          <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Esta semana</option>
+          <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este mes</option>
+          <option value="personalizado" {% if periodo == 'personalizado' %}selected{% endif %}>Personalizado</option>
+        </select>
+      </div>
+
+      {% if periodo == 'personalizado' %}
+      <div class="col-6 col-md-3">
+        <label class="form-label fw-bold small">Desde</label>
+        <input type="date" name="fecha_inicio" value="{{ fecha_inicio.strftime('%Y-%m-%d') }}" class="form-control">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label fw-bold small">Hasta</label>
+        <input type="date" name="fecha_fin" value="{{ fecha_fin.strftime('%Y-%m-%d') }}" class="form-control">
+      </div>
+      <div class="col-12 col-md-3">
+        <button type="submit" class="btn btn-primary w-100 fw-bold">Filtrar Fechas</button>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<!-- Tarjetas de KPIs -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3 mb-4">
+  <div class="col">
+    <div class="card border-0 shadow-sm bg-primary text-white h-100">
+      <div class="card-body text-center py-4">
+        <i class="bi bi-currency-dollar fs-1 d-block mb-2"></i>
+        <h3 class="fw-bold mb-1">{{ total_ventas|cop }}</h3>
+        <div class="small text-white-50">Ventas Totales ({{ num_ventas }} ventas)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card border-0 shadow-sm bg-success text-white h-100">
+      <div class="card-body text-center py-4">
+        <i class="bi bi-scissors fs-1 d-block mb-2"></i>
+        <h3 class="fw-bold mb-1">{{ citas_spa_total }}</h3>
+        <div class="small text-white-50">Servicios Spa / Grooming</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card border-0 shadow-sm bg-info text-white h-100">
+      <div class="card-body text-center py-4">
+        <i class="bi bi-journal-medical fs-1 d-block mb-2"></i>
+        <h3 class="fw-bold mb-1">{{ consultas_total }}</h3>
+        <div class="small text-white-50">Consultas Médicas Atendidas</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card border-0 shadow-sm bg-dark text-white h-100">
+      <div class="card-body text-center py-4">
+        <i class="bi bi-box-seam fs-1 d-block mb-2"></i>
+        <h3 class="fw-bold mb-1">{{ valoracion_inventario|cop }}</h3>
+        <div class="small text-white-50">Valoración Stock en Inventario</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Desglose de Métodos de Pago y Estado -->
+<div class="row g-4 mb-4">
+  <div class="col-12 col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-light fw-bold">
+        <i class="bi bi-wallet2 me-1"></i>Ingresos por Método de Pago
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for metodo, monto in pagos_por_metodo.items() %}
+          <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+            <span class="fw-bold text-capitalize"><i class="bi bi-credit-card me-2"></i>{{ metodo }}</span>
+            <span class="badge bg-success fs-6">{{ monto|cop }}</span>
+          </li>
+          {% else %}
+          <li class="list-group-item text-center text-muted py-4">No hay pagos registrados en este periodo.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-light fw-bold">
+        <i class="bi bi-exclamation-triangle me-1"></i>Alertas de Operación & Stock
+      </div>
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded mb-3 border">
+          <div>
+            <div class="fw-bold">Productos con Stock Bajo</div>
+            <div class="small text-muted">Stock actual en o por debajo del mínimo</div>
+          </div>
+          <span class="badge {% if productos_stock_bajo > 0 %}bg-danger{% else %}bg-secondary{% endif %} fs-5">
+            {{ productos_stock_bajo }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

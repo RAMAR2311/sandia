@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Registrar Desparasitación - {{ mascota.nombre }}{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Registrar Desparasitación", "Paciente: " ~ mascota.nombre) %}
+  <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Volver a Ficha Médica
+  </a>
+{% endcall %}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="post">
+          {{ form.csrf_token }}
+
+          <div class="mb-3">
+            {{ form.producto.label(class="form-label fw-bold") }}
+            {{ form.producto(class="form-control", placeholder="Ej. Simparica Trio, Total FLC, Bravecto...") }}
+            {% for error in form.producto.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+              {{ form.tipo.label(class="form-label fw-bold") }}
+              {{ form.tipo(class="form-select") }}
+            </div>
+            <div class="col-12 col-md-6">
+              {{ form.dosis.label(class="form-label") }}
+              {{ form.dosis(class="form-control", placeholder="Ej. 1 tableta") }}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-4">
+              {{ form.peso_kg.label(class="form-label") }}
+              {{ form.peso_kg(class="form-control", placeholder="0.00") }}
+            </div>
+            <div class="col-12 col-md-4">
+              {{ form.fecha_aplicacion.label(class="form-label fw-bold") }}
+              {{ form.fecha_aplicacion(class="form-control") }}
+            </div>
+            <div class="col-12 col-md-4">
+              {{ form.fecha_proxima.label(class="form-label") }}
+              {{ form.fecha_proxima(class="form-control") }}
+            </div>
+          </div>
+
+          <div class="mb-4">
+            {{ form.observaciones.label(class="form-label") }}
+            {{ form.observaciones(class="form-control", rows="3") }}
+          </div>
+
+          {{ form.enviar(class="btn btn-info text-white w-100 py-3 fw-bold fs-5") }}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Historias Clínicas - VetCare{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Historias Clínicas", "Directorio y consulta de fichas médicas de pacientes") %}
+{% endcall %}
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-center">
+      <div class="col-12 col-md-9">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" name="q" value="{{ q }}" class="form-control form-control-lg" placeholder="Buscar por paciente, tutor, documento o microchip...">
+        </div>
+      </div>
+      <div class="col-12 col-md-3">
+        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">Buscar Paciente</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+  {% for m in mascotas %}
+  <div class="col">
+    <div class="card h-100 shadow-sm border-0 position-relative">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-3">
+          <div class="fs-1 me-3">{{ m.especie_emoji }}</div>
+          <div>
+            <h5 class="card-title mb-0 fw-bold text-primary">{{ m.nombre }}</h5>
+            <div class="text-muted small">
+              {{ m.especie_etiqueta }} {% if m.raza %}• {{ m.raza.nombre }}{% endif %}
+            </div>
+            <div class="badge bg-light text-dark border me-1">{{ m.sexo_etiqueta }}</div>
+            {% if m.edad %}<div class="badge bg-light text-dark border">{{ m.edad }}</div>{% endif %}
+          </div>
+        </div>
+        
+        <div class="bg-light p-2 rounded small mb-3">
+          <div class="fw-bold"><i class="bi bi-person me-1"></i>Tutor: {{ m.tutor.nombre_completo }}</div>
+          {% if m.tutor.documento_texto %}<div class="text-muted">Doc: {{ m.tutor.documento_texto }}</div>{% endif %}
+          {% if m.tutor.telefono %}<div class="text-muted"><i class="bi bi-telephone me-1"></i>{{ m.tutor.telefono }}</div>{% endif %}
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted small">
+            <i class="bi bi-journal-medical me-1"></i>{{ m.consultas|length }} consulta(s)
+          </span>
+          <a href="{{ url_for('historias.ficha_medica', mascota_id=m.id) }}" class="btn btn-sm btn-outline-primary fw-bold">
+            Ver Ficha Médica <i class="bi bi-arrow-right ms-1"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12 w-100">
+    <div class="alert alert-info text-center py-4">
+      <i class="bi bi-info-circle fs-3 d-block mb-2"></i>
+      No se encontraron pacientes para el criterio de búsqueda.
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}{% if producto %}Editar {{ producto.nombre }}{% else %}Nuevo Producto{% endif %}{% endblock %}
+
+{% block contenido %}
+{% call encabezado(
+    'Editar producto' if producto else 'Nuevo producto',
+    'Ingresa los datos generales, precios e indicadores de lote'
+) %}
+  <a class="btn btn-outline-secondary" href="{{ url_for('inventario.lista') }}"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+{% endcall %}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-10">
+    <form method="post" enctype="multipart/form-data" class="card shadow-sm">
+      {{ form.hidden_tag() }}
+      <div class="card-body">
+        
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-bold" for="sku">SKU / Código interno *</label>
+            {{ form.sku(class="form-control" ~ (' is-invalid' if form.sku.errors else ''), placeholder="ej. ALI-001") }}
+            {% for err in form.sku.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="codigo_barras">Código de barras (Lector)</label>
+            {{ form.codigo_barras(class="form-control" ~ (' is-invalid' if form.codigo_barras.errors else ''), placeholder="ej. 7701234567890") }}
+            {% for err in form.codigo_barras.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-bold" for="tipo">Tipo de registro</label>
+            {{ form.tipo(class="form-select") }}
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-8">
+            <label class="form-label fw-bold" for="nombre">Nombre comercial *</label>
+            {{ form.nombre(class="form-control" ~ (' is-invalid' if form.nombre.errors else ''), placeholder="ej. Amoxicilina 250mg 10 tabletas") }}
+            {% for err in form.nombre.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-bold" for="categoria">Categoría</label>
+            {{ form.categoria(class="form-select") }}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="descripcion">Descripción detallada</label>
+          {{ form.descripcion(class="form-control", rows="2", placeholder="Indicaciones, componentes u observaciones...") }}
+        </div>
+
+        <hr class="my-4">
+
+        <h6 class="fw-bold mb-3"><i class="bi bi-tag me-2"></i>Precios y Unidades de Medida</h6>
+
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-3">
+            <label class="form-label fw-bold" for="unidad_medida">Unidad de medida</label>
+            {{ form.unidad_medida(class="form-select") }}
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label fw-bold" for="precio_sugerido">Precio Venta (COP) *</label>
+            {{ form.precio_sugerido(class="form-control" ~ (' is-invalid' if form.precio_sugerido.errors else ''), step="100") }}
+            {% for err in form.precio_sugerido.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label" for="precio_minimo">Precio Mínimo (Mínimo POS)</label>
+            {{ form.precio_minimo(class="form-control" ~ (' is-invalid' if form.precio_minimo.errors else ''), step="100") }}
+            {% for err in form.precio_minimo.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label {% if current_user.es_admin %}text-danger fw-bold{% endif %}" for="precio_costo">
+              {% if current_user.es_admin %}<i class="bi bi-lock-fill me-1"></i>{% endif %}Precio Costo (COP)
+            </label>
+            {{ form.precio_costo(class="form-control" ~ (' is-invalid' if form.precio_costo.errors else ''), step="100", readonly=not current_user.es_admin) }}
+            {% for err in form.precio_costo.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="stock_minimo">Stock mínimo de alerta</label>
+            {{ form.stock_minimo(class="form-control", step="1") }}
+          </div>
+          <div class="col-12 col-md-8">
+            <label class="form-label" for="proveedor_id">Proveedor principal</label>
+            {{ form.proveedor_id(class="form-select") }}
+          </div>
+        </div>
+
+        <hr class="my-4">
+
+        <h6 class="fw-bold mb-3"><i class="bi bi-sliders me-2"></i>Controles y Seguridad</h6>
+
+        <div class="form-check form-switch mb-2">
+          {{ form.controla_lote(class="form-check-input", id="controla_lote") }}
+          <label class="form-check-input-label fw-bold" for="controla_lote">
+            Controlar lotes y fechas de vencimiento (Estrategia FEFO para vacunas, medicamentos, etc.)
+          </label>
+        </div>
+
+        <div class="form-check form-switch mb-3">
+          {{ form.requiere_receta(class="form-check-input", id="requiere_receta") }}
+          <label class="form-check-input-label" for="requiere_receta">
+            Requiere receta médica para la venta en POS
+          </label>
+        </div>
+
+        <div class="form-check form-switch mb-3">
+          {{ form.activo(class="form-check-input", id="activo") }}
+          <label class="form-check-input-label" for="activo">
+            Producto activo para venta y clínica
+          </label>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="imagen">Imagen del producto</label>
+          {{ form.imagen(class="form-control" ~ (' is-invalid' if form.imagen.errors else '')) }}
+          {% for err in form.imagen.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+        </div>
+
+      </div>
+      <div class="card-footer d-flex justify-content-between">
+        <a class="btn btn-secondary" href="{{ url_for('inventario.lista') }}">Cancelar</a>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar producto</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

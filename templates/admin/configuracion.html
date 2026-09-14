@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo_auto, encabezado %}
+{% block titulo %}Configuración{% endblock %}
+
+{% block contenido %}
+{{ encabezado("Configuración", "Datos de la clínica y ajustes del sistema") }}
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-3">
+    {% for titulo, campos in grupos %}
+    <div class="col-12 col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">{{ titulo }}</div>
+        <div class="card-body">
+          {% for campo in campos %}
+            {{ campo_auto(campo) }}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="acciones-fijas mt-3">
+    <div class="d-grid d-sm-flex gap-2">
+      {{ form.enviar(class_="btn btn-primary btn-lg") }}
+    </div>
+  </div>
+</form>
+{% endblock %}

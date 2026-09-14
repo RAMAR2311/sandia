@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo, campo_select, campo_switch, campo_textarea, encabezado %}
+{% block titulo %}{{ 'Editar tutor' if tutor else 'Nuevo tutor' }}{% endblock %}
+
+{% block contenido %}
+{{ encabezado('Editar tutor' if tutor else 'Nuevo tutor', tutor.nombre_completo if tutor else 'Datos del dueño o responsable de la mascota') }}
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+      <div class="card h-100">
+        <div class="card-header">Identificación y contacto</div>
+        <div class="card-body">
+          {{ campo(form.nombre_completo, autocomplete="off", autofocus=True, autocapitalize="words") }}
+          <div class="row g-2">
+            <div class="col-5">{{ campo_select(form.tipo_documento) }}</div>
+            <div class="col-7">{{ campo(form.numero_documento, inputmode="numeric", autocomplete="off") }}</div>
+          </div>
+          <div class="row g-2">
+            <div class="col-12 col-sm-6">{{ campo(form.telefono, type="tel", inputmode="tel", autocomplete="off", placeholder="3105551234") }}</div>
+            <div class="col-12 col-sm-6">{{ campo(form.whatsapp, type="tel", inputmode="tel", autocomplete="off", placeholder="Si es distinto al teléfono", ayuda="Si lo dejas vacío se usa el teléfono.") }}</div>
+          </div>
+          {{ campo(form.email, type="email", inputmode="email", autocomplete="off") }}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card h-100">
+        <div class="card-header">Dirección y notas</div>
+        <div class="card-body">
+          {{ campo(form.direccion, autocomplete="off") }}
+          {{ campo(form.barrio, autocomplete="off") }}
+          {{ campo_textarea(form.notas, filas=3, ayuda="Preferencias, advertencias, cómo le gusta que le hablen…") }}
+          {{ campo_switch(form.acepta_recordatorios) }}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="acciones-fijas mt-3">
+    <div class="d-flex flex-column flex-sm-row gap-2">
+      {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
+      <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('tutores.detalle', tutor_id=tutor.id) if tutor else url_for('tutores.lista') }}">Cancelar</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

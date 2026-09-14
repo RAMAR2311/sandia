@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Agendar Cita de Grooming - VetCare{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Agendar Cita de Spa", "Reserva de turno para baño, peluquería y spa") %}
+  <a href="{{ url_for('spa.agenda') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Volver a la Agenda
+  </a>
+{% endcall %}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-md-10 col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="post">
+          {{ form.csrf_token }}
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+              {{ form.tutor_id.label(class="form-label fw-bold") }}
+              {{ form.tutor_id(class="form-select") }}
+              {% for error in form.tutor_id.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12 col-md-6">
+              {{ form.mascota_id.label(class="form-label fw-bold") }}
+              {{ form.mascota_id(class="form-select") }}
+              {% for error in form.mascota_id.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+              {{ form.servicio_spa_id.label(class="form-label fw-bold") }}
+              {{ form.servicio_spa_id(class="form-select") }}
+              {% for error in form.servicio_spa_id.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12 col-md-6">
+              {{ form.groomer_id.label(class="form-label") }}
+              {{ form.groomer_id(class="form-select") }}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-4">
+              {{ form.fecha.label(class="form-label fw-bold") }}
+              {{ form.fecha(class="form-control") }}
+              {% for error in form.fecha.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12 col-md-4">
+              {{ form.hora.label(class="form-label fw-bold") }}
+              {{ form.hora(class="form-control") }}
+              {% for error in form.hora.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12 col-md-4">
+              {{ form.duracion_minutos.label(class="form-label fw-bold") }}
+              {{ form.duracion_minutos(class="form-control") }}
+            </div>
+          </div>
+
+          <div class="mb-4">
+            {{ form.notas_ingreso.label(class="form-label") }}
+            {{ form.notas_ingreso(class="form-control", rows="3", placeholder="Indicaciones especiales, nudos, alergias, comportamiento...") }}
+          </div>
+
+          {{ form.enviar(class="btn btn-primary w-100 py-3 fw-bold fs-5") }}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

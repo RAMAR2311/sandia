@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar_mascota, boton_whatsapp %}
+{% block titulo %}{{ tutor.nombre_completo }}{% endblock %}
+{% set puede_editar = current_user.rol in ('admin', 'recepcion', 'auxiliar', 'veterinario') %}
+
+{% block contenido %}
+<nav aria-label="Migas de pan" class="small mb-2">
+  <a href="{{ url_for('tutores.lista') }}" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Tutores</a>
+</nav>
+
+<section class="card mb-3">
+  <div class="card-body">
+    <div class="d-flex align-items-start gap-3">
+      <span class="avatar-usuario avatar-usuario--grande flex-shrink-0" style="{% if not tutor.activo %}background:#9CA3AF{% endif %}">{{ tutor.nombre_completo[:1]|upper }}</span>
+      <div class="flex-grow-1 min-w-0">
+        <h1 class="titulo-pagina">{{ tutor.nombre_completo }}</h1>
+        <div class="d-flex flex-wrap gap-1 mt-1">
+          {% if tutor.documento_texto %}<span class="estado estado--neutro"><i class="bi bi-card-text"></i>{{ tutor.documento_texto }}</span>{% endif %}
+          {% if tutor.activo %}<span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Activo</span>
+          {% else %}<span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>{% endif %}
+          {% if not tutor.acepta_recordatorios %}<span class="estado estado--alerta"><i class="bi bi-bell-slash"></i>Sin recordatorios</span>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      {% if tutor.telefono %}
+      <a class="btn btn-outline-primary" href="tel:{{ tutor.telefono }}"><i class="bi bi-telephone-fill me-1"></i>Llamar</a>
+      {% endif %}
+      {{ boton_whatsapp(tutor, "Hola " ~ tutor.nombre_completo.split(' ')[0] ~ ", te escribimos de " ~ clinica.nombre ~ ".") }}
+      {% if puede_editar %}
+      <a class="btn btn-outline-secondary" href="{{ url_for('tutores.editar', tutor_id=tutor.id) }}"><i class="bi bi-pencil me-1"></i>Editar</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-5">
+    <section class="card h-100">
+      <div class="card-header">Contacto</div>
+      <div class="card-body">
+        <dl class="lista-datos mb-0">
+          <dt>Teléfono</dt><dd>{{ tutor.telefono or '—' }}</dd>
+          <dt>WhatsApp</dt><dd>{{ tutor.whatsapp_efectivo or '—' }}</dd>
+          <dt>Correo</dt><dd>{{ tutor.email or '—' }}</dd>
+          <dt>Dirección</dt><dd>{{ tutor.direccion or '—' }}{% if tutor.barrio %} · {{ tutor.barrio }}{% endif %}</dd>
+          <dt>Registro</dt><dd>{{ tutor.fecha_registro|fecha }}{% if tutor.creado_por %} · {{ tutor.creado_por.nombre }}{% endif %}</dd>
+        </dl>
+        {% if tutor.notas %}
+        <hr>
+        <div class="fw-bold small text-secondary text-uppercase mb-1">Notas</div>
+        <p class="mb-0" style="white-space: pre-line;">{{ tutor.notas }}</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <div class="col-12 col-lg-7">
+    <section class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Mascotas <span class="badge text-bg-primary rounded-pill ms-1">{{ tutor.mascotas_activas|length }}</span></span>
+        {% if puede_editar and tutor.activo %}
+        <a class="btn btn-sm btn-primary" href="{{ url_for('mascotas.nueva', tutor_id=tutor.id) }}"><i class="bi bi-plus-lg me-1"></i>Nueva mascota</a>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if not tutor.mascotas %}
+        <p class="text-secondary text-center my-4 mb-0">Este tutor aún no tiene mascotas registradas.</p>
+        {% else %}
+        <div class="d-flex flex-column gap-2">
+          {% for mascota in tutor.mascotas %}
+          <a class="fila-lista d-flex align-items-center gap-3 text-decoration-none text-body" href="{{ url_for('mascotas.detalle', mascota_id=mascota.id) }}">
+            {{ avatar_mascota(mascota, 52) }}
+            <div class="flex-grow-1 min-w-0">
+              <div class="fw-bold">{{ mascota.nombre }}</div>
+              <div class="small text-secondary">
+                {{ mascota.especie_etiqueta }}{% if mascota.raza %} · {{ mascota.raza.nombre }}{% endif %}{% if mascota.edad %} · {{ mascota.edad }}{% endif %}
+              </div>
+            </div>
+            {% if mascota.fallecido %}<span class="estado estado--neutro">Fallecido</span>
+            {% elif not mascota.activo %}<span class="estado estado--neutro">Inactiva</span>{% endif %}
+            <i class="bi bi-chevron-right text-secondary"></i>
+          </a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+
+{% if puede_editar %}
+<div class="mt-4 text-end">
+  <form method="post" action="{{ url_for('tutores.cambiar_estado', tutor_id=tutor.id) }}" class="d-inline"
+        data-confirmar="{{ '¿Desactivar este tutor? Sus mascotas se conservan.' if tutor.activo else '¿Reactivar este tutor?' }}">
+    {{ form_csrf.hidden_tag() }}
+    <button class="btn btn-sm btn-outline-{{ 'danger' if tutor.activo else 'success' }}" type="submit">
+      <i class="bi {{ 'bi-person-x' if tutor.activo else 'bi-person-check' }} me-1"></i>{{ 'Desactivar tutor' if tutor.activo else 'Reactivar tutor' }}
+    </button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

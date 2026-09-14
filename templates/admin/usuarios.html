@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Usuarios{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Usuarios", "Cuentas y roles del personal") %}
+  <a class="btn btn-primary" href="{{ url_for('admin.usuario_nuevo') }}"><i class="bi bi-person-plus-fill me-1"></i>Nuevo usuario</a>
+{% endcall %}
+
+<form method="get" class="card mb-3">
+  <div class="card-body py-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-5">
+        <label class="form-label mb-1" for="q">Buscar</label>
+        <input class="form-control" type="search" id="q" name="q" value="{{ filtro_texto }}" placeholder="Nombre o correo">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label mb-1" for="rol">Rol</label>
+        <select class="form-select" id="rol" name="rol">
+          <option value="">Todos</option>
+          {% for clave, etiqueta in ROLES.items() %}
+          <option value="{{ clave }}" {% if filtro_rol == clave %}selected{% endif %}>{{ etiqueta }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label mb-1" for="estado">Estado</label>
+        <select class="form-select" id="estado" name="estado">
+          <option value="activos" {% if filtro_estado == 'activos' %}selected{% endif %}>Activos</option>
+          <option value="inactivos" {% if filtro_estado == 'inactivos' %}selected{% endif %}>Inactivos</option>
+          <option value="todos" {% if filtro_estado == 'todos' %}selected{% endif %}>Todos</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-grid">
+        <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search me-1"></i>Filtrar</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% if not usuarios %}
+<div class="card"><div class="card-body text-center text-secondary py-5">
+  <i class="bi bi-people fs-1 d-block mb-2"></i>No hay usuarios que coincidan con el filtro.
+</div></div>
+{% else %}
+
+{# Vista de tarjetas en celular #}
+<div class="d-md-none d-flex flex-column gap-2">
+  {% for u in usuarios %}
+  <div class="fila-lista">
+    <div class="d-flex align-items-center gap-3">
+      <span class="avatar-usuario" style="{% if not u.activo %}background:#9CA3AF{% endif %}">{{ u.nombre[:1]|upper }}</span>
+      <div class="flex-grow-1 min-w-0">
+        <div class="fw-bold text-truncate">{{ u.nombre }}</div>
+        <div class="small text-secondary text-truncate">{{ u.email }}</div>
+        <div class="mt-1 d-flex flex-wrap gap-1">
+          <span class="estado estado--info">{{ u.rol_etiqueta }}</span>
+          {% if u.activo %}<span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Activo</span>
+          {% else %}<span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>{% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-3">
+      <a class="btn btn-outline-primary flex-grow-1" href="{{ url_for('admin.usuario_editar', usuario_id=u.id) }}"><i class="bi bi-pencil me-1"></i>Editar</a>
+      {% if u.id != current_user.id %}
+      <form method="post" action="{{ url_for('admin.usuario_cambiar_estado', usuario_id=u.id, estado=filtro_estado) }}" class="flex-grow-1 d-grid"
+            data-confirmar="¿{{ 'Desactivar' if u.activo else 'Activar' }} a {{ u.nombre }}?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-outline-{{ 'danger' if u.activo else 'success' }}" type="submit">
+          <i class="bi {{ 'bi-person-x' if u.activo else 'bi-person-check' }} me-1"></i>{{ 'Desactivar' if u.activo else 'Activar' }}
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# Tabla en tablet y escritorio #}
+<div class="card d-none d-md-block">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Correo</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th>Último acceso</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr>
+          <td class="fw-bold">{{ u.nombre }}</td>
+          <td>{{ u.email }}{% if u.telefono %}<div class="small text-secondary">{{ u.telefono }}</div>{% endif %}</td>
+          <td><span class="estado estado--info">{{ u.rol_etiqueta }}</span></td>
+          <td>
+            {% if u.activo %}<span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Activo</span>
+            {% else %}<span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>{% endif %}
+          </td>
+          <td class="text-secondary">{{ u.ultimo_acceso|fecha_hora if u.ultimo_acceso else 'Nunca' }}</td>
+          <td class="text-end">
+            <div class="d-inline-flex gap-1">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.usuario_editar', usuario_id=u.id) }}"><i class="bi bi-pencil me-1"></i>Editar</a>
+              {% if u.id != current_user.id %}
+              <form method="post" action="{{ url_for('admin.usuario_cambiar_estado', usuario_id=u.id, estado=filtro_estado) }}"
+                    data-confirmar="¿{{ 'Desactivar' if u.activo else 'Activar' }} a {{ u.nombre }}?">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-{{ 'danger' if u.activo else 'success' }}" type="submit">
+                  {{ 'Desactivar' if u.activo else 'Activar' }}
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

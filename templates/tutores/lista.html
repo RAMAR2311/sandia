@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado, paginacion, avatar_mascota %}
+{% block titulo %}Tutores{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Tutores", "Directorio de dueños de mascotas") %}
+  {% if current_user.rol in ('admin', 'recepcion', 'auxiliar', 'veterinario') %}
+  <a class="btn btn-primary" href="{{ url_for('tutores.nuevo') }}"><i class="bi bi-person-plus-fill me-1"></i>Nuevo tutor</a>
+  {% endif %}
+{% endcall %}
+
+<form method="get" class="card mb-3" role="search">
+  <div class="card-body py-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-7">
+        <label class="form-label mb-1" for="q">Buscar</label>
+        <input class="form-control" type="search" id="q" name="q" value="{{ filtro_texto }}" placeholder="Nombre, teléfono o documento" autofocus>
+      </div>
+      <div class="col-7 col-md-3">
+        <label class="form-label mb-1" for="estado">Estado</label>
+        <select class="form-select" id="estado" name="estado">
+          <option value="activos" {% if filtro_estado == 'activos' %}selected{% endif %}>Activos</option>
+          <option value="inactivos" {% if filtro_estado == 'inactivos' %}selected{% endif %}>Inactivos</option>
+          <option value="todos" {% if filtro_estado == 'todos' %}selected{% endif %}>Todos</option>
+        </select>
+      </div>
+      <div class="col-5 col-md-2 d-grid">
+        <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search me-1"></i>Buscar</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% if not pagina.items %}
+<div class="card"><div class="card-body text-center text-secondary py-5">
+  <i class="bi bi-person-vcard fs-1 d-block mb-2"></i>
+  {% if filtro_texto %}Ningún tutor coincide con "{{ filtro_texto }}".{% else %}Todavía no hay tutores registrados.{% endif %}
+</div></div>
+{% else %}
+<div class="row g-2 g-md-3">
+  {% for tutor in pagina.items %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <a class="fila-lista d-block text-decoration-none text-body h-100" href="{{ url_for('tutores.detalle', tutor_id=tutor.id) }}">
+      <div class="d-flex align-items-start gap-3">
+        <span class="avatar-usuario flex-shrink-0" style="{% if not tutor.activo %}background:#9CA3AF{% endif %}">{{ tutor.nombre_completo[:1]|upper }}</span>
+        <div class="flex-grow-1 min-w-0">
+          <div class="fw-bold text-truncate">{{ tutor.nombre_completo }}</div>
+          <div class="small text-secondary">
+            {% if tutor.telefono %}<i class="bi bi-telephone me-1"></i>{{ tutor.telefono }}{% endif %}
+            {% if tutor.documento_texto %}<span class="ms-2"><i class="bi bi-card-text me-1"></i>{{ tutor.documento_texto }}</span>{% endif %}
+          </div>
+          <div class="mt-2 d-flex flex-wrap align-items-center gap-1">
+            {% for mascota in tutor.mascotas_activas[:4] %}
+              <span class="estado estado--neutro">{{ mascota.especie_emoji }} {{ mascota.nombre }}</span>
+            {% endfor %}
+            {% if tutor.mascotas_activas|length > 4 %}<span class="small text-secondary">+{{ tutor.mascotas_activas|length - 4 }}</span>{% endif %}
+            {% if not tutor.activo %}<span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>{% endif %}
+          </div>
+        </div>
+        <i class="bi bi-chevron-right text-secondary align-self-center"></i>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{{ paginacion(pagina) }}
+{% endif %}
+{% endblock %}

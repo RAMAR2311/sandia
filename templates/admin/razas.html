@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Razas{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Razas", "Catálogo por especie para las fichas de mascotas") %}
+  <a class="btn btn-primary" href="{{ url_for('admin.raza_nueva', especie=especie) }}"><i class="bi bi-plus-lg me-1"></i>Nueva raza</a>
+{% endcall %}
+
+<ul class="nav nav-pills mb-3 flex-nowrap overflow-auto pb-1">
+  {% for clave, etiqueta in ESPECIES.items() %}
+  <li class="nav-item">
+    <a class="nav-link {% if clave == especie %}active{% endif %}" href="{{ url_for('admin.razas', especie=clave) }}">{{ etiqueta }}</a>
+  </li>
+  {% endfor %}
+</ul>
+
+<div class="card">
+  {% if not razas %}
+  <div class="card-body text-center text-secondary py-5">No hay razas registradas para esta especie.</div>
+  {% else %}
+  <ul class="list-group list-group-flush">
+    {% for raza in razas %}
+    <li class="list-group-item d-flex align-items-center justify-content-between gap-2 py-2">
+      <span class="{% if not raza.activo %}text-secondary text-decoration-line-through{% endif %}">{{ raza.nombre }}</span>
+      <span class="d-flex align-items-center gap-2">
+        {% if not raza.activo %}<span class="estado estado--neutro">Inactiva</span>{% endif %}
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.raza_editar', raza_id=raza.id) }}"><i class="bi bi-pencil"></i><span class="d-none d-sm-inline ms-1">Editar</span></a>
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endblock %}

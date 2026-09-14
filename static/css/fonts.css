@@ -1,0 +1,17 @@
+/* Fuentes locales de la marca Sandía: fuentes variables (subconjunto latin, woff2). */
+
+@font-face {
+  font-family: 'Fredoka';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('../fonts/fredoka-variable.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 200 1000;
+  font-display: swap;
+  src: url('../fonts/nunito-variable.woff2') format('woff2');
+}

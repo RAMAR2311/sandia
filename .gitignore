@@ -1,0 +1,28 @@
+# Secretos y entorno
+.env
+*.env.local
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Archivos generados por la aplicación
+static/uploads/*
+!static/uploads/.gitkeep
+logs/
+*.log
+*.sock
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Configuración local del editor/IDE
+.claude/

@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}{{ producto.nombre }} · Inventario{% endblock %}
+
+{% block contenido %}
+{% call encabezado(producto.nombre, "SKU: " ~ producto.sku ~ " · " ~ producto.categoria_etiqueta) %}
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary" href="{{ url_for('inventario.lista') }}"><i class="bi bi-arrow-left me-1"></i>Volver al inventario</a>
+    {% if current_user.rol in ('admin', 'recepcion', 'auxiliar') %}
+    <a class="btn btn-outline-primary" href="{{ url_for('inventario.editar', producto_id=producto.id) }}"><i class="bi bi-pencil me-1"></i>Editar</a>
+    <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalAjuste"><i class="bi bi-arrow-left-right me-1"></i>Ajustar stock</button>
+    {% if producto.controla_lote %}
+    <button class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalLote"><i class="bi bi-plus-circle me-1"></i>Ingresar lote</button>
+    {% endif %}
+    {% endif %}
+  </div>
+{% endcall %}
+
+<div class="row g-3">
+  <!-- Columna izquierda: Información del producto -->
+  <div class="col-12 col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header fw-bold bg-light"><i class="bi bi-info-circle me-2"></i>Datos del producto</div>
+      <div class="card-body">
+        <ul class="list-group list-group-flush mb-0">
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-secondary">Tipo</span>
+            <span class="fw-bold">{{ 'Producto físico' if producto.tipo == 'producto' else 'Servicio' }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-secondary">Unidad de medida</span>
+            <span class="fw-bold">{{ producto.unidad_medida }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-secondary">Precio Sugerido / Venta</span>
+            <span class="fw-bold text-success fs-5">{{ producto.precio_sugerido|cop }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-secondary">Precio Mínimo autorizado</span>
+            <span class="fw-bold">{{ producto.precio_minimo|cop }}</span>
+          </li>
+          {% if current_user.es_admin %}
+          <li class="list-group-item d-flex justify-content-between px-0 table-warning">
+            <span class="text-secondary"><i class="bi bi-shield-lock me-1"></i>Precio Costo (Admin)</span>
+            <span class="fw-bold text-danger">{{ producto.precio_costo|cop }}</span>
+          </li>
+          {% endif %}
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-secondary">Stock actual</span>
+            <span class="fw-bold fs-5 {% if producto.stock_bajo %}text-danger{% else %}text-primary{% endif %}">
+              {{ producto.stock_total }} {{ producto.unidad_medida }}
+            </span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-secondary">Stock mínimo de alerta</span>
+            <span>{{ producto.stock_minimo }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-secondary">Controla lotes / vencimientos</span>
+            <span>{% if producto.controla_lote %}<span class="badge bg-success">Sí (FEFO)</span>{% else %}<span class="badge bg-secondary">No</span>{% endif %}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-secondary">Requiere receta</span>
+            <span>{% if producto.requiere_receta %}<span class="badge bg-danger">Sí</span>{% else %}No{% endif %}</span>
+          </li>
+          {% if producto.proveedor %}
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-secondary">Proveedor principal</span>
+            <span>{{ producto.proveedor.nombre }}</span>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Columna derecha: Variantes, Lotes y Kardex -->
+  <div class="col-12 col-lg-8">
+
+    <!-- Variantes / Presentaciones -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center bg-light">
+        <span class="fw-bold"><i class="bi bi-tags me-2"></i>Variantes / Presentaciones</span>
+        {% if current_user.rol in ('admin', 'recepcion', 'auxiliar') %}
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalVariante">
+          <i class="bi bi-plus-lg me-1"></i>Nueva variante
+        </button>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        {% if not producto.variantes %}
+        <div class="p-3 text-secondary text-center small">Sin variantes (se comercializa solo como producto principal).</div>
+        {% else %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Variante</th>
+                <th>SKU</th>
+                <th class="text-end">Precio Venta</th>
+                {% if current_user.es_admin %}<th class="text-end">Costo</th>{% endif %}
+                <th class="text-center">Stock</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for v in producto.variantes %}
+              <tr>
+                <td class="fw-bold">{{ v.nombre_variante }}</td>
+                <td><code>{{ v.sku or 'N/A' }}</code></td>
+                <td class="text-end fw-bold">{{ v.precio_sugerido|cop }}</td>
+                {% if current_user.es_admin %}<td class="text-end text-secondary">{{ v.precio_costo|cop }}</td>{% endif %}
+                <td class="text-center fw-bold">{{ v.cantidad_stock }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Lotes Activos (FEFO) -->
+    {% if producto.controla_lote %}
+    <div class="card mb-3">
+      <div class="card-header bg-light fw-bold"><i class="bi bi-calendar-range me-2"></i>Lotes registrados y vencimientos (Estrategia FEFO)</div>
+      <div class="card-body p-0">
+        {% if not producto.lotes %}
+        <div class="p-3 text-secondary text-center small">No hay lotes registrados para este producto.</div>
+        {% else %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Lote #</th>
+                <th>Fecha Vencimiento</th>
+                <th class="text-center">Inicial</th>
+                <th class="text-center">Disponible</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lote in producto.lotes %}
+              <tr {% if lote.vencido %}class="table-danger"{% elif lote.dias_para_vencer <= 30 %}class="table-warning"{% endif %}>
+                <td class="fw-bold"><code>{{ lote.numero_lote }}</code></td>
+                <td>{{ lote.fecha_vencimiento|fecha }}</td>
+                <td class="text-center">{{ lote.cantidad_inicial }}</td>
+                <td class="text-center fw-bold">{{ lote.cantidad_disponible }}</td>
+                <td>
+                  {% if lote.vencido %}
+                    <span class="badge bg-danger">VENCIDO (Bloqueado)</span>
+                  {% elif lote.dias_para_vencer <= 30 %}
+                    <span class="badge bg-warning text-dark">Vence en {{ lote.dias_para_vencer }} días</span>
+                  {% else %}
+                    <span class="badge bg-success-subtle text-success">Vence en {{ lote.dias_para_vencer }} días</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Kardex / Historial de Movimientos -->
+    <div class="card mb-3">
+      <div class="card-header bg-light fw-bold"><i class="bi bi-journal-text me-2"></i>Kardex de Movimientos</div>
+      <div class="card-body p-0">
+        {% if not producto.movimientos %}
+        <div class="p-3 text-secondary text-center small">No hay movimientos registrados.</div>
+        {% else %}
+        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>Fecha / Hora</th>
+                <th>Movimiento</th>
+                <th class="text-end">Cant.</th>
+                <th class="text-end">Anterior</th>
+                <th class="text-end">Nuevo</th>
+                <th>Usuario</th>
+                <th>Motivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in producto.movimientos %}
+              <tr>
+                <td class="small">{{ m.fecha|fecha_hora }}</td>
+                <td><span class="badge bg-secondary-subtle text-dark">{{ m.tipo_etiqueta }}</span></td>
+                <td class="text-end fw-bold {% if m.tipo_movimiento in ('entrada', 'ajuste_positivo', 'inicial') %}text-success{% else %}text-danger{% endif %}">
+                  {% if m.tipo_movimiento in ('entrada', 'ajuste_positivo', 'inicial') %}+{% else %}-{% endif %}{{ m.cantidad }}
+                </td>
+                <td class="text-end text-secondary small">{{ m.stock_anterior }}</td>
+                <td class="text-end fw-bold small">{{ m.stock_nuevo }}</td>
+                <td class="small">{{ m.usuario.nombre if m.usuario else 'Sistema' }}</td>
+                <td class="small text-truncate" style="max-width: 150px;">{{ m.motivo or '' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal Nueva Variante -->
+<div class="modal fade" id="modalVariante" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('inventario.variante_nueva', producto_id=producto.id) }}">
+        {{ form_variante.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title">Agregar nueva variante</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nombre de variante (ej. 2 kg, Talla M)</label>
+            {{ form_variante.nombre_variante(class="form-control") }}
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">SKU (Opcional)</label>
+              {{ form_variante.sku(class="form-control") }}
+            </div>
+            <div class="col-6">
+              <label class="form-label">Código de barras</label>
+              {{ form_variante.codigo_barras(class="form-control") }}
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">Precio Sugerido / Venta</label>
+              {{ form_variante.precio_sugerido(class="form-control") }}
+            </div>
+            <div class="col-6">
+              <label class="form-label">Precio Mínimo</label>
+              {{ form_variante.precio_minimo(class="form-control") }}
+            </div>
+          </div>
+          {% if current_user.es_admin %}
+          <div class="mb-3">
+            <label class="form-label">Precio Costo (Admin)</label>
+            {{ form_variante.precio_costo(class="form-control") }}
+          </div>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar variante</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ingresar Lote -->
+{% if producto.controla_lote %}
+<div class="modal fade" id="modalLote" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('inventario.lote_nuevo', producto_id=producto.id) }}">
+        {{ form_lote.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title">Ingresar nuevo lote</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Número de Lote</label>
+            {{ form_lote.numero_lote(class="form-control", placeholder="ej. LOT-2026-09A") }}
+          </div>
+          {% if producto.tiene_variantes %}
+          <div class="mb-3">
+            <label class="form-label">Variante afectada</label>
+            {{ form_lote.variante_id(class="form-select") }}
+          </div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label">Fecha de vencimiento</label>
+            {{ form_lote.fecha_vencimiento(class="form-control", type="date") }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Cantidad a ingresar</label>
+            {{ form_lote.cantidad(class="form-control", step="0.01") }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Proveedor (Opcional)</label>
+            {{ form_lote.proveedor_id(class="form-select") }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-warning">Ingresar Lote</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal Ajuste Stock -->
+<div class="modal fade" id="modalAjuste" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('inventario.registrar_ajuste', producto_id=producto.id) }}">
+        {{ form_ajuste.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title">Ajuste manual de stock</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Tipo de movimiento</label>
+            {{ form_ajuste.tipo_movimiento(class="form-select") }}
+          </div>
+          {% if producto.tiene_variantes %}
+          <div class="mb-3">
+            <label class="form-label">Variante afectada</label>
+            {{ form_ajuste.variante_id(class="form-select") }}
+          </div>
+          {% endif %}
+          {% if producto.controla_lote %}
+          <div class="mb-3">
+            <label class="form-label">Lote afectado</label>
+            {{ form_ajuste.lote_id(class="form-select") }}
+          </div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label">Cantidad</label>
+            {{ form_ajuste.cantidad(class="form-control", step="0.01") }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Motivo de ajuste</label>
+            {{ form_ajuste.motivo(class="form-control", rows="2", placeholder="ej. Conteo físico, rotura, merma...") }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Guardar ajuste</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

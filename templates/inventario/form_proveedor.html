@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}{% if proveedor %}Editar {{ proveedor.nombre }}{% else %}Nuevo Proveedor{% endif %}{% endblock %}
+
+{% block contenido %}
+{% call encabezado(
+    'Editar proveedor' if proveedor else 'Nuevo proveedor',
+    'Ingresa los datos comerciales y de contacto'
+) %}
+  <a class="btn btn-outline-secondary" href="{{ url_for('inventario.proveedores_lista') }}"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+{% endcall %}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <form method="post" class="card shadow-sm">
+      {{ form.hidden_tag() }}
+      <div class="card-body">
+        
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="nit">NIT / Documento</label>
+            {{ form.nit(class="form-control", placeholder="ej. 900.123.456-7") }}
+          </div>
+          <div class="col-12 col-md-8">
+            <label class="form-label fw-bold" for="nombre">Nombre o Razón Social *</label>
+            {{ form.nombre(class="form-control" ~ (' is-invalid' if form.nombre.errors else ''), placeholder="ej. Distribuidora Veterinaria S.A.S.") }}
+            {% for err in form.nombre.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="contacto">Persona de contacto</label>
+            {{ form.contacto(class="form-control") }}
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="telefono">Teléfono</label>
+            {{ form.telefono(class="form-control") }}
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="email">Correo electrónico</label>
+            {{ form.email(class="form-control" ~ (' is-invalid' if form.email.errors else '')) }}
+            {% for err in form.email.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-8">
+            <label class="form-label" for="direccion">Dirección</label>
+            {{ form.direccion(class="form-control") }}
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="ciudad">Ciudad</label>
+            {{ form.ciudad(class="form-control") }}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="notas">Notas adicionales</label>
+          {{ form.notas(class="form-control", rows="2") }}
+        </div>
+
+        <div class="form-check form-switch mb-3">
+          {{ form.activo(class="form-check-input", id="activo") }}
+          <label class="form-check-input-label" for="activo">Proveedor activo</label>
+        </div>
+
+      </div>
+      <div class="card-footer d-flex justify-content-between">
+        <a class="btn btn-secondary" href="{{ url_for('inventario.proveedores_lista') }}">Cancelar</a>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar proveedor</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

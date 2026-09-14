@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Factura {{ venta.numero_factura }} - VetCare{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Factura " ~ venta.numero_factura, "Detalle de venta, comprobante y opciones") %}
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('pos.ticket_impresion', id=venta.id) }}" target="_blank" class="btn btn-primary">
+      <i class="bi bi-printer-fill me-1"></i>Imprimir Ticket
+    </a>
+    <a href="{{ url_for('pos.ventas_lista') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Volver al Historial
+    </a>
+  </div>
+{% endcall %}
+
+<div class="row g-4">
+  <!-- Detalle Principal de la Factura -->
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Resumen de la Venta</h5>
+        {% if venta.estado == 'completada' %}
+        <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>Completada</span>
+        {% else %}
+        <span class="badge bg-danger fs-6"><i class="bi bi-x-circle me-1"></i>Anulada</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <span class="text-secondary small d-block">Fecha de Venta</span>
+            <strong>{{ venta.fecha_venta|fecha_hora }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-secondary small d-block">Cajero / Vendedor</span>
+            <strong>{{ venta.usuario.nombre }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-secondary small d-block">Cliente / Tutor</span>
+            <strong>{% if venta.tutor %}{{ venta.tutor.nombre_completo }}{% else %}Cliente Ocasional{% endif %}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-secondary small d-block">Mascota</span>
+            <strong>{% if venta.mascota %}{{ venta.mascota.nombre }} ({{ venta.mascota.especie }}){% else %}N/A{% endif %}</strong>
+          </div>
+        </div>
+
+        <h6 class="fw-bold border-bottom pb-2 mb-3">Ítems Facturados</h6>
+        <div class="table-responsive mb-4">
+          <table class="table table-bordered table-striped align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Descripción</th>
+                <th>Tipo</th>
+                <th class="text-center">Cant.</th>
+                <th class="text-end">Precio Unit.</th>
+                <th class="text-end">Descuento</th>
+                <th class="text-end">Total Línea</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in venta.detalles %}
+              <tr>
+                <td><strong>{{ d.descripcion }}</strong></td>
+                <td><span class="badge {% if d.tipo_item == 'servicio' %}bg-info{% else %}bg-secondary{% endif %}">{{ d.tipo_item }}</span></td>
+                <td class="text-center font-monospace">{{ d.cantidad }}</td>
+                <td class="text-end font-monospace">{{ d.precio_unitario|cop }}</td>
+                <td class="text-end font-monospace text-muted">{{ d.descuento|cop }}</td>
+                <td class="text-end font-monospace fw-bold">{{ d.total_linea|cop }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+              <tr>
+                <td colspan="5" class="text-end fw-bold">Subtotal:</td>
+                <td class="text-end font-monospace">{{ venta.subtotal|cop }}</td>
+              </tr>
+              {% if venta.descuento_monto > 0 %}
+              <tr>
+                <td colspan="5" class="text-end fw-bold text-danger">Descuento Aplicado:</td>
+                <td class="text-end font-monospace text-danger">-{{ venta.descuento_monto|cop }}</td>
+              </tr>
+              {% endif %}
+              <tr class="fs-5">
+                <td colspan="5" class="text-end fw-bold">TOTAL FINAL:</td>
+                <td class="text-end font-monospace fw-bold text-success">{{ venta.total|cop }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <h6 class="fw-bold border-bottom pb-2 mb-3">Medios de Pago Utilizados</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Método de Pago</th>
+                <th>Referencia / Comprobante</th>
+                <th class="text-end">Monto Recibido</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in venta.pagos %}
+              <tr>
+                <td><strong>{{ p.metodo_etiqueta }}</strong></td>
+                <td class="text-muted">{{ p.referencia_transaccion or '-' }}</td>
+                <td class="text-end font-monospace fw-bold">{{ p.monto|cop }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Columna Derecha: Estado de Anulación o Acciones -->
+  <div class="col-12 col-lg-4">
+    {% if venta.estado == 'anulada' %}
+    <div class="card border-danger shadow-sm mb-4">
+      <div class="card-header bg-danger text-white">
+        <h5 class="card-title mb-0"><i class="bi bi-exclamation-octagon-fill me-2"></i>Factura Anulada</h5>
+      </div>
+      <div class="card-body">
+        <p class="mb-2"><strong>Fecha de Anulación:</strong> {{ venta.fecha_anulacion|fecha_hora }}</p>
+        <p class="mb-2"><strong>Anulada por:</strong> {{ venta.anulada_por.nombre if venta.anulada_por else 'Sistema' }}</p>
+        <div class="p-3 bg-light rounded border border-danger">
+          <small class="text-muted d-block fw-bold mb-1">Motivo de Anulación:</small>
+          <span class="text-dark">{{ venta.motivo_anulacion }}</span>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="card border-warning shadow-sm">
+      <div class="card-header bg-warning text-dark">
+        <h5 class="card-title mb-0"><i class="bi bi-x-circle-fill me-2"></i>Anular Factura</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-secondary small">La anulación de la factura revertirá automáticamente el stock de los productos vendidos a sus lotes correspondientes y registrará la devolución en el Kardex.</p>
+        
+        <form method="post" action="{{ url_for('pos.anular_venta', id=venta.id) }}">
+          {{ form_anular.csrf_token }}
+          <div class="mb-3">
+            {{ form_anular.motivo.label(class="form-label fw-bold") }}
+            {{ form_anular.motivo(class="form-control", rows="3", placeholder="Explica detalladamente el motivo de la anulación (mínimo 10 caracteres)...") }}
+            {% for error in form_anular.motivo.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          {{ form_anular.enviar(class="btn btn-danger w-100 fw-bold", onclick="return confirm('¿Estás seguro de anular esta factura? Esta acción revertirá el stock de inventario.');") }}
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

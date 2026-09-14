@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado, paginacion, avatar_mascota %}
+{% block titulo %}Mascotas{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Mascotas", "Fichas de los pacientes") %}
+  {% if current_user.rol in ('admin', 'recepcion', 'auxiliar', 'veterinario') %}
+  <a class="btn btn-primary" href="{{ url_for('mascotas.nueva') }}"><i class="bi bi-plus-lg me-1"></i>Nueva mascota</a>
+  {% endif %}
+{% endcall %}
+
+<form method="get" class="card mb-3" role="search">
+  <div class="card-body py-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-5">
+        <label class="form-label mb-1" for="q">Buscar</label>
+        <input class="form-control" type="search" id="q" name="q" value="{{ filtro_texto }}" placeholder="Nombre de la mascota o del tutor" autofocus>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label mb-1" for="especie">Especie</label>
+        <select class="form-select" id="especie" name="especie">
+          <option value="">Todas</option>
+          {% for clave, etiqueta in ESPECIES.items() %}
+          <option value="{{ clave }}" {% if filtro_especie == clave %}selected{% endif %}>{{ etiqueta }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label mb-1" for="estado">Estado</label>
+        <select class="form-select" id="estado" name="estado">
+          <option value="activas" {% if filtro_estado == 'activas' %}selected{% endif %}>Activas</option>
+          <option value="inactivas" {% if filtro_estado == 'inactivas' %}selected{% endif %}>Inactivas o fallecidas</option>
+          <option value="todas" {% if filtro_estado == 'todas' %}selected{% endif %}>Todas</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-grid">
+        <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search me-1"></i>Buscar</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% if not pagina.items %}
+<div class="card"><div class="card-body text-center text-secondary py-5">
+  <span class="fs-1 d-block mb-2">🐾</span>
+  {% if filtro_texto %}Ninguna mascota coincide con "{{ filtro_texto }}".{% else %}Todavía no hay mascotas registradas.{% endif %}
+</div></div>
+{% else %}
+<div class="row g-2 g-md-3">
+  {% for mascota in pagina.items %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <a class="fila-lista d-flex align-items-center gap-3 text-decoration-none text-body h-100" href="{{ url_for('mascotas.detalle', mascota_id=mascota.id) }}">
+      {{ avatar_mascota(mascota, 56) }}
+      <div class="flex-grow-1 min-w-0">
+        <div class="fw-bold text-truncate">{{ mascota.nombre }}</div>
+        <div class="small text-secondary text-truncate">
+          {{ mascota.especie_etiqueta }}{% if mascota.raza %} · {{ mascota.raza.nombre }}{% endif %}{% if mascota.edad %} · {{ mascota.edad }}{% endif %}
+        </div>
+        <div class="small text-truncate"><i class="bi bi-person me-1 text-secondary"></i>{{ mascota.tutor.nombre_completo }}</div>
+      </div>
+      {% if mascota.fallecido %}<span class="estado estado--neutro">Fallecido</span>
+      {% elif not mascota.activo %}<span class="estado estado--neutro">Inactiva</span>{% endif %}
+      <i class="bi bi-chevron-right text-secondary"></i>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{{ paginacion(pagina) }}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ticket {{ venta.numero_factura }}</title>
+  <style>
+    @page {
+      margin: 0;
+      size: 80mm auto;
+    }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      width: 76mm;
+      margin: 0 auto;
+      padding: 5mm 2mm;
+      color: #000;
+      background: #fff;
+    }
+    .text-center { text-align: center; }
+    .text-end { text-align: right; }
+    .bold { font-weight: bold; }
+    .divider {
+      border-top: 1px dashed #000;
+      margin: 6px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 2px 0;
+      vertical-align: top;
+    }
+    .no-print {
+      margin-bottom: 15px;
+    }
+    @media print {
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print text-center">
+    <button onclick="window.print()" style="padding: 8px 16px; font-size: 14px; cursor: pointer; background: #28a745; color: #fff; border: none; border-radius: 4px;">
+      🖨️ Imprimir Recibo
+    </button>
+  </div>
+
+  <div class="text-center">
+    <div class="bold" style="font-size: 16px;">VETCARE - SANDÍA</div>
+    <div>Medicina & Spa Veterinario</div>
+    <div>NIT: 901.234.567-8</div>
+    <div>Calle 10 # 40-20, Medellín</div>
+    <div>WhatsApp: +57 300 123 4567</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div>
+    <div><span class="bold">FACTURA:</span> {{ venta.numero_factura }}</div>
+    <div><span class="bold">FECHA:</span> {{ venta.fecha_venta|fecha_hora }}</div>
+    <div><span class="bold">CAJERO:</span> {{ venta.usuario.nombre }}</div>
+    {% if venta.tutor %}
+    <div><span class="bold">CLIENTE:</span> {{ venta.tutor.nombre_completo }}</div>
+    {% endif %}
+    {% if venta.mascota %}
+    <div><span class="bold">MASCOTA:</span> {{ venta.mascota.nombre }}</div>
+    {% endif %}
+  </div>
+
+  <div class="divider"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left;">DESCRIPCIÓN</th>
+        <th style="text-align: center; width: 25px;">CANT</th>
+        <th style="text-align: right; width: 65px;">TOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in venta.detalles %}
+      <tr>
+        <td>{{ d.descripcion }}</td>
+        <td class="text-center">{{ d.cantidad }}</td>
+        <td class="text-end">${{ "{:,.2f}".format(d.total_linea) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="divider"></div>
+
+  <table>
+    <tr>
+      <td>SUBTOTAL:</td>
+      <td class="text-end">${{ "{:,.2f}".format(venta.subtotal) }}</td>
+    </tr>
+    {% if venta.descuento_monto > 0 %}
+    <tr>
+      <td>DESCUENTO:</td>
+      <td class="text-end">-${{ "{:,.2f}".format(venta.descuento_monto) }}</td>
+    </tr>
+    {% endif %}
+    <tr class="bold" style="font-size: 14px;">
+      <td>TOTAL:</td>
+      <td class="text-end">${{ "{:,.2f}".format(venta.total) }}</td>
+    </tr>
+  </table>
+
+  <div class="divider"></div>
+
+  <div class="bold">PAGOS:</div>
+  {% for p in venta.pagos %}
+  <div style="display: flex; justify-content: space-between;">
+    <span>{{ p.metodo_etiqueta }}:</span>
+    <span>${{ "{:,.2f}".format(p.monto) }}</span>
+  </div>
+  {% endfor %}
+
+  <div class="divider"></div>
+
+  <div class="text-center" style="margin-top: 10px;">
+    <div class="bold">¡Gracias por su visita!</div>
+    <div style="font-size: 10px; margin-top: 4px;">Conserve este recibo para cualquier reclamo o garantía.</div>
+  </div>
+</body>
+</html>

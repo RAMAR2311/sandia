@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Reporte de Inventario - VetCare{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Reporte de Inventario & Valoración", "Estado del stock, valoración financiera y lotes por vencer") %}
+  <a href="{{ url_for('reportes.dashboard') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Volver a Reportes
+  </a>
+{% endcall %}
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="fw-bold mb-0"><i class="bi bi-box-seam me-1"></i>Valoración Total del Stock</h5>
+      <span class="badge bg-primary fs-5">{{ valoracion_total|cop }}</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>SKU</th>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th>Precio Costo</th>
+            <th>Precio Venta</th>
+            <th>Stock Actual</th>
+            <th class="text-end">Valor Stock (Costo)</th>
+            <th class="text-center">Estado Stock</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in productos %}
+          {% if p.tipo == 'producto' %}
+          <tr>
+            <td class="fw-bold">{{ p.sku }}</td>
+            <td>{{ p.nombre }}</td>
+            <td><span class="badge bg-light text-dark border">{{ p.categoria_etiqueta }}</span></td>
+            <td>{{ p.precio_costo|cop }}</td>
+            <td>{{ p.precio_sugerido|cop }}</td>
+            <td>{{ p.cantidad_stock }}</td>
+            <td class="text-end fw-bold">{{ (p.cantidad_stock * p.precio_costo)|cop }}</td>
+            <td class="text-center">
+              {% if p.stock_bajo %}
+              <span class="badge bg-danger"><i class="bi bi-exclamation-triangle me-1"></i>Stock Bajo</span>
+              {% else %}
+              <span class="badge bg-success">Normal</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endif %}
+          {% else %}
+          <tr><td colspan="8" class="text-center text-muted py-4">No hay productos en inventario.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Lotes Próximos a Vencer (30 Días) -->
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-warning text-dark fw-bold">
+    <i class="bi bi-clock-history me-1"></i>Lotes Próximos a Vencer (Próximos 30 días)
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Lote N°</th>
+            <th>Producto</th>
+            <th>Vencimiento</th>
+            <th>Disponible</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in lotes_proximos %}
+          <tr>
+            <td class="fw-bold">{{ l.numero_lote }}</td>
+            <td>{{ l.producto.nombre if l.producto else '' }}</td>
+            <td class="text-danger fw-bold">{{ l.fecha_vencimiento|fecha }}</td>
+            <td>{{ l.cantidad_disponible }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted py-3">No hay lotes próximos a vencer.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

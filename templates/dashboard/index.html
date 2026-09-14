@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}Inicio{% endblock %}
+
+{% block contenido %}
+<section class="saludo mb-4">
+  <div class="saludo__fecha">{{ ahora|fecha_larga }}</div>
+  <h1 class="titulo-pagina mt-1">Hola, {{ current_user.nombre.split(' ')[0] }}</h1>
+  <div class="text-secondary">Sesión iniciada como <strong>{{ current_user.rol_etiqueta }}</strong>.</div>
+</section>
+
+<h2 class="h5 text-secondary text-uppercase fw-bold mb-3" style="letter-spacing: .08em;">Módulos</h2>
+<div class="row g-3">
+  {% for modulo in modulos %}
+  <div class="col-12 col-sm-6 col-lg-4">
+    <a class="tarjeta-modulo" href="{{ url_for(modulo.endpoint) }}">
+      <span class="tarjeta-modulo__icono"><i class="bi {{ modulo.icono }}"></i></span>
+      <span>
+        <span class="tarjeta-modulo__titulo d-block">{{ modulo.nombre }}</span>
+        <span class="tarjeta-modulo__descripcion d-block">{{ modulo.descripcion }}</span>
+      </span>
+      <i class="bi bi-chevron-right ms-auto text-secondary"></i>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

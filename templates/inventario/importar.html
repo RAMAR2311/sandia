@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Importar Inventario desde Excel{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Importación masiva desde Excel", "Carga productos e inventario inicial mediante plantilla .xlsx") %}
+  <a class="btn btn-outline-secondary" href="{{ url_for('inventario.lista') }}"><i class="bi bi-arrow-left me-1"></i>Volver al inventario</a>
+{% endcall %}
+
+<div class="row g-3 justify-content-center">
+  <div class="col-12 col-lg-8">
+    
+    <div class="card mb-3">
+      <div class="card-header bg-light fw-bold"><i class="bi bi-download me-2"></i>1. Descarga la plantilla oficial</div>
+      <div class="card-body">
+        <p class="card-text text-secondary">
+          Utiliza la plantilla prediseñada para garantizar que las columnas (SKU, Nombre, Categoria, Precios, Stock) tengan el formato exacto que procesa el sistema.
+        </p>
+        <a class="btn btn-outline-primary" href="{{ url_for('inventario.plantilla_excel') }}">
+          <i class="bi bi-file-earmark-excel me-1"></i>Descargar plantilla Excel de ejemplo (.xlsx)
+        </a>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header bg-light fw-bold"><i class="bi bi-upload me-2"></i>2. Carga tu archivo completado</div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            <label class="form-label fw-bold" for="archivo">Archivo Excel (.xlsx)</label>
+            {{ form.archivo(class="form-control" ~ (' is-invalid' if form.archivo.errors else '')) }}
+            {% for err in form.archivo.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+          </div>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Procesar e importar</button>
+        </form>
+      </div>
+    </div>
+
+    {% if reporte %}
+    <div class="card border-info">
+      <div class="card-header bg-info-subtle text-info-emphasis fw-bold">
+        <i class="bi bi-clipboard-data me-2"></i>Resultado de la Importación
+      </div>
+      <div class="card-body">
+        <div class="row text-center mb-3">
+          <div class="col-4">
+            <div class="fs-3 fw-bold text-success">{{ reporte.creados }}</div>
+            <div class="small text-secondary">Productos creados</div>
+          </div>
+          <div class="col-4">
+            <div class="fs-3 fw-bold text-primary">{{ reporte.actualizados }}</div>
+            <div class="small text-secondary">Productos actualizados</div>
+          </div>
+          <div class="col-4">
+            <div class="fs-3 fw-bold text-danger">{{ reporte.errores|length }}</div>
+            <div class="small text-secondary">Errores / Ignorados</div>
+          </div>
+        </div>
+
+        {% if reporte.errores %}
+        <div class="alert alert-danger mb-0">
+          <h6 class="fw-bold mb-2">Detalle de observaciones y errores:</h6>
+          <ul class="mb-0 small">
+            {% for err in reporte.errores %}
+            <li>{{ err }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

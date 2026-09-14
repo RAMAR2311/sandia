@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}{{ titulo }} - VetCare{% endblock %}
+
+{% block contenido %}
+{% call encabezado(titulo, "Configuración del servicio de estética o baño") %}
+  <a href="{{ url_for('spa.servicios_lista') }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Volver al catálogo
+  </a>
+{% endcall %}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="post">
+          {{ form.csrf_token }}
+
+          <div class="mb-3">
+            {{ form.nombre.label(class="form-label fw-bold") }}
+            {{ form.nombre(class="form-control", placeholder="ej. Baño y Corte Comercial") }}
+            {% for error in form.nombre.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.descripcion.label(class="form-label") }}
+            {{ form.descripcion(class="form-control", rows="3", placeholder="Detalles de lo que incluye el servicio...") }}
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              {{ form.duracion_minutos.label(class="form-label fw-bold") }}
+              {{ form.duracion_minutos(class="form-control") }}
+            </div>
+            <div class="col-6">
+              {{ form.precio_sugerido.label(class="form-label fw-bold") }}
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                {{ form.precio_sugerido(class="form-control") }}
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              {{ form.especie.label(class="form-label") }}
+              {{ form.especie(class="form-select") }}
+            </div>
+            <div class="col-6">
+              {{ form.tamano_mascota.label(class="form-label") }}
+              {{ form.tamano_mascota(class="form-select") }}
+            </div>
+          </div>
+
+          <div class="mb-4 form-check form-switch">
+            {{ form.activo(class="form-check-input", role="switch") }}
+            {{ form.activo.label(class="form-check-label") }}
+          </div>
+
+          {{ form.enviar(class="btn btn-primary w-100 py-2 fw-bold") }}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

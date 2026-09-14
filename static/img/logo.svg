@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sandía">
+  <title>Sandía</title>
+  <!-- Tajada de sandía: cáscara verde, franja clara, pulpa roja y semillas -->
+  <path d="M5 24 A27 27 0 0 0 59 24 Z" fill="#2E7D32" stroke="#212121" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M10 24 A22 22 0 0 0 54 24 Z" fill="#4CAF50"/>
+  <path d="M14 24 A18 18 0 0 0 50 24 Z" fill="#FDF6EE"/>
+  <path d="M17 24 A15 15 0 0 0 47 24 Z" fill="#E53935"/>
+  <ellipse cx="26" cy="30" rx="1.7" ry="2.6" fill="#212121" transform="rotate(-25 26 30)"/>
+  <ellipse cx="38" cy="30" rx="1.7" ry="2.6" fill="#212121" transform="rotate(25 38 30)"/>
+  <ellipse cx="32" cy="35.5" rx="1.7" ry="2.6" fill="#212121"/>
+  <!-- Burbujas de spa -->
+  <circle cx="14" cy="14" r="3.2" fill="#4DB6AC" stroke="#212121" stroke-width="1.6"/>
+  <circle cx="22" cy="8" r="2.2" fill="#4DB6AC" stroke="#212121" stroke-width="1.4"/>
+  <circle cx="50" cy="12" r="2.8" fill="#26A69A" stroke="#212121" stroke-width="1.6"/>
+</svg>
