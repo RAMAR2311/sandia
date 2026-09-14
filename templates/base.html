@@ -18,57 +18,76 @@
 <body class="{% block body_class %}{% if current_user.is_authenticated %}con-barra-inferior{% endif %}{% endblock %}">
 {% block navegacion %}
 {% if current_user.is_authenticated %}
-<nav class="navbar navbar-expand-md barra-superior sticky-top">
-  <div class="container-fluid px-3">
-    <a class="marca navbar-brand me-2" href="{{ url_for('dashboard.index') }}">
+<nav class="navbar barra-superior sticky-top">
+  <div class="container-fluid px-3 d-flex align-items-center gap-2">
+    <button class="btn btn-icono-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuLateral"
+            aria-controls="menuLateral" aria-label="Abrir menú">
+      <i class="bi bi-list"></i>
+    </button>
+    <a class="marca navbar-brand me-auto" href="{{ url_for('dashboard.index') }}">
       <img class="marca__logo" src="{{ static_url('img/logo.svg') }}" alt="">
       <span class="marca__texto">
         <span class="marca__nombre">{{ clinica.nombre|upper }}</span>
         <span class="marca__subtitulo d-none d-sm-inline">{{ clinica.subtitulo }}</span>
       </span>
     </a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menuPrincipal"
-            aria-controls="menuPrincipal" aria-expanded="false" aria-label="Abrir menú">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="menuPrincipal">
-      <ul class="navbar-nav me-auto mb-2 mb-md-0">
-        <li class="nav-item">
-          <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
-            <i class="bi bi-house-door-fill me-1"></i>Inicio
-          </a>
+    <div class="dropdown">
+      <button class="btn btn-link text-decoration-none text-body d-flex align-items-center gap-2 p-1 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <span class="avatar-usuario">{{ current_user.nombre[:1]|upper }}</span>
+        <span class="text-start d-none d-sm-inline">
+          <span class="d-block fw-bold lh-1">{{ current_user.nombre }}</span>
+          <small class="text-secondary">{{ current_user.rol_etiqueta }}</small>
+        </span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end shadow">
+        <li><span class="dropdown-item-text small text-secondary">{{ current_user.email }}</span></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="{{ url_for('auth.cambiar_password') }}"><i class="bi bi-key me-2"></i>Cambiar contraseña</a></li>
+        <li>
+          <form method="post" action="{{ url_for('auth.logout') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</button>
+          </form>
         </li>
-        {% for modulo in modulos_menu if modulo.clave != 'mi_cuenta' %}
-        <li class="nav-item">
-          <a class="nav-link {% if request.endpoint == modulo.endpoint %}active{% endif %}" href="{{ url_for(modulo.endpoint) }}">
-            <i class="bi {{ modulo.icono }} me-1"></i>{{ modulo.nombre }}
-          </a>
-        </li>
-        {% endfor %}
       </ul>
-      <div class="dropdown">
-        <button class="btn btn-link text-decoration-none text-body d-flex align-items-center gap-2 p-1 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-          <span class="avatar-usuario">{{ current_user.nombre[:1]|upper }}</span>
-          <span class="text-start d-inline d-md-none d-lg-inline">
-            <span class="d-block fw-bold lh-1">{{ current_user.nombre }}</span>
-            <small class="text-secondary">{{ current_user.rol_etiqueta }}</small>
-          </span>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow">
-          <li><span class="dropdown-item-text small text-secondary">{{ current_user.email }}</span></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="{{ url_for('auth.cambiar_password') }}"><i class="bi bi-key me-2"></i>Cambiar contraseña</a></li>
-          <li>
-            <form method="post" action="{{ url_for('auth.logout') }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</button>
-            </form>
-          </li>
-        </ul>
-      </div>
     </div>
   </div>
 </nav>
+
+<div class="offcanvas offcanvas-start menu-lateral" tabindex="-1" id="menuLateral" aria-labelledby="menuLateralLabel">
+  <div class="offcanvas-header">
+    <span class="marca" id="menuLateralLabel">
+      <img class="marca__logo" src="{{ static_url('img/logo.svg') }}" alt="">
+      <span class="marca__texto">
+        <span class="marca__nombre">{{ clinica.nombre|upper }}</span>
+        <span class="marca__subtitulo">{{ clinica.subtitulo }}</span>
+      </span>
+    </span>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  </div>
+  <div class="offcanvas-body p-0">
+    <ul class="menu-lateral__lista">
+      <li>
+        <a class="menu-lateral__enlace {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
+          <i class="bi bi-house-door-fill"></i>Inicio
+        </a>
+      </li>
+      {% for modulo in modulos_menu if modulo.clave != 'mi_cuenta' %}
+      <li>
+        <a class="menu-lateral__enlace {% if request.endpoint == modulo.endpoint %}active{% endif %}" href="{{ url_for(modulo.endpoint) }}">
+          <i class="bi {{ modulo.icono }}"></i>{{ modulo.nombre }}
+        </a>
+      </li>
+      {% endfor %}
+      <li><hr class="my-2"></li>
+      <li>
+        <a class="menu-lateral__enlace" href="{{ url_for('auth.cambiar_password') }}">
+          <i class="bi bi-person-lock"></i>Mi cuenta
+        </a>
+      </li>
+    </ul>
+  </div>
+</div>
 {% endif %}
 {% endblock %}
 
