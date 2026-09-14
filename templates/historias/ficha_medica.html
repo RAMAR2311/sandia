@@ -49,6 +49,15 @@
         <a href="{{ url_for('historias.desparasitacion_nueva', mascota_id=mascota.id) }}" class="btn btn-outline-info btn-sm fw-bold">
           <i class="bi bi-bug me-1"></i>Registrar Desparasitación
         </a>
+        <a href="{{ url_for('historias.hospitalizacion_nueva', mascota_id=mascota.id) }}" class="btn btn-outline-danger btn-sm fw-bold">
+          <i class="bi bi-hospital me-1"></i>Hospitalizar
+        </a>
+        <a href="{{ url_for('historias.cirugia_nueva', mascota_id=mascota.id) }}" class="btn btn-outline-dark btn-sm fw-bold">
+          <i class="bi bi-scissors me-1"></i>Registrar Cirugía
+        </a>
+        <a href="{{ url_for('historias.examen_nuevo', mascota_id=mascota.id) }}" class="btn btn-outline-secondary btn-sm fw-bold">
+          <i class="bi bi-clipboard2-pulse me-1"></i>Solicitar Examen
+        </a>
       </div>
     </div>
   </div>
@@ -69,6 +78,11 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="desparasitaciones-tab" data-bs-toggle="tab" data-bs-target="#desparasitaciones" type="button" role="tab">
           <i class="bi bi-capsule me-1"></i>Desparasitaciones ({{ mascota.desparasitaciones|length }})
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="avanzada-tab" data-bs-toggle="tab" data-bs-target="#avanzada" type="button" role="tab">
+          <i class="bi bi-hospital me-1"></i>Clínica avanzada ({{ (hospitalizaciones|length) + (cirugias|length) + (examenes|length) }})
         </button>
       </li>
     </ul>
@@ -177,6 +191,48 @@
                 {% endfor %}
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="avanzada" role="tabpanel">
+        <div class="card shadow-sm mb-3">
+          <div class="card-header fw-bold">Hospitalizaciones</div>
+          <div class="list-group list-group-flush">
+            {% for h in hospitalizaciones %}
+            <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="{{ url_for('historias.hospitalizacion_detalle', id=h.id) }}">
+              <span>{{ h.fecha_ingreso|fecha }} · {{ h.motivo[:60] }}</span>
+              <span class="estado estado--{{ 'ok' if h.estado == 'alta' else ('urgente' if h.estado == 'fallecido' else 'info') }}">{{ h.estado_etiqueta }}</span>
+            </a>
+            {% else %}
+            <div class="list-group-item text-center text-muted py-3">Sin hospitalizaciones.</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="card shadow-sm mb-3">
+          <div class="card-header fw-bold">Cirugías</div>
+          <div class="list-group list-group-flush">
+            {% for c in cirugias %}
+            <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="{{ url_for('historias.cirugia_detalle', id=c.id) }}">
+              <span>{{ c.fecha|fecha }} · {{ c.tipo_procedimiento }}</span>
+              {% if c.consentimiento_firmado %}<span class="estado estado--ok">Consentimiento OK</span>{% else %}<span class="estado estado--alerta">Sin firmar</span>{% endif %}
+            </a>
+            {% else %}
+            <div class="list-group-item text-center text-muted py-3">Sin cirugías.</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="card shadow-sm">
+          <div class="card-header fw-bold">Exámenes de laboratorio</div>
+          <div class="list-group list-group-flush">
+            {% for e in examenes %}
+            <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="{{ url_for('historias.examen_detalle', id=e.id) }}">
+              <span>{{ e.fecha_toma|fecha }} · {{ e.tipo_examen }}</span>
+              <span class="estado estado--{{ 'ok' if e.estado == 'con_resultado' else 'info' }}">{{ e.estado_etiqueta }}</span>
+            </a>
+            {% else %}
+            <div class="list-group-item text-center text-muted py-3">Sin exámenes.</div>
+            {% endfor %}
           </div>
         </div>
       </div>

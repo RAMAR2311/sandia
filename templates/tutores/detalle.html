@@ -31,6 +31,9 @@
       {% if puede_editar %}
       <a class="btn btn-outline-secondary" href="{{ url_for('tutores.editar', tutor_id=tutor.id) }}"><i class="bi bi-pencil me-1"></i>Editar</a>
       {% endif %}
+      {% if current_user.es_admin %}
+      <a class="btn btn-outline-danger" href="{{ url_for('tutores.cartera', tutor_id=tutor.id) }}"><i class="bi bi-wallet2 me-1"></i>Cartera</a>
+      {% endif %}
     </div>
   </div>
 </section>

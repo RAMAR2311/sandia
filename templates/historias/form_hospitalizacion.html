@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo, campo_textarea, encabezado %}
+{% block titulo %}Hospitalizar{% endblock %}
+{% block contenido %}
+{{ encabezado("Registrar hospitalización", mascota.nombre) }}
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="card"><div class="card-body">
+    {{ campo_textarea(form.motivo, filas=3) }}
+    {{ campo_textarea(form.diagnostico, filas=2) }}
+    <div class="row g-2">
+      <div class="col-6">{{ campo(form.jaula) }}</div>
+      <div class="col-6">{{ campo(form.costo_dia, type="number", step="100") }}</div>
+    </div>
+  </div></div>
+  <div class="acciones-fijas"><div class="d-flex gap-2">
+    {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
+    <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}">Cancelar</a>
+  </div></div>
+</form>
+{% endblock %}

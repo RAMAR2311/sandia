@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Facturas de {{ proveedor.nombre }}{% endblock %}
+{% block contenido %}
+{% call encabezado(proveedor.nombre, "Compras a crédito y abonos") %}
+  <a class="btn btn-primary" href="{{ url_for('inventario.factura_proveedor_nueva', proveedor_id=proveedor.id) }}"><i class="bi bi-plus-lg me-1"></i>Nueva factura</a>
+{% endcall %}
+
+<div class="d-flex flex-column gap-3">
+  {% for f in facturas %}
+  <div class="card">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="fw-bold">{{ f.numero_factura }} · {{ f.fecha_factura|fecha }}</div>
+          <div class="small text-secondary">{{ f.notas or '' }}{% if f.archivo %} · <a href="{{ url_for('static', filename='uploads/facturas_proveedor/' ~ f.archivo) }}" target="_blank">Ver archivo</a>{% endif %}</div>
+        </div>
+        <span class="estado estado--{{ 'ok' if f.estado == 'pagada' else 'alerta' }}">{{ f.estado_etiqueta }}</span>
+      </div>
+      <div class="row g-2 mt-2 text-center">
+        <div class="col-4"><div class="small text-secondary">Total</div><div class="fw-bold">{{ f.monto_total|cop }}</div></div>
+        <div class="col-4"><div class="small text-secondary">Abonado</div><div class="fw-bold text-success">{{ f.total_abonado|cop }}</div></div>
+        <div class="col-4"><div class="small text-secondary">Saldo</div><div class="fw-bold text-danger">{{ f.saldo_pendiente|cop }}</div></div>
+      </div>
+      {% if f.saldo_pendiente > 0 %}
+      <form method="post" action="{{ url_for('inventario.factura_proveedor_abono', factura_id=f.id) }}" class="row g-2 mt-2">
+        {{ form_pago.hidden_tag() }}
+        <div class="col-5">{{ form_pago.monto(class_="form-control", placeholder="Monto") }}</div>
+        <div class="col-4">{{ form_pago.metodo_pago(class_="form-select") }}</div>
+        <div class="col-3 d-grid">{{ form_pago.enviar(class_="btn btn-outline-primary") }}</div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card"><div class="card-body text-center text-secondary py-4">Sin facturas registradas.</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

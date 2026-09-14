@@ -1170,9 +1170,32 @@ class ConsultaMedica(db.Model):
     veterinario = db.relationship("Usuario", foreign_keys=[veterinario_id])
     creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
     venta = db.relationship("Venta")
+    enmiendas = db.relationship(
+        "EnmiendaConsulta", back_populates="consulta", order_by="EnmiendaConsulta.fecha", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<ConsultaMedica {self.id} mascota={self.mascota_id} fecha={self.fecha_hora}>"
+
+
+class EnmiendaConsulta(db.Model):
+    """Corrección de una consulta ya firmada: la consulta original nunca se
+    edita ni se borra (rule 8); toda corrección queda registrada aparte,
+    con autor y fecha, y se muestra anexada al final del reporte."""
+
+    __tablename__ = "enmiendas_consulta"
+
+    id = db.Column(db.Integer, primary_key=True)
+    consulta_id = db.Column(db.Integer, db.ForeignKey("consultas_medicas.id"), nullable=False, index=True)
+    autor_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
+    texto = db.Column(db.Text, nullable=False)
+    fecha = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    consulta = db.relationship("ConsultaMedica", back_populates="enmiendas")
+    autor = db.relationship("Usuario", foreign_keys=[autor_id])
+
+    def __repr__(self):
+        return f"<EnmiendaConsulta {self.id} consulta={self.consulta_id}>"
 
 
 class VacunaMascota(db.Model):
@@ -1277,3 +1300,474 @@ class DesparasitacionMascota(db.Model):
 
 
 
+
+
+# ---------------------------------------------------------------------------
+# Agenda médica general (consultas, vacunación, cirugía, control)
+# ---------------------------------------------------------------------------
+
+TIPOS_CITA = {
+    "consulta": "Consulta",
+    "vacunacion": "Vacunación",
+    "cirugia": "Cirugía",
+    "control": "Control",
+    "otro": "Otro",
+}
+
+ESTADOS_CITA = {
+    "programada": "Programada",
+    "confirmada": "Confirmada",
+    "en_atencion": "En atención",
+    "cumplida": "Cumplida",
+    "no_asistio": "No asistió",
+    "cancelada": "Cancelada",
+}
+
+
+class Cita(db.Model):
+    """Agenda médica general: consultas, vacunación, cirugía y controles.
+    Es independiente de ``CitaSpa`` (agenda de grooming)."""
+
+    __tablename__ = "citas"
+    __table_args__ = (
+        db.Index("ix_citas_fecha_hora", "fecha_hora"),
+        db.Index("ix_citas_estado", "estado"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    mascota_id = db.Column(db.Integer, db.ForeignKey("mascotas.id"), nullable=False, index=True)
+    tutor_id = db.Column(db.Integer, db.ForeignKey("tutores.id"), nullable=False, index=True)
+    profesional_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), index=True)
+
+    tipo = db.Column(db.String(20), nullable=False, default="consulta")
+    fecha_hora = db.Column(db.DateTime(timezone=True), nullable=False)
+    duracion_minutos = db.Column(db.Integer, nullable=False, default=30)
+    estado = db.Column(db.String(20), nullable=False, default="programada")
+    motivo = db.Column(db.String(255))
+    notas = db.Column(db.Text)
+    recordatorio_enviado = db.Column(db.Boolean, nullable=False, default=False)
+
+    creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    mascota = db.relationship("Mascota")
+    tutor = db.relationship("Tutor")
+    profesional = db.relationship("Usuario", foreign_keys=[profesional_id])
+    creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
+
+    @validates("tipo")
+    def _validar_tipo(self, _clave, valor):
+        valor = valor or "consulta"
+        if valor not in TIPOS_CITA:
+            raise ValueError(f"Tipo de cita inválido: {valor!r}")
+        return valor
+
+    @validates("estado")
+    def _validar_estado(self, _clave, valor):
+        valor = valor or "programada"
+        if valor not in ESTADOS_CITA:
+            raise ValueError(f"Estado de cita inválido: {valor!r}")
+        return valor
+
+    @property
+    def tipo_etiqueta(self):
+        return TIPOS_CITA.get(self.tipo, self.tipo)
+
+    @property
+    def estado_etiqueta(self):
+        return ESTADOS_CITA.get(self.estado, self.estado)
+
+    @property
+    def mensaje_whatsapp(self) -> str:
+        nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
+        nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
+        return (
+            f"Hola {nombre_tutor}, te recordamos desde VetCare la cita de {nombre_mascota} "
+            f"({self.tipo_etiqueta}) el {self.fecha_hora.strftime('%d/%m/%Y')} a las "
+            f"{self.fecha_hora.strftime('%I:%M %p')}. ¡Te esperamos! 🐾"
+        )
+
+    @property
+    def enlace_whatsapp(self) -> str | None:
+        if not self.tutor or not self.tutor.telefono:
+            return None
+        return enlace_whatsapp(self.tutor.telefono, self.mensaje_whatsapp)
+
+    def __repr__(self):
+        return f"<Cita {self.id} {self.tipo} {self.fecha_hora}>"
+
+
+# ---------------------------------------------------------------------------
+# Hospitalización
+# ---------------------------------------------------------------------------
+
+ESTADOS_HOSPITALIZACION = {
+    "activa": "Activa",
+    "alta": "De alta",
+    "fallecido": "Fallecido",
+    "remitido": "Remitido",
+}
+
+
+class Hospitalizacion(db.Model):
+    __tablename__ = "hospitalizaciones"
+    __table_args__ = (db.Index("ix_hospitalizaciones_estado", "estado"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    mascota_id = db.Column(db.Integer, db.ForeignKey("mascotas.id"), nullable=False, index=True)
+    tutor_id = db.Column(db.Integer, db.ForeignKey("tutores.id"), nullable=False)
+    veterinario_responsable_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+
+    fecha_ingreso = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    fecha_egreso = db.Column(db.DateTime(timezone=True))
+    motivo = db.Column(db.Text, nullable=False)
+    diagnostico = db.Column(db.Text)
+    jaula = db.Column(db.String(30))
+    estado = db.Column(db.String(20), nullable=False, default="activa")
+    costo_dia = db.Column(db.Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    venta_id = db.Column(db.Integer, db.ForeignKey("ventas.id"))
+
+    creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    mascota = db.relationship("Mascota")
+    tutor = db.relationship("Tutor")
+    veterinario_responsable = db.relationship("Usuario", foreign_keys=[veterinario_responsable_id])
+    creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
+    venta = db.relationship("Venta")
+    evoluciones = db.relationship(
+        "EvolucionHospitalaria", back_populates="hospitalizacion",
+        order_by="desc(EvolucionHospitalaria.fecha_hora)", cascade="all, delete-orphan",
+    )
+
+    @validates("estado")
+    def _validar_estado(self, _clave, valor):
+        valor = valor or "activa"
+        if valor not in ESTADOS_HOSPITALIZACION:
+            raise ValueError(f"Estado de hospitalización inválido: {valor!r}")
+        return valor
+
+    @property
+    def estado_etiqueta(self):
+        return ESTADOS_HOSPITALIZACION.get(self.estado, self.estado)
+
+    @property
+    def dias_hospitalizado(self) -> int:
+        fin = self.fecha_egreso or obtener_hora_bogota()
+        return max(1, (fin.date() - self.fecha_ingreso.date()).days + 1)
+
+    @property
+    def costo_estimado(self):
+        return self.costo_dia * self.dias_hospitalizado
+
+    def __repr__(self):
+        return f"<Hospitalizacion {self.id} mascota={self.mascota_id} estado={self.estado}>"
+
+
+class EvolucionHospitalaria(db.Model):
+    __tablename__ = "evoluciones_hospitalarias"
+
+    id = db.Column(db.Integer, primary_key=True)
+    hospitalizacion_id = db.Column(db.Integer, db.ForeignKey("hospitalizaciones.id"), nullable=False, index=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
+    fecha_hora = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    constantes = db.Column(db.Text)
+    tratamiento_aplicado = db.Column(db.Text)
+    observaciones = db.Column(db.Text)
+    alimentacion = db.Column(db.String(120))
+    eliminaciones = db.Column(db.String(120))
+
+    hospitalizacion = db.relationship("Hospitalizacion", back_populates="evoluciones")
+    usuario = db.relationship("Usuario", foreign_keys=[usuario_id])
+
+    def __repr__(self):
+        return f"<EvolucionHospitalaria {self.id} hosp={self.hospitalizacion_id}>"
+
+
+# ---------------------------------------------------------------------------
+# Cirugías
+# ---------------------------------------------------------------------------
+
+
+class Cirugia(db.Model):
+    __tablename__ = "cirugias"
+
+    id = db.Column(db.Integer, primary_key=True)
+    mascota_id = db.Column(db.Integer, db.ForeignKey("mascotas.id"), nullable=False, index=True)
+    tutor_id = db.Column(db.Integer, db.ForeignKey("tutores.id"), nullable=False)
+    veterinario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
+
+    tipo_procedimiento = db.Column(db.String(150), nullable=False)
+    fecha = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    consentimiento_firmado = db.Column(db.Boolean, nullable=False, default=False)
+    archivo_consentimiento = db.Column(db.String(255))
+    notas_prequirurgicas = db.Column(db.Text)
+    protocolo_anestesico = db.Column(db.Text)
+    notas_postquirurgicas = db.Column(db.Text)
+    venta_id = db.Column(db.Integer, db.ForeignKey("ventas.id"))
+
+    creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    mascota = db.relationship("Mascota")
+    tutor = db.relationship("Tutor")
+    veterinario = db.relationship("Usuario", foreign_keys=[veterinario_id])
+    creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
+    venta = db.relationship("Venta")
+
+    def __repr__(self):
+        return f"<Cirugia {self.id} {self.tipo_procedimiento!r} mascota={self.mascota_id}>"
+
+
+# ---------------------------------------------------------------------------
+# Exámenes de laboratorio
+# ---------------------------------------------------------------------------
+
+ESTADOS_EXAMEN = {
+    "solicitado": "Solicitado",
+    "en_proceso": "En proceso",
+    "con_resultado": "Con resultado",
+}
+
+
+class ExamenLaboratorio(db.Model):
+    __tablename__ = "examenes_laboratorio"
+    __table_args__ = (db.Index("ix_examenes_laboratorio_estado", "estado"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    mascota_id = db.Column(db.Integer, db.ForeignKey("mascotas.id"), nullable=False, index=True)
+    consulta_id = db.Column(db.Integer, db.ForeignKey("consultas_medicas.id"))
+    solicitado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+
+    tipo_examen = db.Column(db.String(150), nullable=False)
+    fecha_toma = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    laboratorio_externo = db.Column(db.String(150))
+    archivo_resultado = db.Column(db.String(255))
+    interpretacion = db.Column(db.Text)
+    estado = db.Column(db.String(20), nullable=False, default="solicitado")
+
+    fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    mascota = db.relationship("Mascota")
+    consulta = db.relationship("ConsultaMedica")
+    solicitado_por = db.relationship("Usuario", foreign_keys=[solicitado_por_id])
+
+    @validates("estado")
+    def _validar_estado(self, _clave, valor):
+        valor = valor or "solicitado"
+        if valor not in ESTADOS_EXAMEN:
+            raise ValueError(f"Estado de examen inválido: {valor!r}")
+        return valor
+
+    @property
+    def estado_etiqueta(self):
+        return ESTADOS_EXAMEN.get(self.estado, self.estado)
+
+    def __repr__(self):
+        return f"<ExamenLaboratorio {self.id} {self.tipo_examen!r} estado={self.estado}>"
+
+
+# ---------------------------------------------------------------------------
+# Gastos
+# ---------------------------------------------------------------------------
+
+TIPOS_GASTO = {"diario": "Gasto diario", "indirecto": "Costo indirecto"}
+CATEGORIAS_GASTO = {
+    "arriendo": "Arriendo",
+    "servicios_publicos": "Servicios públicos",
+    "nomina": "Nómina",
+    "insumos": "Insumos",
+    "mantenimiento": "Mantenimiento",
+    "transporte": "Transporte",
+    "marketing": "Marketing",
+    "impuestos": "Impuestos",
+    "otro": "Otro",
+}
+
+
+class Gasto(db.Model):
+    __tablename__ = "gastos"
+    __table_args__ = (db.Index("ix_gastos_fecha", "fecha_gasto"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
+    tipo_gasto = db.Column(db.String(20), nullable=False, default="diario")
+    categoria = db.Column(db.String(30), nullable=False, default="otro")
+    descripcion = db.Column(db.String(255), nullable=False)
+    monto = db.Column(db.Numeric(12, 2), nullable=False)
+    fecha_gasto = db.Column(db.Date, nullable=False, default=hoy_bogota)
+    comprobante = db.Column(db.String(255))
+
+    fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    usuario = db.relationship("Usuario", foreign_keys=[usuario_id])
+
+    @validates("tipo_gasto")
+    def _validar_tipo(self, _clave, valor):
+        valor = valor or "diario"
+        if valor not in TIPOS_GASTO:
+            raise ValueError(f"Tipo de gasto inválido: {valor!r}")
+        return valor
+
+    @validates("categoria")
+    def _validar_categoria(self, _clave, valor):
+        valor = valor or "otro"
+        if valor not in CATEGORIAS_GASTO:
+            raise ValueError(f"Categoría de gasto inválida: {valor!r}")
+        return valor
+
+    @property
+    def categoria_etiqueta(self):
+        return CATEGORIAS_GASTO.get(self.categoria, self.categoria)
+
+    @property
+    def tipo_etiqueta(self):
+        return TIPOS_GASTO.get(self.tipo_gasto, self.tipo_gasto)
+
+    def __repr__(self):
+        return f"<Gasto {self.id} {self.descripcion!r} {self.monto}>"
+
+
+# ---------------------------------------------------------------------------
+# Compras a crédito a proveedores
+# ---------------------------------------------------------------------------
+
+ESTADOS_FACTURA_PROVEEDOR = {"pendiente": "Pendiente", "pagada": "Pagada", "vencida": "Vencida", "anulada": "Anulada"}
+
+
+class FacturaProveedor(db.Model):
+    __tablename__ = "facturas_proveedor"
+    __table_args__ = (db.Index("ix_facturas_proveedor_estado", "estado"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    proveedor_id = db.Column(db.Integer, db.ForeignKey("proveedores.id"), nullable=False, index=True)
+    numero_factura = db.Column(db.String(60), nullable=False)
+    fecha_factura = db.Column(db.Date, nullable=False, default=hoy_bogota)
+    fecha_vencimiento = db.Column(db.Date)
+    monto_total = db.Column(db.Numeric(12, 2), nullable=False)
+    estado = db.Column(db.String(20), nullable=False, default="pendiente")
+    notas = db.Column(db.Text)
+    archivo = db.Column(db.String(255))
+
+    creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    proveedor = db.relationship("Proveedor")
+    creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
+    pagos = db.relationship(
+        "PagoProveedor", back_populates="factura", order_by="PagoProveedor.fecha_pago", cascade="all, delete-orphan"
+    )
+
+    @validates("estado")
+    def _validar_estado(self, _clave, valor):
+        valor = valor or "pendiente"
+        if valor not in ESTADOS_FACTURA_PROVEEDOR:
+            raise ValueError(f"Estado de factura inválido: {valor!r}")
+        return valor
+
+    @property
+    def estado_etiqueta(self):
+        return ESTADOS_FACTURA_PROVEEDOR.get(self.estado, self.estado)
+
+    @property
+    def total_abonado(self):
+        return sum((p.monto for p in self.pagos), Decimal("0.00"))
+
+    @property
+    def saldo_pendiente(self):
+        return self.monto_total - self.total_abonado
+
+    def __repr__(self):
+        return f"<FacturaProveedor {self.id} {self.numero_factura} saldo={self.saldo_pendiente}>"
+
+
+class PagoProveedor(db.Model):
+    __tablename__ = "pagos_proveedor"
+
+    id = db.Column(db.Integer, primary_key=True)
+    factura_id = db.Column(db.Integer, db.ForeignKey("facturas_proveedor.id"), nullable=False, index=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    monto = db.Column(db.Numeric(12, 2), nullable=False)
+    metodo_pago = db.Column(db.String(30), nullable=False, default="transferencia")
+    fecha_pago = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    notas = db.Column(db.Text)
+
+    factura = db.relationship("FacturaProveedor", back_populates="pagos")
+    usuario = db.relationship("Usuario", foreign_keys=[usuario_id])
+
+    def __repr__(self):
+        return f"<PagoProveedor {self.id} factura={self.factura_id} monto={self.monto}>"
+
+
+# ---------------------------------------------------------------------------
+# Cartera de tutores con crédito
+# ---------------------------------------------------------------------------
+
+ESTADOS_FACTURA_TUTOR = {"pendiente": "Pendiente", "pagada": "Pagada", "anulada": "Anulada"}
+
+
+class CuentaTutor(db.Model):
+    """Factura a crédito de un tutor (fía) con sus abonos. Distinta de una
+    ``Venta`` de contado; se usa para clientes con crédito autorizado."""
+
+    __tablename__ = "cuentas_tutor"
+    __table_args__ = (db.Index("ix_cuentas_tutor_estado", "estado"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    tutor_id = db.Column(db.Integer, db.ForeignKey("tutores.id"), nullable=False, index=True)
+    venta_id = db.Column(db.Integer, db.ForeignKey("ventas.id"))
+    descripcion = db.Column(db.String(255), nullable=False)
+    monto_total = db.Column(db.Numeric(12, 2), nullable=False)
+    estado = db.Column(db.String(20), nullable=False, default="pendiente")
+    fecha_factura = db.Column(db.Date, nullable=False, default=hoy_bogota)
+    fecha_vencimiento = db.Column(db.Date)
+
+    creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    tutor = db.relationship("Tutor")
+    venta = db.relationship("Venta")
+    creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
+    abonos = db.relationship(
+        "AbonoCuentaTutor", back_populates="cuenta", order_by="AbonoCuentaTutor.fecha_pago", cascade="all, delete-orphan"
+    )
+
+    @validates("estado")
+    def _validar_estado(self, _clave, valor):
+        valor = valor or "pendiente"
+        if valor not in ESTADOS_FACTURA_TUTOR:
+            raise ValueError(f"Estado de cuenta inválido: {valor!r}")
+        return valor
+
+    @property
+    def estado_etiqueta(self):
+        return ESTADOS_FACTURA_TUTOR.get(self.estado, self.estado)
+
+    @property
+    def total_abonado(self):
+        return sum((a.monto for a in self.abonos), Decimal("0.00"))
+
+    @property
+    def saldo_pendiente(self):
+        return self.monto_total - self.total_abonado
+
+    def __repr__(self):
+        return f"<CuentaTutor {self.id} tutor={self.tutor_id} saldo={self.saldo_pendiente}>"
+
+
+class AbonoCuentaTutor(db.Model):
+    __tablename__ = "abonos_cuenta_tutor"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cuenta_id = db.Column(db.Integer, db.ForeignKey("cuentas_tutor.id"), nullable=False, index=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    monto = db.Column(db.Numeric(12, 2), nullable=False)
+    metodo_pago = db.Column(db.String(30), nullable=False, default="efectivo")
+    fecha_pago = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    notas = db.Column(db.Text)
+
+    cuenta = db.relationship("CuentaTutor", back_populates="abonos")
+    usuario = db.relationship("Usuario", foreign_keys=[usuario_id])
+
+    def __repr__(self):
+        return f"<AbonoCuentaTutor {self.id} cuenta={self.cuenta_id} monto={self.monto}>"

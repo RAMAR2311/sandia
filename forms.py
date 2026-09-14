@@ -20,7 +20,20 @@ from wtforms import (
 )
 from wtforms.validators import DataRequired, Email, EqualTo, InputRequired, Length, NumberRange, Optional, Regexp, ValidationError
 
-from models import CATEGORIAS_PRODUCTO, ESPECIES, ROLES, SEXOS, TAMANOS, TIPOS_DOCUMENTO, UNIDADES_MEDIDA
+from models import (
+    CATEGORIAS_GASTO,
+    CATEGORIAS_PRODUCTO,
+    ESPECIES,
+    ESTADOS_CITA,
+    ESTADOS_EXAMEN,
+    ROLES,
+    SEXOS,
+    TAMANOS,
+    TIPOS_CITA,
+    TIPOS_DOCUMENTO,
+    TIPOS_GASTO,
+    UNIDADES_MEDIDA,
+)
 from utils import fecha_desde_edad, hoy_bogota, solo_digitos
 
 LONGITUD_MINIMA_PASSWORD = 8
@@ -525,3 +538,178 @@ class ConfiguracionClinicaForm(FlaskForm):
 
 
 
+
+
+# ---------------------------------------------------------------------------
+# Agenda médica general
+# ---------------------------------------------------------------------------
+
+
+class CitaForm(FlaskForm):
+    tutor_id = HiddenField(validators=[DataRequired("Selecciona el tutor.")])
+    mascota_id = HiddenField(validators=[DataRequired("Selecciona la mascota.")])
+    tipo = SelectField("Tipo de cita", choices=list(TIPOS_CITA.items()), validators=[DataRequired()])
+    profesional_id = SelectField("Profesional (opcional)", coerce=int, validate_choice=False, validators=[Optional()])
+    fecha = DateField("Fecha", validators=[DataRequired("Selecciona la fecha.")])
+    hora = TimeField("Hora", validators=[DataRequired("Selecciona la hora.")])
+    duracion_minutos = IntegerField("Duración (minutos)", validators=[DataRequired(), NumberRange(min=10, max=480)], default=30)
+    motivo = StringField("Motivo", validators=[Optional(), Length(max=255)])
+    notas = TextAreaField("Notas (opcional)", validators=[Optional(), Length(max=1000)])
+    enviar = SubmitField("Agendar cita")
+
+
+class CambiarEstadoCitaForm(FlaskForm):
+    estado = SelectField("Nuevo estado", choices=list(ESTADOS_CITA.items()), validators=[DataRequired()])
+    enviar = SubmitField("Actualizar estado")
+
+
+# ---------------------------------------------------------------------------
+# Hospitalización
+# ---------------------------------------------------------------------------
+
+
+class HospitalizacionForm(FlaskForm):
+    mascota_id = HiddenField(validators=[DataRequired("Selecciona la mascota.")])
+    motivo = TextAreaField("Motivo de ingreso", validators=[DataRequired("El motivo es obligatorio."), Length(max=2000)])
+    diagnostico = TextAreaField("Diagnóstico (opcional)", validators=[Optional(), Length(max=2000)])
+    jaula = StringField("Jaula / Kennel", validators=[Optional(), Length(max=30)])
+    costo_dia = DecimalField("Costo por día (COP)", places=2, validators=[Optional(), NumberRange(min=Decimal("0"))], default=Decimal("0.00"))
+    enviar = SubmitField("Registrar ingreso")
+
+
+class EvolucionHospitalariaForm(FlaskForm):
+    constantes = TextAreaField("Constantes vitales", validators=[Optional(), Length(max=1000)])
+    tratamiento_aplicado = TextAreaField("Tratamiento aplicado", validators=[Optional(), Length(max=1000)])
+    alimentacion = StringField("Alimentación", validators=[Optional(), Length(max=120)])
+    eliminaciones = StringField("Eliminaciones", validators=[Optional(), Length(max=120)])
+    observaciones = TextAreaField("Observaciones", validators=[Optional(), Length(max=1000)])
+    enviar = SubmitField("Registrar evolución")
+
+
+class AltaHospitalizacionForm(FlaskForm):
+    estado = SelectField(
+        "Estado de egreso",
+        choices=[("alta", "De alta"), ("fallecido", "Fallecido"), ("remitido", "Remitido")],
+        validators=[DataRequired()],
+    )
+    enviar = SubmitField("Registrar egreso")
+
+
+# ---------------------------------------------------------------------------
+# Cirugías
+# ---------------------------------------------------------------------------
+
+
+class CirugiaForm(FlaskForm):
+    mascota_id = HiddenField(validators=[DataRequired("Selecciona la mascota.")])
+    tipo_procedimiento = StringField("Tipo de procedimiento", validators=[DataRequired("Indica el procedimiento."), Length(max=150)])
+    fecha = DateField("Fecha", validators=[DataRequired("Selecciona la fecha.")])
+    consentimiento_firmado = BooleanField("Consentimiento informado firmado")
+    archivo_consentimiento = FileField("Archivo del consentimiento (opcional)", validators=[Optional()])
+    notas_prequirurgicas = TextAreaField("Notas prequirúrgicas", validators=[Optional(), Length(max=2000)])
+    protocolo_anestesico = TextAreaField("Protocolo anestésico", validators=[Optional(), Length(max=2000)])
+    enviar = SubmitField("Registrar cirugía")
+
+
+class NotasPostquirurgicasForm(FlaskForm):
+    notas_postquirurgicas = TextAreaField("Notas postquirúrgicas", validators=[DataRequired("Escribe las notas."), Length(max=2000)])
+    enviar = SubmitField("Guardar notas")
+
+
+# ---------------------------------------------------------------------------
+# Exámenes de laboratorio
+# ---------------------------------------------------------------------------
+
+
+class ExamenLaboratorioForm(FlaskForm):
+    mascota_id = HiddenField(validators=[DataRequired("Selecciona la mascota.")])
+    tipo_examen = StringField("Tipo de examen", validators=[DataRequired("Indica el examen."), Length(max=150)])
+    fecha_toma = DateField("Fecha de toma", validators=[DataRequired("Selecciona la fecha.")])
+    laboratorio_externo = StringField("Laboratorio externo (opcional)", validators=[Optional(), Length(max=150)])
+    enviar = SubmitField("Solicitar examen")
+
+
+class ResultadoExamenForm(FlaskForm):
+    archivo_resultado = FileField("Archivo del resultado (opcional)", validators=[Optional()])
+    interpretacion = TextAreaField("Interpretación", validators=[Optional(), Length(max=2000)])
+    estado = SelectField("Estado", choices=list(ESTADOS_EXAMEN.items()), validators=[DataRequired()])
+    enviar = SubmitField("Guardar resultado")
+
+
+# ---------------------------------------------------------------------------
+# Enmienda de historia clínica
+# ---------------------------------------------------------------------------
+
+
+class EnmiendaConsultaForm(FlaskForm):
+    texto = TextAreaField(
+        "Nota de enmienda",
+        validators=[DataRequired("Explica la corrección."), Length(min=5, max=2000)],
+    )
+    enviar = SubmitField("Agregar enmienda")
+
+
+# ---------------------------------------------------------------------------
+# Gastos
+# ---------------------------------------------------------------------------
+
+
+class GastoForm(FlaskForm):
+    tipo_gasto = SelectField("Tipo", choices=list(TIPOS_GASTO.items()), validators=[DataRequired()])
+    categoria = SelectField("Categoría", choices=list(CATEGORIAS_GASTO.items()), validators=[DataRequired()])
+    descripcion = StringField("Descripción", validators=[DataRequired("Describe el gasto."), Length(max=255)])
+    monto = DecimalField("Monto (COP)", places=2, validators=[DataRequired("Ingresa el monto."), NumberRange(min=Decimal("0.01"))])
+    fecha_gasto = DateField("Fecha", validators=[DataRequired("Selecciona la fecha.")])
+    comprobante = FileField("Comprobante (opcional)", validators=[Optional()])
+    enviar = SubmitField("Registrar gasto")
+
+
+# ---------------------------------------------------------------------------
+# Compras a crédito a proveedores
+# ---------------------------------------------------------------------------
+
+
+class FacturaProveedorForm(FlaskForm):
+    proveedor_id = SelectField("Proveedor", coerce=int, validators=[DataRequired("Selecciona el proveedor.")])
+    numero_factura = StringField("Número de factura", validators=[DataRequired("Indica el número."), Length(max=60)])
+    fecha_factura = DateField("Fecha de factura", validators=[DataRequired()])
+    fecha_vencimiento = DateField("Fecha de vencimiento (opcional)", validators=[Optional()])
+    monto_total = DecimalField("Monto total (COP)", places=2, validators=[DataRequired("Ingresa el monto."), NumberRange(min=Decimal("0.01"))])
+    notas = TextAreaField("Notas (opcional)", validators=[Optional(), Length(max=1000)])
+    archivo = FileField("Archivo de la factura (opcional)", validators=[Optional()])
+    enviar = SubmitField("Registrar factura")
+
+
+class PagoProveedorForm(FlaskForm):
+    monto = DecimalField("Monto abonado (COP)", places=2, validators=[DataRequired("Ingresa el monto."), NumberRange(min=Decimal("0.01"))])
+    metodo_pago = SelectField(
+        "Método de pago",
+        choices=[("efectivo", "Efectivo"), ("transferencia", "Transferencia"), ("nequi", "Nequi"), ("daviplata", "Daviplata"), ("tarjeta", "Tarjeta")],
+        validators=[DataRequired()],
+    )
+    notas = TextAreaField("Notas (opcional)", validators=[Optional(), Length(max=500)])
+    enviar = SubmitField("Registrar abono")
+
+
+# ---------------------------------------------------------------------------
+# Cartera de tutores con crédito
+# ---------------------------------------------------------------------------
+
+
+class CuentaTutorForm(FlaskForm):
+    descripcion = StringField("Descripción", validators=[DataRequired("Describe el cargo."), Length(max=255)])
+    monto_total = DecimalField("Monto total (COP)", places=2, validators=[DataRequired("Ingresa el monto."), NumberRange(min=Decimal("0.01"))])
+    fecha_factura = DateField("Fecha", validators=[DataRequired()])
+    fecha_vencimiento = DateField("Fecha de vencimiento (opcional)", validators=[Optional()])
+    enviar = SubmitField("Registrar cargo a crédito")
+
+
+class AbonoCuentaTutorForm(FlaskForm):
+    monto = DecimalField("Monto abonado (COP)", places=2, validators=[DataRequired("Ingresa el monto."), NumberRange(min=Decimal("0.01"))])
+    metodo_pago = SelectField(
+        "Método de pago",
+        choices=[("efectivo", "Efectivo"), ("nequi", "Nequi"), ("daviplata", "Daviplata"), ("transferencia", "Transferencia"), ("tarjeta", "Tarjeta")],
+        validators=[DataRequired()],
+    )
+    notas = TextAreaField("Notas (opcional)", validators=[Optional(), Length(max=500)])
+    enviar = SubmitField("Registrar abono")

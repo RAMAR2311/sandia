@@ -1,0 +1,26 @@
+{
+  "name": "Sandía · Medicina y Spa Veterinario",
+  "short_name": "Sandía",
+  "description": "Sistema de gestión veterinaria: historia clínica, spa, punto de venta e inventario.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FDF6EE",
+  "theme_color": "#E53935",
+  "lang": "es-CO",
+  "icons": [
+    {
+      "src": "/static/img/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/img/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

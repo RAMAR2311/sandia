@@ -7,6 +7,8 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block titulo %}VetCare{% endblock %} · {{ clinica.nombre }}</title>
   <link rel="icon" type="image/svg+xml" href="{{ static_url('img/favicon.svg') }}">
+  <link rel="apple-touch-icon" href="{{ static_url('img/logo.svg') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
   <link rel="stylesheet" href="{{ static_url('vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ static_url('vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
   <link rel="stylesheet" href="{{ static_url('css/fonts.css') }}">
@@ -108,6 +110,15 @@
 
 <script src="{{ static_url('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ static_url('js/app.js') }}"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}").catch(function (err) {
+        console.warn('No se pudo registrar el service worker:', err);
+      });
+    });
+  }
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo_textarea %}
+{% block titulo %}Cirugía{% endblock %}
+{% block contenido %}
+<nav class="small mb-2"><a href="{{ url_for('historias.ficha_medica', mascota_id=cirugia.mascota_id) }}" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i>{{ cirugia.mascota.nombre }}</a></nav>
+
+<div class="card mb-3"><div class="card-body">
+  <h1 class="titulo-pagina">{{ cirugia.tipo_procedimiento }}</h1>
+  <div class="text-secondary">{{ cirugia.mascota.nombre }} · {{ cirugia.fecha|fecha }} · Dr(a). {{ cirugia.veterinario.nombre if cirugia.veterinario else '—' }}</div>
+  <dl class="lista-datos mt-3 mb-0">
+    <dt>Consentimiento</dt><dd>
+      {% if cirugia.consentimiento_firmado %}<span class="estado estado--ok">Firmado</span>{% else %}<span class="estado estado--alerta">Sin firmar</span>{% endif %}
+      {% if cirugia.archivo_consentimiento %} · <a href="{{ url_for('static', filename='uploads/cirugias/' ~ cirugia.archivo_consentimiento) }}" target="_blank">Ver archivo</a>{% endif %}
+    </dd>
+    <dt>Notas prequirúrgicas</dt><dd>{{ cirugia.notas_prequirurgicas or '—' }}</dd>
+    <dt>Protocolo anestésico</dt><dd>{{ cirugia.protocolo_anestesico or '—' }}</dd>
+    <dt>Notas postquirúrgicas</dt><dd>{{ cirugia.notas_postquirurgicas or '—' }}</dd>
+  </dl>
+</div></div>
+
+<div class="card"><div class="card-header">Notas postquirúrgicas</div><div class="card-body">
+  <form method="post" action="{{ url_for('historias.cirugia_notas', id=cirugia.id) }}">
+    {{ form_notas.hidden_tag() }}
+    {{ campo_textarea(form_notas.notas_postquirurgicas, filas=4) }}
+    {{ form_notas.enviar(class_="btn btn-primary") }}
+  </form>
+</div></div>
+{% endblock %}

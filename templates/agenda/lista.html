@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado, avatar_mascota %}
+{% block titulo %}Agenda{% endblock %}
+
+{% block contenido %}
+{% call encabezado("Agenda médica", fecha|fecha_larga) %}
+  <a class="btn btn-primary" href="{{ url_for('agenda.nueva') }}"><i class="bi bi-plus-lg me-1"></i>Nueva cita</a>
+{% endcall %}
+
+<form method="get" class="d-flex gap-2 mb-3">
+  <input type="date" class="form-control" style="max-width:220px" name="fecha" value="{{ fecha.isoformat() }}" onchange="this.form.submit()">
+  <a class="btn btn-outline-secondary" href="{{ url_for('agenda.lista') }}">Hoy</a>
+</form>
+
+{% if not citas %}
+<div class="card"><div class="card-body text-center text-secondary py-5">No hay citas para este día.</div></div>
+{% else %}
+<div class="d-flex flex-column gap-2">
+  {% for cita in citas %}
+  <a class="fila-lista d-flex align-items-center gap-3 text-decoration-none text-body" href="{{ url_for('agenda.detalle', id=cita.id) }}">
+    {{ avatar_mascota(cita.mascota, 48) }}
+    <div class="flex-grow-1 min-w-0">
+      <div class="fw-bold">{{ cita.fecha_hora|hora }} · {{ cita.mascota.nombre }} <span class="text-secondary fw-normal">· {{ cita.tutor.nombre_completo }}</span></div>
+      <div class="small text-secondary">{{ cita.tipo_etiqueta }}{% if cita.profesional %} · {{ cita.profesional.nombre }}{% endif %}{% if cita.motivo %} · {{ cita.motivo }}{% endif %}</div>
+    </div>
+    <span class="estado estado--{{ 'ok' if cita.estado == 'cumplida' else ('urgente' if cita.estado in ('cancelada','no_asistio') else 'info') }}">{{ cita.estado_etiqueta }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

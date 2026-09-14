@@ -77,6 +77,21 @@
           </div>
         </div>
         {% endif %}
+
+        <hr>
+        <h6 class="fw-bold text-dark"><i class="bi bi-pencil-square me-1"></i>Enmiendas</h6>
+        <p class="small text-secondary">La consulta original nunca se edita ni se borra. Cualquier corrección queda aquí, con autor y fecha.</p>
+        {% for e in consulta.enmiendas %}
+        <div class="alert alert-warning py-2">
+          <div class="small text-secondary">{{ e.fecha|fecha_hora }} · {{ e.autor.nombre if e.autor else '—' }}</div>
+          <div>{{ e.texto }}</div>
+        </div>
+        {% endfor %}
+        <form method="post" action="{{ url_for('historias.consulta_enmienda', id=consulta.id) }}" class="mt-2">
+          {{ form_enmienda.hidden_tag() }}
+          {{ form_enmienda.texto(class_="form-control mb-2", rows="2", placeholder="Explica la corrección...") }}
+          {{ form_enmienda.enviar(class_="btn btn-outline-warning btn-sm") }}
+        </form>
       </div>
     </div>
   </div>

@@ -53,6 +53,9 @@
         </td>
         <td>{{ p.ciudad or '—' }}</td>
         <td class="text-end">
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('inventario.facturas_proveedor', proveedor_id=p.id) }}" title="Facturas y abonos">
+            <i class="bi bi-receipt"></i>
+          </a>
           <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('inventario.proveedor_editar', proveedor_id=p.id) }}">
             <i class="bi bi-pencil"></i>
           </a>

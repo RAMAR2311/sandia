@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo, campo_select, campo_archivo, encabezado %}
+{% block titulo %}Nuevo gasto{% endblock %}
+{% block contenido %}
+{{ encabezado("Nuevo gasto") }}
+<form method="post" enctype="multipart/form-data" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="card"><div class="card-body">
+    <div class="row g-2">
+      <div class="col-6">{{ campo_select(form.tipo_gasto) }}</div>
+      <div class="col-6">{{ campo_select(form.categoria) }}</div>
+    </div>
+    {{ campo(form.descripcion) }}
+    <div class="row g-2">
+      <div class="col-6">{{ campo(form.monto, type="number", step="100") }}</div>
+      <div class="col-6">{{ campo(form.fecha_gasto, type="date") }}</div>
+    </div>
+    {{ campo_archivo(form.comprobante, ayuda="PDF, JPG, PNG o WEBP (opcional).") }}
+  </div></div>
+  <div class="acciones-fijas"><div class="d-flex gap-2">
+    {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
+    <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('gastos.lista') }}">Cancelar</a>
+  </div></div>
+</form>
+{% endblock %}

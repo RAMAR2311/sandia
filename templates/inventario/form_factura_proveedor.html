@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo, campo_textarea, campo_archivo, encabezado %}
+{% block titulo %}Nueva factura{% endblock %}
+{% block contenido %}
+{{ encabezado("Nueva factura de proveedor", proveedor.nombre) }}
+<form method="post" enctype="multipart/form-data" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="card"><div class="card-body">
+    {{ campo(form.numero_factura) }}
+    <div class="row g-2">
+      <div class="col-6">{{ campo(form.fecha_factura, type="date") }}</div>
+      <div class="col-6">{{ campo(form.fecha_vencimiento, type="date") }}</div>
+    </div>
+    {{ campo(form.monto_total, type="number", step="100") }}
+    {{ campo_textarea(form.notas, filas=2) }}
+    {{ campo_archivo(form.archivo, ayuda="PDF, JPG, PNG o WEBP.") }}
+  </div></div>
+  <div class="acciones-fijas"><div class="d-flex gap-2">
+    {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
+    <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('inventario.facturas_proveedor', proveedor_id=proveedor.id) }}">Cancelar</a>
+  </div></div>
+</form>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Cuentas por pagar{% endblock %}
+{% block contenido %}
+{{ encabezado("Cuentas por pagar", "Facturas pendientes con proveedores") }}
+<div class="card mb-3"><div class="card-body d-flex justify-content-between align-items-center">
+  <span class="fw-bold">Total pendiente</span><span class="fs-4 fw-bold text-danger">{{ total_pendiente|cop }}</span>
+</div></div>
+<div class="card">
+  <div class="table-responsive"><table class="table table-hover align-middle mb-0">
+    <thead class="table-light"><tr><th>Proveedor</th><th>Factura</th><th>Vence</th><th class="text-end">Saldo</th><th></th></tr></thead>
+    <tbody>
+      {% for f in facturas %}
+      <tr>
+        <td>{{ f.proveedor.nombre }}</td>
+        <td>{{ f.numero_factura }}</td>
+        <td>{{ f.fecha_vencimiento|fecha if f.fecha_vencimiento else '—' }}</td>
+        <td class="text-end fw-bold text-danger">{{ f.saldo_pendiente|cop }}</td>
+        <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('inventario.facturas_proveedor', proveedor_id=f.proveedor_id) }}">Ver / abonar</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-center text-muted py-4">Sin cuentas pendientes. 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

@@ -158,7 +158,9 @@ def _configurar_logging(app: Flask) -> None:
 
 def _registrar_blueprints(app: Flask) -> None:
     from routes.admin import bp as admin_bp
+    from routes.agenda import bp as agenda_bp
     from routes.api import bp as api_bp
+    from routes.gastos import bp as gastos_bp
     from routes.auth import bp as auth_bp
     from routes.dashboard import bp as dashboard_bp
     from routes.historias import bp as historias_bp
@@ -179,6 +181,8 @@ def _registrar_blueprints(app: Flask) -> None:
     app.register_blueprint(spa_bp)
     app.register_blueprint(reportes_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(agenda_bp)
+    app.register_blueprint(gastos_bp)
     app.register_blueprint(api_bp)
 
 

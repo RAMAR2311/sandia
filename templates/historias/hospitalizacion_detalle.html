@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo_textarea, campo, campo_select %}
+{% block titulo %}Hospitalización{% endblock %}
+{% block contenido %}
+<nav class="small mb-2"><a href="{{ url_for('historias.ficha_medica', mascota_id=hosp.mascota_id) }}" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i>{{ hosp.mascota.nombre }}</a></nav>
+
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between align-items-start">
+    <div>
+      <h1 class="titulo-pagina">{{ hosp.mascota.nombre }}</h1>
+      <div class="text-secondary">Jaula {{ hosp.jaula or '—' }} · {{ hosp.dias_hospitalizado }} día(s)</div>
+    </div>
+    <span class="estado estado--{{ 'ok' if hosp.estado == 'alta' else ('urgente' if hosp.estado == 'fallecido' else 'info') }}">{{ hosp.estado_etiqueta }}</span>
+  </div>
+  <dl class="lista-datos mt-3 mb-0">
+    <dt>Ingreso</dt><dd>{{ hosp.fecha_ingreso|fecha_hora }}</dd>
+    <dt>Motivo</dt><dd>{{ hosp.motivo }}</dd>
+    <dt>Diagnóstico</dt><dd>{{ hosp.diagnostico or '—' }}</dd>
+    <dt>Costo estimado</dt><dd>{{ hosp.costo_estimado|cop }}</dd>
+    {% if hosp.fecha_egreso %}<dt>Egreso</dt><dd>{{ hosp.fecha_egreso|fecha_hora }}</dd>{% endif %}
+  </dl>
+</div></div>
+
+{% if hosp.estado == 'activa' %}
+<div class="row g-3">
+  <div class="col-12 col-lg-7">
+    <div class="card"><div class="card-header">Registrar evolución</div><div class="card-body">
+      <form method="post" action="{{ url_for('historias.hospitalizacion_evolucion', id=hosp.id) }}">
+        {{ form_evolucion.hidden_tag() }}
+        {{ campo_textarea(form_evolucion.constantes, filas=2) }}
+        {{ campo_textarea(form_evolucion.tratamiento_aplicado, filas=2) }}
+        <div class="row g-2">
+          <div class="col-6">{{ campo(form_evolucion.alimentacion) }}</div>
+          <div class="col-6">{{ campo(form_evolucion.eliminaciones) }}</div>
+        </div>
+        {{ campo_textarea(form_evolucion.observaciones, filas=2) }}
+        {{ form_evolucion.enviar(class_="btn btn-primary") }}
+      </form>
+    </div></div>
+  </div>
+  <div class="col-12 col-lg-5">
+    <div class="card"><div class="card-header">Egreso</div><div class="card-body">
+      <form method="post" action="{{ url_for('historias.hospitalizacion_egreso', id=hosp.id) }}">
+        {{ form_alta.hidden_tag() }}
+        {{ campo_select(form_alta.estado) }}
+        {{ form_alta.enviar(class_="btn btn-outline-danger w-100") }}
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card mt-3"><div class="card-header">Evoluciones por turno</div>
+  <div class="list-group list-group-flush">
+    {% for ev in hosp.evoluciones %}
+    <div class="list-group-item">
+      <div class="small text-secondary">{{ ev.fecha_hora|fecha_hora }} · {{ ev.usuario.nombre if ev.usuario else '—' }}</div>
+      {% if ev.constantes %}<div><strong>Constantes:</strong> {{ ev.constantes }}</div>{% endif %}
+      {% if ev.tratamiento_aplicado %}<div><strong>Tratamiento:</strong> {{ ev.tratamiento_aplicado }}</div>{% endif %}
+      {% if ev.alimentacion %}<div><strong>Alimentación:</strong> {{ ev.alimentacion }}</div>{% endif %}
+      {% if ev.eliminaciones %}<div><strong>Eliminaciones:</strong> {{ ev.eliminaciones }}</div>{% endif %}
+      {% if ev.observaciones %}<div class="text-secondary">{{ ev.observaciones }}</div>{% endif %}
+    </div>
+    {% else %}
+    <div class="list-group-item text-secondary text-center py-4">Sin evoluciones registradas.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

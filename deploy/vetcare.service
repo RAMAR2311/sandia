@@ -1,0 +1,15 @@
+[Unit]
+Description=VetCare (Sandía) - Gunicorn
+After=network.target postgresql.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/vetcare
+EnvironmentFile=/var/www/vetcare/.env
+ExecStart=/var/www/vetcare/venv/bin/gunicorn --workers 3 --bind unix:/var/www/vetcare/vetcare.sock -m 007 "app:create_app()"
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

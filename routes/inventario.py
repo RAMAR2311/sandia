@@ -18,12 +18,15 @@ from flask import (
 )
 from flask_login import current_user, login_required
 from sqlalchemy import or_, select
+from sqlalchemy.orm import selectinload
 
 from decorators import admin_required
 from forms import (
     AjusteStockForm,
+    FacturaProveedorForm,
     ImportarExcelForm,
     LoteForm,
+    PagoProveedorForm,
     ProductoForm,
     ProveedorForm,
     SoloCsrfForm,
@@ -33,15 +36,19 @@ from models import (
     CATEGORIAS_PRODUCTO,
     TIPOS_MOVIMIENTO,
     UNIDADES_MEDIDA,
+    FacturaProveedor,
     Lote,
     MovimientoStock,
+    PagoProveedor,
     Producto,
     Proveedor,
     VarianteProducto,
     db,
 )
 from utils import (
+    eliminar_documento,
     eliminar_imagen,
+    guardar_documento,
     guardar_imagen,
     hoy_bogota,
     normalizar_texto,
@@ -880,3 +887,111 @@ def proveedor_editar(proveedor_id):
             flash("Cambios guardados.", "success")
             return redirect(url_for("inventario.proveedores_lista"))
     return render_template("inventario/form_proveedor.html", form=form, proveedor=prov)
+
+
+# ---------------------------------------------------------------------------
+# Compras a crédito a proveedores (facturas y abonos)
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/proveedores/<int:proveedor_id>/facturas", methods=["GET"])
+@login_required
+@admin_required
+def facturas_proveedor(proveedor_id):
+    prov = db.session.get(Proveedor, proveedor_id)
+    if not prov:
+        abort(404)
+    facturas = db.session.execute(
+        select(FacturaProveedor).filter_by(proveedor_id=proveedor_id).order_by(FacturaProveedor.fecha_factura.desc())
+    ).scalars().all()
+    return render_template("inventario/facturas_proveedor.html", proveedor=prov, facturas=facturas, form_pago=PagoProveedorForm())
+
+
+@bp.route("/proveedores/<int:proveedor_id>/facturas/nueva", methods=["GET", "POST"])
+@login_required
+@admin_required
+def factura_proveedor_nueva(proveedor_id):
+    prov = db.session.get(Proveedor, proveedor_id)
+    if not prov:
+        abort(404)
+    form = FacturaProveedorForm(proveedor_id=proveedor_id, fecha_factura=hoy_bogota())
+    form.proveedor_id.choices = [(prov.id, prov.nombre)]
+    if form.validate_on_submit():
+        nombre_archivo = None
+        if form.archivo.data and getattr(form.archivo.data, "filename", ""):
+            try:
+                nombre_archivo = guardar_documento(form.archivo.data, "facturas_proveedor")
+            except ValueError as exc:
+                form.archivo.errors.append(str(exc))
+
+        if not form.archivo.errors:
+            factura = FacturaProveedor(
+                proveedor_id=prov.id,
+                numero_factura=form.numero_factura.data,
+                fecha_factura=form.fecha_factura.data,
+                fecha_vencimiento=form.fecha_vencimiento.data,
+                monto_total=form.monto_total.data,
+                notas=form.notas.data,
+                archivo=nombre_archivo,
+                creado_por_id=current_user.id,
+            )
+            try:
+                db.session.add(factura)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                if nombre_archivo:
+                    eliminar_documento("facturas_proveedor", nombre_archivo)
+                current_app.logger.exception("Error al registrar factura de proveedor")
+                flash("No se pudo registrar la factura.", "danger")
+            else:
+                flash("Factura registrada.", "success")
+                return redirect(url_for("inventario.facturas_proveedor", proveedor_id=prov.id))
+    return render_template("inventario/form_factura_proveedor.html", form=form, proveedor=prov)
+
+
+@bp.route("/facturas-proveedor/<int:factura_id>/abono", methods=["POST"])
+@login_required
+@admin_required
+def factura_proveedor_abono(factura_id):
+    factura = db.session.get(FacturaProveedor, factura_id)
+    if not factura:
+        abort(404)
+    form = PagoProveedorForm()
+    if form.validate_on_submit():
+        if form.monto.data > factura.saldo_pendiente:
+            flash(f"El abono (${form.monto.data:,.2f}) supera el saldo pendiente (${factura.saldo_pendiente:,.2f}).", "danger")
+        else:
+            try:
+                db.session.add(PagoProveedor(
+                    factura_id=factura.id,
+                    usuario_id=current_user.id,
+                    monto=form.monto.data,
+                    metodo_pago=form.metodo_pago.data,
+                    notas=form.notas.data,
+                ))
+                db.session.flush()
+                if factura.saldo_pendiente <= 0:
+                    factura.estado = "pagada"
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception("Error al registrar abono a factura %d", factura_id)
+                flash("No se pudo registrar el abono.", "danger")
+            else:
+                flash("Abono registrado.", "success")
+    return redirect(url_for("inventario.facturas_proveedor", proveedor_id=factura.proveedor_id))
+
+
+@bp.route("/cuentas-por-pagar", methods=["GET"])
+@login_required
+@admin_required
+def cuentas_por_pagar():
+    facturas = db.session.execute(
+        select(FacturaProveedor)
+        .where(FacturaProveedor.estado == "pendiente")
+        .options(selectinload(FacturaProveedor.proveedor))
+        .order_by(FacturaProveedor.fecha_vencimiento.asc().nulls_last())
+    ).scalars().all()
+    total_pendiente = sum((f.saldo_pendiente for f in facturas), Decimal("0.00"))
+    return render_template("inventario/cuentas_por_pagar.html", facturas=facturas, total_pendiente=total_pendiente)

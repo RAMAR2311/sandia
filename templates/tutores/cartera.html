@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Cartera de {{ tutor.nombre_completo }}{% endblock %}
+{% block contenido %}
+{% call encabezado("Cartera de " ~ tutor.nombre_completo, "Cargos a crédito y abonos") %}
+  <a class="btn btn-primary" href="{{ url_for('tutores.cartera_nueva', tutor_id=tutor.id) }}"><i class="bi bi-plus-lg me-1"></i>Nuevo cargo</a>
+{% endcall %}
+
+<div class="card mb-3"><div class="card-body d-flex justify-content-between align-items-center">
+  <span class="fw-bold">Saldo pendiente total</span><span class="fs-4 fw-bold text-danger">{{ saldo_total|cop }}</span>
+</div></div>
+
+<div class="d-flex flex-column gap-3">
+  {% for c in cuentas %}
+  <div class="card">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="fw-bold">{{ c.descripcion }}</div>
+          <div class="small text-secondary">{{ c.fecha_factura|fecha }}{% if c.fecha_vencimiento %} · vence {{ c.fecha_vencimiento|fecha }}{% endif %}</div>
+        </div>
+        <span class="estado estado--{{ 'ok' if c.estado == 'pagada' else 'alerta' }}">{{ c.estado_etiqueta }}</span>
+      </div>
+      <div class="row g-2 mt-2 text-center">
+        <div class="col-4"><div class="small text-secondary">Total</div><div class="fw-bold">{{ c.monto_total|cop }}</div></div>
+        <div class="col-4"><div class="small text-secondary">Abonado</div><div class="fw-bold text-success">{{ c.total_abonado|cop }}</div></div>
+        <div class="col-4"><div class="small text-secondary">Saldo</div><div class="fw-bold text-danger">{{ c.saldo_pendiente|cop }}</div></div>
+      </div>
+      {% if c.saldo_pendiente > 0 %}
+      <form method="post" action="{{ url_for('tutores.cartera_abono', cuenta_id=c.id) }}" class="row g-2 mt-2">
+        {{ form_abono.hidden_tag() }}
+        <div class="col-5">{{ form_abono.monto(class_="form-control", placeholder="Monto") }}</div>
+        <div class="col-4">{{ form_abono.metodo_pago(class_="form-select") }}</div>
+        <div class="col-3 d-grid">{{ form_abono.enviar(class_="btn btn-outline-primary") }}</div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card"><div class="card-body text-center text-secondary py-4">Sin cargos a crédito.</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

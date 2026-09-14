@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo_textarea, campo_select, campo_archivo %}
+{% block titulo %}Examen de laboratorio{% endblock %}
+{% block contenido %}
+<nav class="small mb-2"><a href="{{ url_for('historias.ficha_medica', mascota_id=examen.mascota_id) }}" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i>{{ examen.mascota.nombre }}</a></nav>
+
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between align-items-start">
+    <div>
+      <h1 class="titulo-pagina">{{ examen.tipo_examen }}</h1>
+      <div class="text-secondary">{{ examen.mascota.nombre }} · {{ examen.fecha_toma|fecha }}{% if examen.laboratorio_externo %} · {{ examen.laboratorio_externo }}{% endif %}</div>
+    </div>
+    <span class="estado estado--{{ 'ok' if examen.estado == 'con_resultado' else 'info' }}">{{ examen.estado_etiqueta }}</span>
+  </div>
+  {% if examen.archivo_resultado %}
+  <a class="btn btn-outline-primary btn-sm mt-2" href="{{ url_for('static', filename='uploads/examenes/' ~ examen.archivo_resultado) }}" target="_blank"><i class="bi bi-file-earmark-text me-1"></i>Ver archivo de resultado</a>
+  {% endif %}
+</div></div>
+
+<div class="card"><div class="card-header">Resultado e interpretación</div><div class="card-body">
+  <form method="post" action="{{ url_for('historias.examen_resultado', id=examen.id) }}" enctype="multipart/form-data">
+    {{ form_resultado.hidden_tag() }}
+    {{ campo_archivo(form_resultado.archivo_resultado, ayuda="PDF, JPG, PNG o WEBP.") }}
+    {{ campo_textarea(form_resultado.interpretacion, filas=4) }}
+    {{ campo_select(form_resultado.estado) }}
+    {{ form_resultado.enviar(class_="btn btn-primary") }}
+  </form>
+</div></div>
+{% endblock %}

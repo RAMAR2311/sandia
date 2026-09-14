@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo, campo_select, campo_textarea, encabezado %}
+{% block titulo %}Nueva cita{% endblock %}
+
+{% block contenido %}
+{{ encabezado("Nueva cita") }}
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="card mb-3">
+    <div class="card-header">Mascota</div>
+    <div class="card-body">
+      <div id="mascota-seleccionada" class="fila-lista d-flex align-items-center gap-3 mb-2 d-none">
+        <div class="flex-grow-1 min-w-0">
+          <div class="fw-bold" data-campo="nombre"></div>
+          <div class="small text-secondary" data-campo="detalle"></div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="cambiar-mascota">Cambiar</button>
+      </div>
+      <div id="buscador-mascota">
+        <label class="form-label" for="buscar-mascota">Buscar mascota</label>
+        <input class="form-control" type="search" id="buscar-mascota" placeholder="Nombre de la mascota o del tutor" autocomplete="off">
+        <div class="list-group mt-2 d-none" id="resultados-mascota"></div>
+      </div>
+      {% for error in form.mascota_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+      {% for error in form.tutor_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">Detalles</div>
+    <div class="card-body">
+      <div class="row g-2">
+        <div class="col-6">{{ campo_select(form.tipo) }}</div>
+        <div class="col-6">{{ campo_select(form.profesional_id) }}</div>
+      </div>
+      <div class="row g-2">
+        <div class="col-6">{{ campo(form.fecha, type="date") }}</div>
+        <div class="col-6">{{ campo(form.hora, type="time") }}</div>
+      </div>
+      {{ campo(form.duracion_minutos, type="number") }}
+      {{ campo(form.motivo, autocomplete="off") }}
+      {{ campo_textarea(form.notas, filas=3) }}
+    </div>
+  </div>
+
+  <div class="acciones-fijas">
+    <div class="d-flex flex-column flex-sm-row gap-2">
+      {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
+      <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('agenda.lista') }}">Cancelar</a>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/buscar_mascota.js') }}"></script>
+{% endblock %}

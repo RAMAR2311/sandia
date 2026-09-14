@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo, encabezado %}
+{% block titulo %}Nuevo cargo a crédito{% endblock %}
+{% block contenido %}
+{{ encabezado("Nuevo cargo a crédito", tutor.nombre_completo) }}
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="card"><div class="card-body">
+    {{ campo(form.descripcion) }}
+    {{ campo(form.monto_total, type="number", step="100") }}
+    <div class="row g-2">
+      <div class="col-6">{{ campo(form.fecha_factura, type="date") }}</div>
+      <div class="col-6">{{ campo(form.fecha_vencimiento, type="date") }}</div>
+    </div>
+  </div></div>
+  <div class="acciones-fijas"><div class="d-flex gap-2">
+    {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
+    <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('tutores.cartera', tutor_id=tutor.id) }}">Cancelar</a>
+  </div></div>
+</form>
+{% endblock %}

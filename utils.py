@@ -272,3 +272,33 @@ def eliminar_imagen(subcarpeta: str, nombre: str) -> None:
             ruta.unlink(missing_ok=True)
         except OSError:
             current_app.logger.warning("No se pudo borrar la imagen %s", ruta)
+
+
+EXTENSIONES_DOCUMENTO = {"pdf", "jpg", "jpeg", "png", "webp"}
+
+
+def guardar_documento(archivo, subcarpeta: str) -> str:
+    """Guarda un documento adjunto (consentimientos, resultados, comprobantes,
+    facturas de proveedor) con lista blanca de extensiones y nombre generado
+    por el sistema. Devuelve el nombre guardado. Lanza ``ValueError`` con un
+    mensaje apto para mostrar al usuario si el archivo no es válido."""
+    nombre_original = secure_filename(archivo.filename or "")
+    extension = nombre_original.rsplit(".", 1)[-1].lower() if "." in nombre_original else ""
+    if extension not in EXTENSIONES_DOCUMENTO:
+        raise ValueError("Formato no permitido. Usa PDF, JPG, PNG o WEBP.")
+    carpeta = Path(current_app.config["UPLOAD_FOLDER"]) / subcarpeta
+    carpeta.mkdir(parents=True, exist_ok=True)
+    nombre = f"{uuid.uuid4().hex}.{extension}"
+    archivo.save(carpeta / nombre)
+    return nombre
+
+
+def eliminar_documento(subcarpeta: str, nombre: str) -> None:
+    """Borra un documento adjunto si existe (los errores no interrumpen el flujo)."""
+    if not nombre:
+        return
+    ruta = Path(current_app.config["UPLOAD_FOLDER"]) / subcarpeta / nombre
+    try:
+        ruta.unlink(missing_ok=True)
+    except OSError:
+        current_app.logger.warning("No se pudo borrar el documento %s", ruta)

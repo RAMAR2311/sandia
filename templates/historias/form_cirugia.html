@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import campo, campo_textarea, campo_switch, campo_archivo, encabezado %}
+{% block titulo %}Registrar cirugía{% endblock %}
+{% block contenido %}
+{{ encabezado("Registrar cirugía", mascota.nombre) }}
+<form method="post" enctype="multipart/form-data" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="card"><div class="card-body">
+    {{ campo(form.tipo_procedimiento) }}
+    {{ campo(form.fecha, type="date") }}
+    {{ campo_switch(form.consentimiento_firmado) }}
+    {{ campo_archivo(form.archivo_consentimiento, ayuda="PDF, JPG, PNG o WEBP.") }}
+    {{ campo_textarea(form.notas_prequirurgicas, filas=2) }}
+    {{ campo_textarea(form.protocolo_anestesico, filas=2) }}
+  </div></div>
+  <div class="acciones-fijas"><div class="d-flex gap-2">
+    {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
+    <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}">Cancelar</a>
+  </div></div>
+</form>
+{% endblock %}

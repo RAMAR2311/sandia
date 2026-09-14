@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar_mascota, campo_select %}
+{% block titulo %}Cita #{{ cita.id }}{% endblock %}
+
+{% block contenido %}
+<nav class="small mb-2"><a href="{{ url_for('agenda.lista', fecha=cita.fecha_hora.strftime('%Y-%m-%d')) }}" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Agenda</a></nav>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="d-flex align-items-center gap-3">
+      {{ avatar_mascota(cita.mascota, 64) }}
+      <div class="flex-grow-1 min-w-0">
+        <h1 class="titulo-pagina">{{ cita.mascota.nombre }}</h1>
+        <div class="text-secondary">{{ cita.tutor.nombre_completo }} · {{ cita.tipo_etiqueta }}</div>
+      </div>
+      <span class="estado estado--info">{{ cita.estado_etiqueta }}</span>
+    </div>
+    <dl class="lista-datos mt-3 mb-0">
+      <dt>Fecha</dt><dd>{{ cita.fecha_hora|fecha_hora }}</dd>
+      <dt>Duración</dt><dd>{{ cita.duracion_minutos }} min</dd>
+      <dt>Profesional</dt><dd>{{ cita.profesional.nombre if cita.profesional else '—' }}</dd>
+      <dt>Motivo</dt><dd>{{ cita.motivo or '—' }}</dd>
+      <dt>Notas</dt><dd>{{ cita.notas or '—' }}</dd>
+    </dl>
+    {% if cita.enlace_whatsapp %}
+    <a href="{{ cita.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-success mt-3">
+      <i class="bi bi-whatsapp me-1"></i>{{ 'Reenviar recordatorio' if cita.recordatorio_enviado else 'Enviar recordatorio' }}
+    </a>
+    {% if not cita.recordatorio_enviado %}
+    <form method="post" action="{{ url_for('agenda.marcar_recordatorio', id=cita.id) }}" class="d-inline">
+      {{ form_csrf.hidden_tag() }}
+      <button class="btn btn-outline-secondary mt-3" type="submit">Marcar como enviado</button>
+    </form>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Cambiar estado</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('agenda.cambiar_estado', id=cita.id) }}" class="row g-2 align-items-end">
+      {{ form_estado.hidden_tag() }}
+      <div class="col-8">{{ campo_select(form_estado.estado, clase_extra="mb-0") }}</div>
+      <div class="col-4 d-grid">{{ form_estado.enviar(class_="btn btn-primary") }}</div>
+    </form>
+  </div>
+</div>
+{% endblock %}
