@@ -43,21 +43,60 @@
     <!-- Lado Derecho: Perfil de Usuario -->
     <div class="barra-superior__der">
       <div class="dropdown">
-        <button class="btn btn-link text-decoration-none text-body d-flex align-items-center gap-2 p-1 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-          <span class="avatar-usuario shadow-xs" style="background-color: #E53935; color: #FFFFFF;">{{ current_user.nombre[:1]|upper }}</span>
-          <span class="text-start d-none d-md-inline">
-            <span class="d-block fw-bold lh-1 small text-dark">{{ current_user.nombre }}</span>
-            <small class="text-success fw-bold" style="font-size: 0.72rem;">{{ current_user.rol_etiqueta }}</small>
-          </span>
+        <button class="btn btn-perfil-topbar" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Cuenta de {{ current_user.nombre }}">
+          <div class="perfil-avatar">
+            {{ current_user.nombre[:1]|upper }}
+          </div>
+          <div class="text-start d-none d-md-flex flex-column justify-content-center lh-1">
+            <span class="fw-bold text-dark text-truncate" style="font-size: 0.85rem; max-width: 155px;">{{ current_user.nombre }}</span>
+            <span class="text-success fw-bold mt-1" style="font-size: 0.68rem; letter-spacing: 0.02em;">{{ current_user.rol_etiqueta }}</span>
+          </div>
+          <i class="bi bi-chevron-down perfil-chevron ms-1 d-none d-sm-inline-block"></i>
         </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-          <li><span class="dropdown-item-text small text-secondary">{{ current_user.email }}</span></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="{{ url_for('auth.cambiar_password') }}"><i class="bi bi-key me-2"></i>Cambiar contraseña</a></li>
+
+        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-usuario border-0 shadow-lg">
+          <!-- Cabecera con info completa del usuario -->
+          <li class="dropdown-usuario-header">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <div class="perfil-avatar flex-shrink-0" style="width: 38px; height: 38px; font-size: 0.95rem;">
+                {{ current_user.nombre[:1]|upper }}
+              </div>
+              <div class="min-w-0 flex-grow-1">
+                <div class="fw-bold text-dark text-truncate" style="font-size: 0.88rem; line-height: 1.2;">
+                  {{ current_user.nombre }}
+                </div>
+                <span class="rol-badge rol-badge--{{ current_user.rol }}" style="font-size: 0.65rem; padding: 0.12rem 0.5rem; margin-top: 3px;">
+                  {{ current_user.rol_etiqueta }}
+                </span>
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-1.5 text-muted small px-1" style="font-size: 0.76rem; word-break: break-all;">
+              <i class="bi bi-envelope text-danger opacity-75 me-1"></i>
+              <span class="text-truncate">{{ current_user.email }}</span>
+            </div>
+          </li>
+
+          <!-- Opciones de menú -->
           <li>
-            <form method="post" action="{{ url_for('auth.logout') }}">
+            <a class="dropdown-usuario-item" href="{{ url_for('auth.cambiar_password') }}">
+              <span class="dropdown-item-icono dropdown-item-icono--config">
+                <i class="bi bi-key-fill"></i>
+              </span>
+              <span>Cambiar contraseña</span>
+            </a>
+          </li>
+          
+          <li class="my-1"><hr class="dropdown-divider" style="border-color: #F1F5F9; margin: 0.25rem 0.5rem;"></li>
+
+          <li>
+            <form method="post" action="{{ url_for('auth.logout') }}" class="m-0 p-0">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</button>
+              <button type="submit" class="dropdown-usuario-item item-peligro">
+                <span class="dropdown-item-icono dropdown-item-icono--logout">
+                  <i class="bi bi-box-arrow-right"></i>
+                </span>
+                <span>Cerrar sesión</span>
+              </button>
             </form>
           </li>
         </ul>
