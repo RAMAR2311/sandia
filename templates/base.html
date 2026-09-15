@@ -18,38 +18,49 @@
 <body class="{% block body_class %}{% if current_user.is_authenticated %}con-barra-inferior{% endif %}{% endblock %}">
 {% block navegacion %}
 {% if current_user.is_authenticated %}
-<nav class="navbar barra-superior sticky-top">
-  <div class="container-fluid px-3 d-flex align-items-center gap-2">
-    <button class="btn btn-icono-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuLateral"
-            aria-controls="menuLateral" aria-label="Abrir menú">
-      <i class="bi bi-list"></i>
-    </button>
-    <a class="marca navbar-brand me-auto" href="{{ url_for('dashboard.index') }}">
-      <img class="marca__logo" src="{{ static_url('img/logo.svg') }}" alt="">
-      <span class="marca__texto">
-        <span class="marca__nombre">{{ clinica.nombre|upper }}</span>
-        <span class="marca__subtitulo d-none d-sm-inline">{{ clinica.subtitulo }}</span>
-      </span>
-    </a>
-    <div class="dropdown">
-      <button class="btn btn-link text-decoration-none text-body d-flex align-items-center gap-2 p-1 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-        <span class="avatar-usuario">{{ current_user.nombre[:1]|upper }}</span>
-        <span class="text-start d-none d-sm-inline">
-          <span class="d-block fw-bold lh-1">{{ current_user.nombre }}</span>
-          <small class="text-secondary">{{ current_user.rol_etiqueta }}</small>
-        </span>
+<nav class="navbar barra-superior sticky-top py-1">
+  <div class="container-fluid px-3 barra-superior__grid">
+    <!-- Lado Izquierdo: Botón Menú Lateral -->
+    <div class="barra-superior__izq">
+      <button class="btn btn-icono-menu shadow-xs" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuLateral"
+              aria-controls="menuLateral" aria-label="Abrir menú" title="Abrir menú de navegación">
+        <i class="bi bi-list"></i>
       </button>
-      <ul class="dropdown-menu dropdown-menu-end shadow">
-        <li><span class="dropdown-item-text small text-secondary">{{ current_user.email }}</span></li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="{{ url_for('auth.cambiar_password') }}"><i class="bi bi-key me-2"></i>Cambiar contraseña</a></li>
-        <li>
-          <form method="post" action="{{ url_for('auth.logout') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</button>
-          </form>
-        </li>
-      </ul>
+    </div>
+
+    <!-- Centro: Marca Sandía Centrada y Destacada -->
+    <div class="barra-superior__centro">
+      <a class="marca marca--navbar navbar-brand m-0" href="{{ url_for('dashboard.index') }}" title="Ir al Inicio">
+        <img class="marca__logo" src="{{ static_url('img/logo.svg') }}" alt="Sandía">
+        <span class="marca__texto">
+          <span class="marca__nombre">{{ clinica.nombre|upper }}</span>
+          <span class="marca__subtitulo d-none d-sm-inline">{{ clinica.subtitulo }}</span>
+        </span>
+      </a>
+    </div>
+
+    <!-- Lado Derecho: Perfil de Usuario -->
+    <div class="barra-superior__der">
+      <div class="dropdown">
+        <button class="btn btn-link text-decoration-none text-body d-flex align-items-center gap-2 p-1 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <span class="avatar-usuario shadow-xs">{{ current_user.nombre[:1]|upper }}</span>
+          <span class="text-start d-none d-md-inline">
+            <span class="d-block fw-bold lh-1 small">{{ current_user.nombre }}</span>
+            <small class="text-secondary" style="font-size: 0.72rem;">{{ current_user.rol_etiqueta }}</small>
+          </span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+          <li><span class="dropdown-item-text small text-secondary">{{ current_user.email }}</span></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{{ url_for('auth.cambiar_password') }}"><i class="bi bi-key me-2"></i>Cambiar contraseña</a></li>
+          <li>
+            <form method="post" action="{{ url_for('auth.logout') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión</button>
+            </form>
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 </nav>

@@ -103,10 +103,19 @@
         <form method="post" action="{{ url_for('pos.abrir_caja') }}">
           {{ form_apertura.csrf_token }}
           <div class="mb-3">
-            {{ form_apertura.monto_apertura.label(class="form-label font-weight-bold") }}
-            <div class="input-group">
-              <span class="input-group-text">$</span>
-              {{ form_apertura.monto_apertura(class="form-control form-control-lg", placeholder="0.00") }}
+            {{ form_apertura.monto_apertura.label(class="form-label fw-bold") }}
+            <div class="input-group input-group-lg">
+              <span class="input-group-text bg-white fw-bold text-success fs-4">$</span>
+              {{ form_apertura.monto_apertura(class="form-control form-control-lg font-monospace fw-bold fs-4 formato-miles-cop", id="inputMontoApertura", type="text", value="100.000", placeholder="100.000", autocomplete="off") }}
+            </div>
+            <div class="d-flex flex-wrap gap-1 mt-2 align-items-center">
+              <span class="text-muted small me-1">Sugeridos:</span>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-monto-rapido" data-monto="50.000">$50.000</button>
+              <button type="button" class="btn btn-sm btn-success py-0 px-2 fw-bold text-white btn-monto-rapido" data-monto="100.000">$100.000</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-monto-rapido" data-monto="150.000">$150.000</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-monto-rapido" data-monto="200.000">$200.000</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-monto-rapido" data-monto="300.000">$300.000</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-monto-rapido" data-monto="500.000">$500.000</button>
             </div>
             {% for error in form_apertura.monto_apertura.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
           </div>
@@ -198,9 +207,9 @@
 
           <div class="mb-3">
             {{ form_cierre.monto_efectivo.label(class="form-label fw-bold") }}
-            <div class="input-group">
-              <span class="input-group-text">$</span>
-              {{ form_cierre.monto_efectivo(class="form-control form-control-lg fw-bold") }}
+            <div class="input-group input-group-lg">
+              <span class="input-group-text bg-white fw-bold text-danger fs-4">$</span>
+              {{ form_cierre.monto_efectivo(class="form-control form-control-lg fw-bold font-monospace formato-miles-cop", id="cierreEfectivo", type="text", placeholder="0", autocomplete="off") }}
             </div>
             <small class="form-text text-muted">Monto total contado en el cajón de efectivo.</small>
           </div>
@@ -208,19 +217,19 @@
           <div class="row g-2 mb-3">
             <div class="col-6">
               {{ form_cierre.monto_nequi.label(class="form-label small") }}
-              {{ form_cierre.monto_nequi(class="form-control form-control-sm") }}
+              {{ form_cierre.monto_nequi(class="form-control form-control-sm font-monospace formato-miles-cop", type="text", placeholder="0", autocomplete="off") }}
             </div>
             <div class="col-6">
               {{ form_cierre.monto_daviplata.label(class="form-label small") }}
-              {{ form_cierre.monto_daviplata(class="form-control form-control-sm") }}
+              {{ form_cierre.monto_daviplata(class="form-control form-control-sm font-monospace formato-miles-cop", type="text", placeholder="0", autocomplete="off") }}
             </div>
             <div class="col-6">
               {{ form_cierre.monto_tarjetas.label(class="form-label small") }}
-              {{ form_cierre.monto_tarjetas(class="form-control form-control-sm") }}
+              {{ form_cierre.monto_tarjetas(class="form-control form-control-sm font-monospace formato-miles-cop", type="text", placeholder="0", autocomplete="off") }}
             </div>
             <div class="col-6">
               {{ form_cierre.monto_transferencia.label(class="form-label small") }}
-              {{ form_cierre.monto_transferencia(class="form-control form-control-sm") }}
+              {{ form_cierre.monto_transferencia(class="form-control form-control-sm font-monospace formato-miles-cop", type="text", placeholder="0", autocomplete="off") }}
             </div>
           </div>
 
@@ -239,4 +248,38 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+function formatearMilesCOP(input) {
+  let val = input.value.replace(/\D/g, '');
+  if (!val) {
+    input.value = '';
+    return;
+  }
+  let numero = parseInt(val, 10);
+  input.value = numero.toLocaleString('es-CO');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Manejar todos los inputs con formato de miles en vivo
+  document.querySelectorAll('.formato-miles-cop').forEach(function(inp) {
+    inp.addEventListener('input', function() {
+      formatearMilesCOP(this);
+    });
+  });
+
+  // Botones de monto rápido para apertura
+  document.querySelectorAll('.btn-monto-rapido').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const input = document.getElementById('inputMontoApertura');
+      if (input) {
+        input.value = this.getAttribute('data-monto');
+        input.focus();
+      }
+    });
+  });
+});
+</script>
 {% endblock %}

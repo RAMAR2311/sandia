@@ -8,6 +8,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import selectinload
 
+from forms import SoloCsrfForm
 from models import (
     ROLES_TODOS,
     Cita,
@@ -19,7 +20,7 @@ from models import (
     Venta,
     db,
 )
-from utils import ZONA_BOGOTA, hoy_bogota
+from utils import ZONA_BOGOTA, enlace_whatsapp, hoy_bogota, obtener_hora_bogota
 
 bp = Blueprint("dashboard", __name__)
 
@@ -27,6 +28,7 @@ bp = Blueprint("dashboard", __name__)
 # automáticamente en el tablero, en el menú superior y en la barra inferior
 # del celular (``en_barra``). El orden de la lista es el orden de aparición.
 MODULOS = [
+    # Módulos esenciales (Operación diaria de la clínica y tienda)
     {
         "clave": "historias",
         "nombre": "Historias Clínicas",
@@ -35,6 +37,7 @@ MODULOS = [
         "endpoint": "historias.lista",
         "roles": ("admin", "veterinario", "auxiliar"),
         "en_barra": True,
+        "esencial": True,
     },
     {
         "clave": "mascotas",
@@ -44,6 +47,7 @@ MODULOS = [
         "endpoint": "mascotas.lista",
         "roles": ROLES_TODOS,
         "en_barra": True,
+        "esencial": True,
     },
     {
         "clave": "tutores",
@@ -53,69 +57,7 @@ MODULOS = [
         "endpoint": "tutores.lista",
         "roles": ROLES_TODOS,
         "en_barra": True,
-    },
-    {
-        "clave": "spa",
-        "nombre": "Spa & Grooming",
-        "descripcion": "Agenda de peluquería y notificaciones por WhatsApp",
-        "icono": "bi-scissors",
-        "endpoint": "spa.agenda",
-        "roles": ("admin", "recepcion", "groomer"),
-        "en_barra": True,
-    },
-    {
-        "clave": "pos",
-        "nombre": "Punto de Venta",
-        "descripcion": "Terminal de cobro rápido y facturación",
-        "icono": "bi-cart-check-fill",
-        "endpoint": "pos.terminal",
-        "roles": ("admin", "cajero"),
-        "en_barra": True,
-    },
-    {
-        "clave": "caja",
-        "nombre": "Caja",
-        "descripcion": "Apertura, cierre y arqueo de turno",
-        "icono": "bi-cash-coin",
-        "endpoint": "pos.caja_estado",
-        "roles": ("admin", "cajero"),
-        "en_barra": False,
-    },
-    {
-        "clave": "inventario",
-        "nombre": "Inventario",
-        "descripcion": "Productos, variantes, lotes, kardex y alertas",
-        "icono": "bi-box-seam-fill",
-        "endpoint": "inventario.lista",
-        "roles": ROLES_TODOS,
-        "en_barra": True,
-    },
-    {
-        "clave": "proveedores",
-        "nombre": "Proveedores",
-        "descripcion": "Directorio de proveedores y compras",
-        "icono": "bi-truck",
-        "endpoint": "inventario.proveedores_lista",
-        "roles": ("admin",),
-        "en_barra": False,
-    },
-    {
-        "clave": "aprobaciones_precio",
-        "nombre": "Aprobaciones de precio",
-        "descripcion": "Solicitudes de cajeros para vender bajo el precio mínimo",
-        "icono": "bi-shield-exclamation",
-        "endpoint": "pos.aprobaciones_lista",
-        "roles": ("admin",),
-        "en_barra": False,
-    },
-    {
-        "clave": "reportes",
-        "nombre": "Reportes & Métricas",
-        "descripcion": "Análisis financiero, volumen de ventas y valoración de stock",
-        "icono": "bi-graph-up-arrow",
-        "endpoint": "reportes.dashboard",
-        "roles": ("admin",),
-        "en_barra": False,
+        "esencial": True,
     },
     {
         "clave": "agenda",
@@ -125,6 +67,59 @@ MODULOS = [
         "endpoint": "agenda.lista",
         "roles": ("admin", "recepcion", "auxiliar", "veterinario"),
         "en_barra": False,
+        "esencial": True,
+    },
+    {
+        "clave": "spa",
+        "nombre": "Spa & Grooming",
+        "descripcion": "Agenda de peluquería y notificaciones por WhatsApp",
+        "icono": "bi-scissors",
+        "endpoint": "spa.agenda",
+        "roles": ("admin", "recepcion", "groomer"),
+        "en_barra": True,
+        "esencial": True,
+    },
+    {
+        "clave": "pos",
+        "nombre": "Punto de Venta",
+        "descripcion": "Terminal de cobro rápido y facturación",
+        "icono": "bi-cart-check-fill",
+        "endpoint": "pos.terminal",
+        "roles": ("admin", "cajero"),
+        "en_barra": True,
+        "esencial": True,
+    },
+    {
+        "clave": "caja",
+        "nombre": "Caja",
+        "descripcion": "Apertura, cierre y arqueo de turno",
+        "icono": "bi-cash-coin",
+        "endpoint": "pos.caja_estado",
+        "roles": ("admin", "cajero"),
+        "en_barra": False,
+        "esencial": True,
+    },
+    {
+        "clave": "inventario",
+        "nombre": "Inventario",
+        "descripcion": "Productos, variantes, lotes, kardex y alertas",
+        "icono": "bi-box-seam-fill",
+        "endpoint": "inventario.lista",
+        "roles": ROLES_TODOS,
+        "en_barra": True,
+        "esencial": True,
+    },
+
+    # Módulos secundarios / administrativos
+    {
+        "clave": "reportes",
+        "nombre": "Reportes & Métricas",
+        "descripcion": "Análisis financiero, volumen de ventas y valoración de stock",
+        "icono": "bi-graph-up-arrow",
+        "endpoint": "reportes.dashboard",
+        "roles": ("admin",),
+        "en_barra": False,
+        "esencial": False,
     },
     {
         "clave": "gastos",
@@ -134,6 +129,7 @@ MODULOS = [
         "endpoint": "gastos.lista",
         "roles": ("admin",),
         "en_barra": False,
+        "esencial": False,
     },
     {
         "clave": "cuentas_por_pagar",
@@ -143,6 +139,27 @@ MODULOS = [
         "endpoint": "inventario.cuentas_por_pagar",
         "roles": ("admin",),
         "en_barra": False,
+        "esencial": False,
+    },
+    {
+        "clave": "proveedores",
+        "nombre": "Proveedores",
+        "descripcion": "Directorio de proveedores y compras",
+        "icono": "bi-truck",
+        "endpoint": "inventario.proveedores_lista",
+        "roles": ("admin",),
+        "en_barra": False,
+        "esencial": False,
+    },
+    {
+        "clave": "aprobaciones_precio",
+        "nombre": "Aprobaciones de precio",
+        "descripcion": "Solicitudes de cajeros para vender bajo el precio mínimo",
+        "icono": "bi-shield-exclamation",
+        "endpoint": "pos.aprobaciones_lista",
+        "roles": ("admin",),
+        "en_barra": False,
+        "esencial": False,
     },
     {
         "clave": "usuarios",
@@ -152,6 +169,7 @@ MODULOS = [
         "endpoint": "admin.usuarios",
         "roles": ("admin",),
         "en_barra": True,
+        "esencial": False,
     },
     {
         "clave": "configuracion",
@@ -161,6 +179,7 @@ MODULOS = [
         "endpoint": "admin.configuracion",
         "roles": ("admin",),
         "en_barra": True,
+        "esencial": False,
     },
     {
         "clave": "razas",
@@ -170,6 +189,7 @@ MODULOS = [
         "endpoint": "admin.razas",
         "roles": ("admin",),
         "en_barra": False,
+        "esencial": False,
     },
     {
         "clave": "mi_cuenta",
@@ -179,6 +199,7 @@ MODULOS = [
         "endpoint": "auth.cambiar_password",
         "roles": ROLES_TODOS,
         "en_barra": False,
+        "esencial": False,
     },
 ]
 
@@ -214,12 +235,76 @@ def vacunas_por_vencer(limite_dias: int = 15, tope: int = 20):
     return db.session.execute(consulta).scalars().all()
 
 
+def obtener_mascotas_pendientes_recogida():
+    """Obtiene citas de spa listas para entrega y calcula tiempo transcurrido y nivel de urgencia."""
+    ahora = obtener_hora_bogota()
+    citas = db.session.execute(
+        select(CitaSpa)
+        .filter_by(estado="listo_recogida")
+        .options(
+            selectinload(CitaSpa.mascota),
+            selectinload(CitaSpa.tutor),
+            selectinload(CitaSpa.servicio_spa),
+            selectinload(CitaSpa.venta),
+            selectinload(CitaSpa.groomer),
+        )
+        .order_by(CitaSpa.fecha_hora.asc())
+    ).scalars().all()
+
+    resultado = []
+    for c in citas:
+        momento_listo = c.fecha_listo or (c.fecha_hora + timedelta(minutes=c.duracion_minutos))
+        if momento_listo.tzinfo is None:
+            momento_listo = momento_listo.replace(tzinfo=ZONA_BOGOTA)
+
+        diff = ahora - momento_listo
+        minutos = max(0, int(diff.total_seconds() // 60))
+
+        if minutos >= 90:
+            nivel = "critico"
+            etiqueta = f"Hace {minutos // 60}h {minutos % 60}m"
+        elif minutos >= 45:
+            nivel = "alerta"
+            etiqueta = f"Hace {minutos} min"
+        else:
+            nivel = "normal"
+            etiqueta = f"Hace {minutos} min" if minutos > 0 else "Hace instantes"
+
+        nombre_tutor = c.tutor.nombre_completo if c.tutor else "Estimado/a cliente"
+        nombre_mascota = c.mascota.nombre if c.mascota else "su mascota"
+        tel = c.tutor.whatsapp or c.tutor.telefono if c.tutor else ""
+        
+        msg_wa = (
+            f"¡Hola {nombre_tutor}! 👋🍉 Te saludamos desde *Sandía Medicina & Spa Veterinario*.\n\n"
+            f"Te recordamos con mucho cariño que *{nombre_mascota}* ya finalizó su servicio de *{c.servicio_spa.nombre if c.servicio_spa else 'Grooming'}* "
+            f"y se encuentra listo/a y esperándote en la sede para su recogida 🐾✨.\n\n"
+            f"¡Te esperamos!"
+        )
+        wa_url = enlace_whatsapp(tel, msg_wa) if tel else ""
+
+        resultado.append({
+            "cita": c,
+            "minutos_espera": minutos,
+            "etiqueta_tiempo": etiqueta,
+            "nivel_alerta": nivel,
+            "momento_listo": momento_listo,
+            "wa_url": wa_url,
+            "pagado": bool(c.venta_id),
+        })
+
+    resultado.sort(key=lambda x: x["minutos_espera"], reverse=True)
+    return resultado
+
+
 @bp.route("/")
 @login_required
 def index():
     vacunas_pendientes = []
     if current_user.rol in ("admin", "veterinario", "auxiliar"):
         vacunas_pendientes = vacunas_por_vencer()
+
+    mascotas_recogida = obtener_mascotas_pendientes_recogida()
+    form_csrf = SoloCsrfForm()
 
     hoy = hoy_bogota()
     inicio_dia = datetime.combine(hoy, time.min, tzinfo=ZONA_BOGOTA)
@@ -282,10 +367,18 @@ def index():
     except Exception:
         pass
 
+    todos_modulos = modulos_para(current_user.rol)
+    modulos_esenciales = [m for m in todos_modulos if m.get("esencial", False)]
+    modulos_secundarios = [m for m in todos_modulos if not m.get("esencial", False)]
+
     return render_template(
         "dashboard/index.html",
-        modulos=modulos_para(current_user.rol),
+        modulos=todos_modulos,
+        modulos_esenciales=modulos_esenciales,
+        modulos_secundarios=modulos_secundarios,
         vacunas_pendientes=vacunas_pendientes,
+        mascotas_recogida=mascotas_recogida,
+        form_csrf=form_csrf,
         metricas=metricas,
     )
 

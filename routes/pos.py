@@ -31,6 +31,7 @@ from models import (
     Usuario,
     VarianteProducto,
     Venta,
+    CitaSpa,
     db,
 )
 from utils import hoy_bogota, obtener_hora_bogota
@@ -195,8 +196,14 @@ def abrir_caja():
         flash("Ya tienes una caja abierta. No puedes abrir otra simultáneamente.", "warning")
         return redirect(url_for("pos.terminal"))
 
-    form = AperturaCajaForm()
-    if form.validate_on_submit():
+    datos_post = request.form.copy()
+    if "monto_apertura" in datos_post:
+        raw = datos_post["monto_apertura"].strip()
+        limpio = raw.replace(".", "").replace(" ", "").replace(",", ".")
+        datos_post["monto_apertura"] = limpio
+
+    form = AperturaCajaForm(formdata=datos_post)
+    if form.validate():
         try:
             nuevo_turno = TurnoCaja(
                 usuario_id=current_user.id,
@@ -214,7 +221,8 @@ def abrir_caja():
             current_app.logger.exception("Error al abrir turno de caja")
             flash("Ocurrió un error al abrir la caja. Inténtalo de nuevo.", "danger")
 
-    flash("Datos de apertura inválidos.", "danger")
+    for err in form.monto_apertura.errors:
+        flash(err, "danger")
     return redirect(url_for("pos.caja_estado"))
 
 
@@ -227,8 +235,15 @@ def cerrar_caja():
         flash("No tienes un turno de caja abierto para cerrar.", "warning")
         return redirect(url_for("pos.caja_estado"))
 
-    form = CierreCajaForm()
-    if form.validate_on_submit():
+    datos_post = request.form.copy()
+    for campo in ["monto_efectivo", "monto_nequi", "monto_daviplata", "monto_tarjetas", "monto_transferencia"]:
+        if campo in datos_post:
+            raw = datos_post[campo].strip()
+            limpio = raw.replace(".", "").replace(" ", "").replace(",", ".")
+            datos_post[campo] = limpio
+
+    form = CierreCajaForm(formdata=datos_post)
+    if form.validate():
         try:
             # Calcular ventas en efectivo
             ventas_efectivo = db.session.execute(
@@ -289,7 +304,49 @@ def terminal():
         flash("Debes abrir la caja antes de ingresar a la terminal de ventas.", "warning")
         return redirect(url_for("pos.caja_estado"))
 
-    return render_template("pos/terminal.html", turno=turno_activo)
+    cita_spa_id = request.args.get("cita_spa_id", type=int)
+    datos_precarga = None
+
+    if cita_spa_id:
+        cita = db.session.get(CitaSpa, cita_spa_id)
+        if cita and not cita.venta_id:
+            tutor_data = None
+            if cita.tutor:
+                mascotas_tutor = [
+                    {"id": m.id, "nombre": m.nombre, "especie": m.especie, "emoji": m.especie_emoji}
+                    for m in cita.tutor.mascotas if m.activo and not m.fallecido
+                ]
+                tutor_data = {
+                    "id": cita.tutor.id,
+                    "nombre": cita.tutor.nombre_completo,
+                    "documento": cita.tutor.documento_texto or "Sin documento",
+                    "telefono": cita.tutor.telefono or cita.tutor.whatsapp or "",
+                    "mascotas": mascotas_tutor,
+                }
+
+            item_servicio = None
+            if cita.servicio_spa:
+                item_servicio = {
+                    "producto_id": f"spa_{cita.servicio_spa.id}",
+                    "servicio_spa_id": cita.servicio_spa.id,
+                    "sku": f"SPA-{cita.servicio_spa.id:02d}",
+                    "nombre": cita.servicio_spa.nombre,
+                    "tipo": "servicio",
+                    "categoria": "spa",
+                    "precio_unitario": float(cita.servicio_spa.precio_sugerido),
+                    "cantidad": 1,
+                    "descuento": 0,
+                }
+
+            datos_precarga = {
+                "cita_spa_id": cita.id,
+                "tutor": tutor_data,
+                "mascota_id": cita.mascota_id,
+                "mascota_nombre": cita.mascota.nombre if cita.mascota else "",
+                "item": item_servicio,
+            }
+
+    return render_template("pos/terminal.html", turno=turno_activo, datos_precarga=datos_precarga)
 
 
 @bp.route("/venta/procesar", methods=["POST"])
@@ -328,18 +385,27 @@ def procesar_venta():
             cantidad_req = Decimal(str(item.get("cantidad", "1")))
             precio_unitario = Decimal(str(item.get("precio_unitario", "0.00")))
             descuento_item = Decimal(str(item.get("descuento", "0.00")))
-            descripcion_override = item.get("descripcion")
+            descripcion_override = item.get("descripcion") or item.get("nombre")
             tipo_item = item.get("tipo", "producto")
 
             if cantidad_req <= Decimal("0.00"):
                 return jsonify(error=f"La cantidad para '{descripcion_override}' debe ser mayor a 0."), 400
 
             if tipo_item == "servicio" or not producto_id:
-                # Servicio genérico o consulta
+                # Servicio genérico, spa o consulta clínica
+                fk_prod_id = None
+                try:
+                    if producto_id and str(producto_id).isdigit():
+                        p_check = db.session.get(Producto, int(producto_id))
+                        if p_check:
+                            fk_prod_id = p_check.id
+                except Exception:
+                    fk_prod_id = None
+
                 linea_subtotal = (cantidad_req * precio_unitario) - descuento_item
                 subtotal_venta += linea_subtotal
                 detalles_a_crear.append({
-                    "producto_id": None,
+                    "producto_id": fk_prod_id,
                     "variante_id": None,
                     "lote_id": None,
                     "descripcion": descripcion_override or "Servicio",
@@ -564,6 +630,16 @@ def procesar_venta():
             aprobacion.estado = "utilizada"
             aprobacion.venta_id = venta.id
 
+        # Si la venta proviene de una cita de spa, vincularla automáticamente
+        cita_spa_id = datos.get("cita_spa_id")
+        if cita_spa_id:
+            try:
+                cita = db.session.get(CitaSpa, int(cita_spa_id))
+                if cita:
+                    cita.venta_id = venta.id
+            except Exception as e:
+                current_app.logger.warning(f"No se pudo vincular cita spa {cita_spa_id}: {e}")
+
         db.session.commit()
 
         return jsonify(
@@ -643,8 +719,12 @@ def venta_detalle(id: int):
         flash("La venta especificada no existe.", "danger")
         return redirect(url_for("pos.ventas_lista"))
 
+    cita_spa = db.session.execute(
+        select(CitaSpa).filter_by(venta_id=venta.id)
+    ).scalar_one_or_none()
+
     form_anular = AnularVentaForm()
-    return render_template("pos/venta_detalle.html", venta=venta, form_anular=form_anular)
+    return render_template("pos/venta_detalle.html", venta=venta, form_anular=form_anular, cita_spa=cita_spa)
 
 
 @bp.route("/venta/<int:id>/anular", methods=["POST"])
@@ -746,7 +826,11 @@ def ticket_impresion(id: int):
         flash("La venta especificada no existe.", "danger")
         return redirect(url_for("pos.ventas_lista"))
 
-    return render_template("pos/ticket.html", venta=venta)
+    cita_spa = db.session.execute(
+        select(CitaSpa).filter_by(venta_id=venta.id)
+    ).scalar_one_or_none()
+
+    return render_template("pos/ticket.html", venta=venta, cita_spa=cita_spa)
 
 
 

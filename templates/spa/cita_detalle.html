@@ -136,11 +136,11 @@
           </div>
         </div>
         {% else %}
-        <a href="{{ url_for('pos.terminal') }}" class="btn btn-outline-success w-100 fw-bold mb-3">
-          <i class="bi bi-cart-check me-1"></i>Facturar Servicio en POS
+        <a href="{{ url_for('pos.terminal', cita_spa_id=cita.id) }}" class="btn btn-success w-100 fw-bold py-2 mb-3 shadow-sm">
+          <i class="bi bi-cart-check-fill me-2 fs-5 align-middle"></i>Facturar Servicio en POS
         </a>
         <div class="alert alert-warning small mb-3" role="alert">
-          <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin pago vinculado: la cita no podrá marcarse como "Entregado" hasta vincular la factura.
+          <i class="bi bi-info-circle-fill me-1"></i>Al facturar en POS, el tutor, la mascota y el servicio se cargarán automáticamente y la factura quedará vinculada de inmediato.
         </div>
         <form method="post" action="{{ url_for('spa.cita_vincular_venta', id=cita.id) }}" class="d-flex gap-2">
           {{ form_venta.csrf_token }}

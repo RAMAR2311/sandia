@@ -294,22 +294,33 @@ def cita_cambiar_estado(id: int):
     nuevo_estado = request.form.get("estado")
     notas_salida = request.form.get("notas_salida", "").strip()
 
-    # Regla de negocio: una orden no puede entregarse sin estar pagada
-    # (asociada a una venta). Evita que la mascota salga sin cobrar el servicio.
     if nuevo_estado == "entregado" and not cita.venta_id:
         flash(
-            "No se puede entregar sin cobrar. Registra el pago en el Punto de Venta y asócialo a esta cita antes de continuar.",
-            "danger",
+            f"No se puede entregar a {cita.mascota.nombre} sin registrar el cobro en POS primero.",
+            "warning",
         )
+        next_url = request.form.get("next")
+        if next_url:
+            return redirect(next_url)
         return redirect(url_for("spa.cita_detalle", id=id))
 
     if nuevo_estado in ESTADOS_SPA:
         try:
             cita.estado = nuevo_estado
+            if nuevo_estado == "listo_recogida" and not cita.fecha_listo:
+                cita.fecha_listo = obtener_hora_bogota()
             if notas_salida:
                 cita.notas_salida = notas_salida
 
             db.session.commit()
+
+            next_url = request.form.get("next")
+            if next_url:
+                if nuevo_estado == "entregado":
+                    flash(f"¡{cita.mascota.nombre} entregado/a a su tutor exitosamente!", "success")
+                elif nuevo_estado == "listo_recogida":
+                    flash(f"¡{cita.mascota.nombre} marcado como listo para recogida!", "success")
+                return redirect(next_url)
 
             if nuevo_estado == "listo_recogida":
                 flash(f"¡{cita.mascota.nombre} está listo/a! Puedes enviar el aviso por WhatsApp.", "success")

@@ -14,11 +14,39 @@
   </div>
 </div>
 
+<!-- Selector móvil / tablet: Catálogo vs Carrito -->
+<div class="d-lg-none mb-3">
+  <div class="btn-group w-100 shadow-sm" role="group">
+    <button type="button" class="btn btn-primary py-2 fw-bold" id="btnTabCatalogo" onclick="cambiarTabMovil('catalogo')">
+      <i class="bi bi-grid-fill me-1"></i>Catálogo
+    </button>
+    <button type="button" class="btn btn-outline-secondary py-2 fw-bold" id="btnTabCarrito" onclick="cambiarTabMovil('carrito')">
+      <i class="bi bi-cart-fill me-1"></i>Carrito (<span id="badgeCantMovil">0</span>) • <span id="badgeTotalMovil" class="font-monospace">$0</span>
+    </button>
+  </div>
+</div>
+
 <div class="row g-3">
   <!-- Columna Izquierda: Buscador de Productos y Servicios -->
-  <div class="col-12 col-lg-7">
+  <div class="col-12 col-lg-7" id="columnaCatalogo">
     <div class="card shadow-sm mb-3">
       <div class="card-body">
+        <!-- Filtros Rápidos de Categoría con scroll táctil para tablet/celular -->
+        <div class="contenedor-filtros-scroll mb-3" id="contenedorFiltrosCat">
+          <button type="button" class="btn-cat-pill active" data-cat="todos">
+            <i class="bi bi-grid-fill me-1"></i>Todos
+          </button>
+          <button type="button" class="btn-cat-pill" data-cat="productos">
+            <i class="bi bi-box-seam me-1 text-primary"></i>📦 Productos
+          </button>
+          <button type="button" class="btn-cat-pill" data-cat="spa">
+            <i class="bi bi-scissors me-1 text-success"></i>✂️ Spa & Peluquería
+          </button>
+          <button type="button" class="btn-cat-pill" data-cat="clinica">
+            <i class="bi bi-heart-pulse-fill me-1 text-danger"></i>🩺 Servicios Clínicos
+          </button>
+        </div>
+
         <div class="input-group input-group-lg mb-3">
           <span class="input-group-text bg-white"><i class="bi bi-search text-primary"></i></span>
           <input type="search" id="inputBusqueda" class="form-control" placeholder="Buscar por SKU, Código de barras o Nombre..." autofocus>
@@ -35,7 +63,28 @@
   </div>
 
   <!-- Columna Derecha: Carrito y Totales -->
-  <div class="col-12 col-lg-5">
+  <div class="col-12 col-lg-5 d-none d-lg-block" id="columnaCarrito">
+    {% if datos_precarga %}
+    <div class="alert alert-info py-2 px-3 mb-2 small d-flex align-items-center justify-content-between border-info-subtle shadow-sm rounded-3" role="alert">
+      <div class="d-flex align-items-center gap-2">
+        <span class="fs-4">✂️</span>
+        <div>
+          <strong class="d-block text-dark">Facturando Cita de Spa: {{ datos_precarga.mascota_nombre }}</strong>
+          <span class="text-secondary">Tutor y servicio precargados. La factura se vinculará de forma automática al cobrar.</span>
+        </div>
+      </div>
+      <a href="{{ url_for('spa.cita_detalle', id=datos_precarga.cita_spa_id) }}" class="btn btn-sm btn-outline-info text-nowrap ms-2" title="Volver a la cita">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Ver Cita
+      </a>
+    </div>
+    {% endif %}
+
+    <!-- Botón Volver al Catálogo (Visible sólo en móvil/tablet cuando está en carrito) -->
+    <div class="d-lg-none mb-2">
+      <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-2 fw-bold" onclick="cambiarTabMovil('catalogo')">
+        <i class="bi bi-arrow-left me-1"></i>Volver al Catálogo (Seguir agregando)
+      </button>
+    </div>
     <div class="card shadow-sm h-100 d-flex flex-column">
       <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0"><i class="bi bi-basket-fill me-2"></i>Carrito de Compras</h5>
@@ -44,14 +93,46 @@
         </button>
       </div>
 
-      <!-- Buscador de Tutor / Mascota -->
-      <div class="card-body border-bottom bg-light py-2">
-        <label class="form-label small fw-bold mb-1">Cliente / Tutor (Opcional)</label>
-        <div class="input-group input-group-sm">
-          <input type="text" id="inputCliente" class="form-control" placeholder="Buscar tutor o cédula...">
-          <button type="button" class="btn btn-outline-secondary" onclick="buscarCliente()"><i class="bi bi-person-search"></i></button>
+      <!-- Buscador de Tutor / Mascota con Autocomplete en Vivo -->
+      <div class="card-body border-bottom bg-light py-2 position-relative" id="seccionCliente">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <label class="form-label small fw-bold mb-0">
+            <i class="bi bi-person-circle text-primary me-1"></i>Cliente / Tutor (Opcional)
+          </label>
+          <span id="badgeClienteEstado" class="badge bg-secondary-subtle text-secondary fw-normal">Sin asignar</span>
         </div>
-        <div id="infoCliente" class="small text-success mt-1 fw-bold d-none"></div>
+
+        <!-- Contenedor Input y Dropdown -->
+        <div id="contenedorInputCliente" class="position-relative">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" id="inputCliente" class="form-control" placeholder="Escribe nombre, cédula o mascota..." autocomplete="off">
+            <button type="button" class="btn btn-outline-secondary" id="btnLimpiarInputCliente" style="display: none;" onclick="limpiarInputCliente()">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+          <!-- Menú desplegable flotante de resultados -->
+          <div id="dropdownClientes" class="list-group shadow-lg position-absolute w-100 start-0 d-none" style="top: 100%; z-index: 1060; max-height: 280px; overflow-y: auto;"></div>
+        </div>
+
+        <!-- Tarjeta de Cliente Seleccionado -->
+        <div id="tarjetaClienteSeleccionado" class="d-none mt-1 p-2 bg-white rounded border border-success-subtle shadow-sm">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="text-truncate">
+              <div class="fw-bold text-success text-truncate" id="tutorNombreSeleccionado"></div>
+              <small class="text-muted d-block" id="tutorDocSeleccionado"></small>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-2" onclick="desvincularCliente()" title="Desvincular cliente">
+              <i class="bi bi-x me-1"></i>Quitar
+            </button>
+          </div>
+          <!-- Selector de Mascota si tiene mascotas -->
+          <div id="contenedorSelectorMascota" class="mt-2 pt-1 border-top d-none">
+            <label class="small text-muted fw-bold mb-1" style="font-size: 0.75rem;">Mascota asignada:</label>
+            <select id="selectMascotaCliente" class="form-select form-select-sm" onchange="seleccionarMascota(this.value)">
+            </select>
+          </div>
+        </div>
       </div>
 
       <!-- Lista de Ítems del Carrito -->
@@ -92,8 +173,106 @@
           <span id="lblTotal" class="fs-4 fw-bold text-success font-monospace">$0.00</span>
         </div>
 
-        <button type="button" id="btnCobrar" class="btn btn-success btn-lg w-100 fw-bold py-3" onclick="abrirModalPago()" disabled>
-          <i class="bi bi-credit-card-2-front-fill me-2"></i>PROCESAR PAGO
+        <!-- Métodos de Pago y División de Pago -->
+        <div class="border rounded p-2 mb-3 bg-light" id="seccionMediosPago">
+          <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+            <span class="small fw-bold text-dark"><i class="bi bi-cash-stack text-success me-1"></i>Forma de Pago:</span>
+            <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 fw-bold text-nowrap" id="btnToggleDividirPago" onclick="toggleModoPago()">
+              <i class="bi bi-pie-chart-fill me-1"></i><span id="txtModoPago">Dividir Pago</span>
+            </button>
+          </div>
+
+          <!-- MODO 1: Pago Único (Rápido) -->
+          <div id="panelPagoUnico">
+            <div class="grid-metodos-pago mb-2" id="grupoBotonesPagoUnico">
+              <button type="button" class="btn btn-pago-metodo active" data-metodo="efectivo" onclick="setMetodoUnico('efectivo')">
+                💵 Efectivo
+              </button>
+              <button type="button" class="btn btn-pago-metodo" data-metodo="nequi" onclick="setMetodoUnico('nequi')">
+                📱 Nequi
+              </button>
+              <button type="button" class="btn btn-pago-metodo" data-metodo="daviplata" onclick="setMetodoUnico('daviplata')">
+                📱 Daviplata
+              </button>
+              <button type="button" class="btn btn-pago-metodo" data-metodo="tarjeta_debito" onclick="setMetodoUnico('tarjeta_debito')">
+                💳 Tarjeta
+              </button>
+              <button type="button" class="btn btn-pago-metodo" data-metodo="transferencia" onclick="setMetodoUnico('transferencia')">
+                🏦 Transf.
+              </button>
+            </div>
+
+            <div id="cajaEfectivoRecibido" class="p-2 bg-white rounded border">
+              <div class="row g-2 align-items-center">
+                <div class="col-12 col-sm-6 mb-1 mb-sm-0">
+                  <small class="text-secondary d-block fw-bold" style="font-size: 0.75rem;">Paga con (Efectivo):</small>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light">$</span>
+                    <input type="text" id="efectivoRecibidoInput" class="form-control text-end font-monospace fw-bold formato-miles-cop" placeholder="0" oninput="calcularVueltosEnVivo()">
+                  </div>
+                </div>
+                <div class="col-12 col-sm-6 text-sm-end">
+                  <small class="text-secondary d-block fw-bold" style="font-size: 0.75rem;">Cambio / Vueltos:</small>
+                  <strong id="lblVueltosCalculados" class="text-success font-monospace fs-5">$0</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODO 2: Pago Dividido / Mixto -->
+          <div id="panelPagoDividido" class="d-none">
+            <div class="small text-muted mb-2 border-bottom pb-1" style="font-size: 0.78rem;">
+              Distribuye el total entre varios medios de pago:
+            </div>
+            <div class="d-flex flex-column gap-1 mb-2">
+              <!-- Efectivo -->
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white" style="width: 105px; font-size: 0.78rem;"><i class="bi bi-cash text-success me-1"></i>Efectivo</span>
+                <input type="text" id="div_efectivo" class="form-control text-end font-monospace formato-miles-cop input-div-pago" placeholder="0" oninput="recalcularDivisionPago()">
+                <button type="button" class="btn btn-outline-secondary px-2" style="font-size: 0.72rem;" onclick="autoCompletarRestante('div_efectivo')" title="Cubrir saldo pendiente">Resto</button>
+              </div>
+              <!-- Nequi -->
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white" style="width: 105px; font-size: 0.78rem;"><i class="bi bi-phone text-primary me-1"></i>Nequi</span>
+                <input type="text" id="div_nequi" class="form-control text-end font-monospace formato-miles-cop input-div-pago" placeholder="0" oninput="recalcularDivisionPago()">
+                <button type="button" class="btn btn-outline-secondary px-2" style="font-size: 0.72rem;" onclick="autoCompletarRestante('div_nequi')" title="Cubrir saldo pendiente">Resto</button>
+              </div>
+              <!-- Daviplata -->
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white" style="width: 105px; font-size: 0.78rem;"><i class="bi bi-phone-fill text-danger me-1"></i>Daviplata</span>
+                <input type="text" id="div_daviplata" class="form-control text-end font-monospace formato-miles-cop input-div-pago" placeholder="0" oninput="recalcularDivisionPago()">
+                <button type="button" class="btn btn-outline-secondary px-2" style="font-size: 0.72rem;" onclick="autoCompletarRestante('div_daviplata')" title="Cubrir saldo pendiente">Resto</button>
+              </div>
+              <!-- Tarjeta -->
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white" style="width: 105px; font-size: 0.78rem;"><i class="bi bi-credit-card text-info me-1"></i>Tarjeta</span>
+                <input type="text" id="div_tarjeta" class="form-control text-end font-monospace formato-miles-cop input-div-pago" placeholder="0" oninput="recalcularDivisionPago()">
+                <button type="button" class="btn btn-outline-secondary px-2" style="font-size: 0.72rem;" onclick="autoCompletarRestante('div_tarjeta')" title="Cubrir saldo pendiente">Resto</button>
+              </div>
+              <!-- Transferencia -->
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white" style="width: 105px; font-size: 0.78rem;"><i class="bi bi-bank text-secondary me-1"></i>Transf.</span>
+                <input type="text" id="div_transf" class="form-control text-end font-monospace formato-miles-cop input-div-pago" placeholder="0" oninput="recalcularDivisionPago()">
+                <button type="button" class="btn btn-outline-secondary px-2" style="font-size: 0.72rem;" onclick="autoCompletarRestante('div_transf')" title="Cubrir saldo pendiente">Resto</button>
+              </div>
+            </div>
+
+            <!-- Resumen de división -->
+            <div class="p-2 bg-white rounded border small">
+              <div class="d-flex justify-content-between mb-1">
+                <span>Total asignado:</span>
+                <strong id="lblTotalAsignado" class="font-monospace">$0</strong>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <span id="lblEstadoDivisionTexto">Falta por cubrir:</span>
+                <strong id="lblEstadoDivisionMonto" class="font-monospace text-danger">$0</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="btnCobrar" class="btn btn-success btn-lg w-100 fw-bold py-3 shadow-sm" onclick="ejecutarCobroPOS()" disabled>
+          <i class="bi bi-check-circle-fill me-2"></i>FINALIZAR Y COBRAR
         </button>
       </div>
     </div>
@@ -199,14 +378,213 @@
   </div>
 </div>
 
+<style>
+/* Contenedor con scroll táctil suave para celular y tablet */
+.contenedor-filtros-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 2px 2px 6px 2px;
+}
+.contenedor-filtros-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.btn-cat-pill {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  min-height: 42px; /* Cumple con zona táctil para dedos en tablet/celular */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1.15rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border-radius: 50rem;
+  border: 1.5px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #1e293b !important;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.btn-cat-pill:hover {
+  border-color: #64748b;
+  background-color: #f8fafc;
+  transform: translateY(-1px);
+}
+.btn-cat-pill.active[data-cat="todos"] {
+  background-color: #0f172a !important;
+  border-color: #0f172a !important;
+  color: #ffffff !important;
+}
+.btn-cat-pill.active[data-cat="todos"] i { color: #ffffff !important; }
+
+.btn-cat-pill.active[data-cat="productos"] {
+  background-color: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+.btn-cat-pill.active[data-cat="productos"] i { color: #ffffff !important; }
+
+.btn-cat-pill.active[data-cat="spa"] {
+  background-color: #0f766e !important;
+  border-color: #0f766e !important;
+  color: #ffffff !important;
+}
+.btn-cat-pill.active[data-cat="spa"] i { color: #ffffff !important; }
+
+.btn-cat-pill.active[data-cat="clinica"] {
+  background-color: #b91c1c !important;
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+.btn-cat-pill.active[data-cat="clinica"] i { color: #ffffff !important; }
+
+/* Grid de Métodos de Pago táctiles (3 columnas en tablet/PC, 2 en móvil) */
+.grid-metodos-pago {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+@media (max-width: 480px) {
+  .grid-metodos-pago {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.btn-pago-metodo {
+  border-radius: 0.5rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+  min-height: 42px; /* Touch target para celulares y tablets */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.5rem;
+  border: 1.5px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #1e293b;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-pago-metodo:hover {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+}
+.btn-pago-metodo.active {
+  background-color: #059669 !important;
+  border-color: #047857 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 5px rgba(5, 150, 105, 0.3);
+}
+
+.card-pos-item {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 0.75rem;
+}
+.card-pos-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.12) !important;
+}
+@media (max-width: 576px) {
+  .card-pos-item .card-body {
+    padding: 0.65rem !important;
+  }
+  .card-pos-item h6 {
+    font-size: 0.85rem !important;
+  }
+}
+</style>
+
 <script>
 let carrito = [];
 let tutorSeleccionado = null;
 let mascotaSeleccionada = null;
+let categoriaActual = 'todos';
+let listaTutoresCargados = [];
+let citaSpaIdPendiente = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   const busqueda = document.getElementById('inputBusqueda');
-  busqueda.addEventListener('input', debounce(ejecutarBusqueda, 300));
+  busqueda.addEventListener('input', debounce(ejecutarBusqueda, 250));
+
+  // Inicializar botones de filtro por categoría
+  document.querySelectorAll('.btn-cat-pill').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.btn-cat-pill').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      categoriaActual = this.getAttribute('data-cat');
+      ejecutarBusqueda();
+    });
+  });
+
+  // Buscador de clientes en vivo con debounce
+  const inputCliente = document.getElementById('inputCliente');
+  if (inputCliente) {
+    let debounceTimerCliente = null;
+    inputCliente.addEventListener('input', function() {
+      clearTimeout(debounceTimerCliente);
+      const val = this.value.trim();
+      const btnClear = document.getElementById('btnLimpiarInputCliente');
+      if (val) {
+        if (btnClear) btnClear.style.display = 'block';
+      } else {
+        if (btnClear) btnClear.style.display = 'none';
+        cerrarDropdownClientes();
+        return;
+      }
+      debounceTimerCliente = setTimeout(() => buscarClientesEnVivo(val), 200);
+    });
+
+    inputCliente.addEventListener('focus', function() {
+      const val = this.value.trim();
+      if (val) {
+        buscarClientesEnVivo(val);
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      const seccion = document.getElementById('seccionCliente');
+      if (seccion && !seccion.contains(e.target)) {
+        cerrarDropdownClientes();
+      }
+    });
+  }
+
+  // Precargar datos si viene de Spa o módulo externo
+  const datosPrecarga = {{ datos_precarga|tojson|safe if datos_precarga else 'null' }};
+  if (datosPrecarga) {
+    citaSpaIdPendiente = datosPrecarga.cita_spa_id || null;
+
+    if (datosPrecarga.tutor) {
+      listaTutoresCargados = [datosPrecarga.tutor];
+      seleccionarCliente(0, datosPrecarga.mascota_id || null);
+    }
+
+    if (datosPrecarga.item) {
+      carrito.push({
+        producto_id: datosPrecarga.item.producto_id,
+        nombre: datosPrecarga.item.nombre,
+        tipo: datosPrecarga.item.tipo || 'servicio',
+        categoria: datosPrecarga.item.categoria || 'spa',
+        precio_unitario: datosPrecarga.item.precio_unitario,
+        cantidad: 1,
+        descuento: 0
+      });
+      renderCarrito();
+    }
+
+    if (window.innerWidth < 992) {
+      cambiarTabMovil('carrito');
+    }
+  }
+
   ejecutarBusqueda();
 });
 
@@ -223,33 +601,59 @@ async function ejecutarBusqueda() {
   const grid = document.getElementById('gridResultados');
 
   try {
-    const resp = await fetch(`/api/pos/buscar-items?q=${encodeURIComponent(q)}`);
+    const url = `/api/pos/buscar-items?q=${encodeURIComponent(q)}&categoria=${encodeURIComponent(categoriaActual)}&limite=48`;
+    const resp = await fetch(url);
     const data = await resp.json();
 
     if (!data || data.length === 0) {
-      grid.innerHTML = '<div class="text-center text-muted py-5">No se encontraron productos ni servicios.</div>';
+      grid.innerHTML = `
+        <div class="col-12 text-center text-muted py-5">
+          <i class="bi bi-search fs-1 d-block mb-2 text-secondary"></i>
+          No se encontraron ítems en esta categoría.
+        </div>
+      `;
       return;
     }
 
-    grid.innerHTML = data.map(item => `
-      <div class="col-12 col-md-6 col-xl-4">
-        <div class="card h-100 border hover-shadow style="cursor: pointer;" onclick='agregarAlCarrito(${JSON.stringify(item)})'>
-          <div class="card-body p-3">
-            <div class="d-flex justify-content-between align-items-start mb-1">
-              <span class="badge ${item.tipo === 'servicio' ? 'bg-info' : 'bg-secondary'}">${item.tipo.toUpperCase()}</span>
-              <small class="text-muted">${item.sku || ''}</small>
-            </div>
-            <h6 class="card-title fw-bold text-truncate mb-1">${item.nombre}</h6>
-            <div class="d-flex justify-content-between align-items-end mt-2">
-              <span class="fs-6 fw-bold text-success">$${item.precio_sugerido.toLocaleString('es-CO')}</span>
-              <small class="${item.stock_total <= 0 && item.tipo !== 'servicio' ? 'text-danger fw-bold' : 'text-muted'}">
-                ${item.tipo === 'servicio' ? 'Servicio' : 'Stock: ' + item.stock_total}
-              </small>
+    grid.innerHTML = data.map(item => {
+      let badgeHtml = '';
+      let cardStyle = '';
+      let stockBadge = '';
+
+      if (item.categoria === 'spa') {
+        badgeHtml = '<span class="badge px-2 py-1" style="background-color: #0f766e; color: #ffffff; font-weight: 700; font-size: 0.72rem;"><i class="bi bi-scissors me-1"></i>SPA / PELUQUERÍA</span>';
+        cardStyle = 'border: 1.5px solid #99f6e4; border-top: 4px solid #0f766e;';
+        stockBadge = '<span class="badge bg-light border" style="color: #0f766e; border-color: #99f6e4 !important;"><i class="bi bi-stars me-1"></i>Estética</span>';
+      } else if (item.categoria === 'clinica' || item.tipo === 'servicio') {
+        badgeHtml = '<span class="badge px-2 py-1" style="background-color: #b91c1c; color: #ffffff; font-weight: 700; font-size: 0.72rem;"><i class="bi bi-heart-pulse-fill me-1"></i>CLÍNICA</span>';
+        cardStyle = 'border: 1.5px solid #fecdd3; border-top: 4px solid #b91c1c;';
+        stockBadge = '<span class="badge bg-light border" style="color: #b91c1c; border-color: #fecdd3 !important;"><i class="bi bi-shield-plus me-1"></i>Médico</span>';
+      } else {
+        badgeHtml = '<span class="badge px-2 py-1" style="background-color: #1d4ed8; color: #ffffff; font-weight: 700; font-size: 0.72rem;"><i class="bi bi-box-seam me-1"></i>PRODUCTO</span>';
+        cardStyle = 'border: 1.5px solid #bfdbfe; border-top: 4px solid #1d4ed8;';
+        stockBadge = `<small class="${item.stock_total <= 0 ? 'text-danger fw-bold' : 'text-muted'}">Stock: ${item.stock_total ?? 0}</small>`;
+      }
+
+      return `
+        <div class="col-6 col-md-6 col-xl-4">
+          <div class="card h-100 shadow-sm card-pos-item bg-white" style="cursor: pointer; ${cardStyle}" onclick='agregarAlCarrito(${JSON.stringify(item)})'>
+            <div class="card-body p-3 d-flex flex-column justify-content-between">
+              <div>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  ${badgeHtml}
+                  <small class="text-muted font-monospace">${item.sku || ''}</small>
+                </div>
+                <h6 class="card-title fw-bold mb-1 text-dark" style="font-size: 0.95rem; line-height: 1.3;">${item.nombre}</h6>
+              </div>
+              <div class="d-flex justify-content-between align-items-end mt-2 pt-2 border-top">
+                <span class="fs-6 fw-bold text-success font-monospace">$${item.precio_sugerido.toLocaleString('es-CO')}</span>
+                ${stockBadge}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   } catch (err) {
     console.error(err);
   }
@@ -264,6 +668,7 @@ function agregarAlCarrito(item) {
       producto_id: item.id,
       nombre: item.nombre,
       tipo: item.tipo,
+      categoria: item.categoria,
       precio_unitario: item.precio_sugerido,
       cantidad: 1,
       descuento: 0
@@ -284,25 +689,38 @@ function renderCarrito() {
   }
 
   btnCobrar.disabled = false;
-  tbody.innerHTML = carrito.map((item, idx) => `
-    <tr>
-      <td>
-        <div class="fw-bold text-truncate" style="max-width: 150px;">${item.nombre}</div>
-        <small class="text-muted">$${item.precio_unitario.toLocaleString('es-CO')}</small>
-      </td>
-      <td>
-        <div class="input-group input-group-sm">
-          <button class="btn btn-outline-secondary" onclick="cambiarCantidad(${idx}, -1)">-</button>
-          <input type="text" class="form-control text-center px-1" value="${item.cantidad}" readonly>
-          <button class="btn btn-outline-secondary" onclick="cambiarCantidad(${idx}, 1)">+</button>
-        </div>
-      </td>
-      <td class="text-end font-monospace">$${(item.cantidad * item.precio_unitario).toLocaleString('es-CO')}</td>
-      <td>
-        <button type="button" class="btn btn-sm text-danger p-0" onclick="eliminarItem(${idx})"><i class="bi bi-x-circle-fill"></i></button>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = carrito.map((item, idx) => {
+    let tag = '';
+    if (item.categoria === 'spa') {
+      tag = '<span class="badge bg-info-subtle text-info border border-info-subtle me-1" style="font-size: 0.65rem;">✂️ Spa</span>';
+    } else if (item.tipo === 'servicio') {
+      tag = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1" style="font-size: 0.65rem;">🩺 Clínica</span>';
+    }
+
+    return `
+      <tr>
+        <td>
+          <div class="fw-bold text-truncate" style="max-width: 150px;" title="${item.nombre}">
+            ${tag}${item.nombre}
+          </div>
+          <small class="text-muted font-monospace">$${item.precio_unitario.toLocaleString('es-CO')}</small>
+        </td>
+        <td>
+          <div class="input-group input-group-sm" style="width: 85px;">
+            <button class="btn btn-outline-secondary px-2" onclick="cambiarCantidad(${idx}, -1)">-</button>
+            <input type="text" class="form-control text-center px-1 font-monospace" value="${item.cantidad}" readonly>
+            <button class="btn btn-outline-secondary px-2" onclick="cambiarCantidad(${idx}, 1)">+</button>
+          </div>
+        </td>
+        <td class="text-end font-monospace fw-bold">$${(item.cantidad * item.precio_unitario).toLocaleString('es-CO')}</td>
+        <td class="text-center">
+          <button type="button" class="btn btn-sm text-danger p-0 border-0 bg-transparent" onclick="eliminarItem(${idx})" title="Quitar ítem">
+            <i class="bi bi-x-circle-fill"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 
   renderTotales();
 }
@@ -325,6 +743,14 @@ function limpiarCarrito() {
   renderCarrito();
 }
 
+let modoPagoActual = 'unico'; // 'unico' o 'dividido'
+let metodoUnicoActual = 'efectivo';
+
+function obtenerTotalPagarNumerico() {
+  const txt = document.getElementById('lblTotal').innerText.replace(/\D/g, '');
+  return parseInt(txt || '0', 10);
+}
+
 function renderTotales() {
   const subtotal = carrito.reduce((acc, item) => acc + (item.cantidad * item.precio_unitario), 0);
   const descGlobal = parseFloat(document.getElementById('inputDescuento').value || 0);
@@ -332,28 +758,389 @@ function renderTotales() {
 
   document.getElementById('lblSubtotal').innerText = '$' + subtotal.toLocaleString('es-CO');
   document.getElementById('lblTotal').innerText = '$' + total.toLocaleString('es-CO');
-  document.getElementById('lblTotalModal').innerText = '$' + total.toLocaleString('es-CO');
+  const lblModal = document.getElementById('lblTotalModal');
+  if (lblModal) lblModal.innerText = '$' + total.toLocaleString('es-CO');
+
+  // Actualizar indicadores para tablet y celular
+  const cantItems = carrito.reduce((acc, item) => acc + item.cantidad, 0);
+  const badgeCant = document.getElementById('badgeCantMovil');
+  if (badgeCant) badgeCant.innerText = cantItems;
+  const badgeTot = document.getElementById('badgeTotalMovil');
+  if (badgeTot) badgeTot.innerText = '$' + total.toLocaleString('es-CO');
+
+  const btnCobrar = document.getElementById('btnCobrar');
+
+  if (carrito.length === 0) {
+    if (btnCobrar) btnCobrar.disabled = true;
+    const efInp = document.getElementById('efectivoRecibidoInput');
+    if (efInp) efInp.value = '';
+    const lblVueltos = document.getElementById('lblVueltosCalculados');
+    if (lblVueltos) lblVueltos.innerText = '$0';
+    return;
+  }
+
+  if (modoPagoActual === 'unico') {
+    if (btnCobrar) btnCobrar.disabled = false;
+    const inputEf = document.getElementById('efectivoRecibidoInput');
+    if (inputEf) {
+      if (!inputEf.value || inputEf.getAttribute('data-autofill') === 'true') {
+        inputEf.value = total > 0 ? total.toLocaleString('es-CO') : '';
+        inputEf.setAttribute('data-autofill', 'true');
+      }
+    }
+    calcularVueltosEnVivo();
+  } else {
+    recalcularDivisionPago();
+  }
 }
 
-async function buscarCliente() {
-  const q = document.getElementById('inputCliente').value.trim();
-  if (!q) return;
+function cambiarTabMovil(tab) {
+  const colCat = document.getElementById('columnaCatalogo');
+  const colCar = document.getElementById('columnaCarrito');
+  const btnCat = document.getElementById('btnTabCatalogo');
+  const btnCar = document.getElementById('btnTabCarrito');
+
+  if (tab === 'catalogo') {
+    if (colCat) colCat.classList.remove('d-none');
+    if (colCar) {
+      colCar.classList.add('d-none');
+      colCar.classList.add('d-lg-block');
+    }
+    if (btnCat) btnCat.className = 'btn btn-primary py-2 fw-bold';
+    if (btnCar) btnCar.className = 'btn btn-outline-secondary py-2 fw-bold';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    if (colCat) colCat.classList.add('d-none');
+    if (colCar) {
+      colCar.classList.remove('d-none');
+      colCar.classList.remove('d-lg-block');
+    }
+    if (btnCat) btnCat.className = 'btn btn-outline-secondary py-2 fw-bold';
+    if (btnCar) btnCar.className = 'btn btn-success py-2 fw-bold text-white';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function toggleModoPago() {
+  if (modoPagoActual === 'unico') {
+    modoPagoActual = 'dividido';
+    document.getElementById('panelPagoUnico').classList.add('d-none');
+    document.getElementById('panelPagoDividido').classList.remove('d-none');
+    document.getElementById('txtModoPago').innerText = 'Pago Único';
+    document.getElementById('btnToggleDividirPago').className = 'btn btn-sm btn-outline-secondary py-0 px-2 fw-bold';
+    recalcularDivisionPago();
+  } else {
+    modoPagoActual = 'unico';
+    document.getElementById('panelPagoDividido').classList.add('d-none');
+    document.getElementById('panelPagoUnico').classList.remove('d-none');
+    document.getElementById('txtModoPago').innerText = 'Dividir Pago';
+    document.getElementById('btnToggleDividirPago').className = 'btn btn-sm btn-outline-primary py-0 px-2 fw-bold';
+    renderTotales();
+  }
+}
+
+function setMetodoUnico(metodo) {
+  metodoUnicoActual = metodo;
+  document.querySelectorAll('.btn-pago-metodo').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-metodo') === metodo);
+  });
+
+  const cajaEfectivo = document.getElementById('cajaEfectivoRecibido');
+  if (metodo === 'efectivo') {
+    cajaEfectivo.classList.remove('d-none');
+    calcularVueltosEnVivo();
+  } else {
+    cajaEfectivo.classList.add('d-none');
+  }
+}
+
+function calcularVueltosEnVivo() {
+  const total = obtenerTotalPagarNumerico();
+  const inputEf = document.getElementById('efectivoRecibidoInput');
+  if (!inputEf) return;
+  const inputVal = inputEf.value.replace(/\D/g, '');
+  const recibido = parseInt(inputVal || '0', 10);
+  const vueltos = Math.max(0, recibido - total);
+  document.getElementById('lblVueltosCalculados').innerText = '$' + vueltos.toLocaleString('es-CO');
+}
+
+function recalcularDivisionPago() {
+  const totalFactura = obtenerTotalPagarNumerico();
+
+  const ef = parseInt((document.getElementById('div_efectivo')?.value || '').replace(/\D/g, '') || '0', 10);
+  const nq = parseInt((document.getElementById('div_nequi')?.value || '').replace(/\D/g, '') || '0', 10);
+  const dv = parseInt((document.getElementById('div_daviplata')?.value || '').replace(/\D/g, '') || '0', 10);
+  const tj = parseInt((document.getElementById('div_tarjeta')?.value || '').replace(/\D/g, '') || '0', 10);
+  const tr = parseInt((document.getElementById('div_transf')?.value || '').replace(/\D/g, '') || '0', 10);
+
+  const suma = ef + nq + dv + tj + tr;
+  const dif = totalFactura - suma;
+
+  document.getElementById('lblTotalAsignado').innerText = '$' + suma.toLocaleString('es-CO');
+
+  const lblTexto = document.getElementById('lblEstadoDivisionTexto');
+  const lblMonto = document.getElementById('lblEstadoDivisionMonto');
+  const btn = document.getElementById('btnCobrar');
+
+  if (dif > 0) {
+    lblTexto.innerText = 'Falta por cubrir:';
+    lblTexto.className = 'text-danger fw-bold';
+    lblMonto.innerText = '$' + dif.toLocaleString('es-CO');
+    lblMonto.className = 'font-monospace text-danger';
+    if (btn) btn.disabled = true;
+  } else if (dif < 0) {
+    lblTexto.innerText = 'Excedente / Vueltos:';
+    lblTexto.className = 'text-primary fw-bold';
+    lblMonto.innerText = '$' + Math.abs(dif).toLocaleString('es-CO');
+    lblMonto.className = 'font-monospace text-primary';
+    if (btn && carrito.length > 0) btn.disabled = false;
+  } else {
+    lblTexto.innerText = '✓ Saldo Completo:';
+    lblTexto.className = 'text-success fw-bold';
+    lblMonto.innerText = '$0';
+    lblMonto.className = 'font-monospace text-success';
+    if (btn && carrito.length > 0) btn.disabled = false;
+  }
+}
+
+function autoCompletarRestante(targetId) {
+  const totalFactura = obtenerTotalPagarNumerico();
+  const campos = ['div_efectivo', 'div_nequi', 'div_daviplata', 'div_tarjeta', 'div_transf'];
+
+  let sumaOtros = 0;
+  campos.forEach(c => {
+    if (c !== targetId) {
+      const val = parseInt((document.getElementById(c)?.value || '').replace(/\D/g, '') || '0', 10);
+      sumaOtros += val;
+    }
+  });
+
+  const restante = Math.max(0, totalFactura - sumaOtros);
+  const target = document.getElementById(targetId);
+  if (target) {
+    target.value = restante > 0 ? restante.toLocaleString('es-CO') : '';
+  }
+  recalcularDivisionPago();
+}
+
+async function ejecutarCobroPOS() {
+  if (carrito.length === 0) return;
+
+  const totalFactura = obtenerTotalPagarNumerico();
+  const descGlobal = parseFloat(document.getElementById('inputDescuento').value || 0);
+  const pagos = [];
+
+  if (modoPagoActual === 'unico') {
+    if (metodoUnicoActual === 'efectivo') {
+      const recVal = parseInt((document.getElementById('efectivoRecibidoInput')?.value || '').replace(/\D/g, '') || '0', 10);
+      const efPagar = Math.max(totalFactura, recVal || totalFactura);
+      pagos.push({ metodo_pago: 'efectivo', monto: efPagar });
+    } else {
+      pagos.push({ metodo_pago: metodoUnicoActual, monto: totalFactura });
+    }
+  } else {
+    // Modo dividido
+    const ef = parseInt((document.getElementById('div_efectivo')?.value || '').replace(/\D/g, '') || '0', 10);
+    const nq = parseInt((document.getElementById('div_nequi')?.value || '').replace(/\D/g, '') || '0', 10);
+    const dv = parseInt((document.getElementById('div_daviplata')?.value || '').replace(/\D/g, '') || '0', 10);
+    const tj = parseInt((document.getElementById('div_tarjeta')?.value || '').replace(/\D/g, '') || '0', 10);
+    const tr = parseInt((document.getElementById('div_transf')?.value || '').replace(/\D/g, '') || '0', 10);
+
+    if (ef > 0) pagos.push({ metodo_pago: 'efectivo', monto: ef });
+    if (nq > 0) pagos.push({ metodo_pago: 'nequi', monto: nq });
+    if (dv > 0) pagos.push({ metodo_pago: 'daviplata', monto: dv });
+    if (tj > 0) pagos.push({ metodo_pago: 'tarjeta_debito', monto: tj });
+    if (tr > 0) pagos.push({ metodo_pago: 'transferencia', monto: tr });
+
+    const suma = pagos.reduce((acc, p) => acc + p.monto, 0);
+    if (suma < totalFactura) {
+      alert(`Falta por cubrir $${(totalFactura - suma).toLocaleString('es-CO')} en los medios de pago.`);
+      return;
+    }
+  }
+
+  const btn = document.getElementById('btnCobrar');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registrando Venta...';
+
+  const payload = {
+    tutor_id: tutorSeleccionado,
+    mascota_id: mascotaSeleccionada,
+    descuento_monto: descGlobal,
+    items: carrito,
+    pagos: pagos,
+    cita_spa_id: citaSpaIdPendiente
+  };
+
+  try {
+    const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = metaCsrf ? metaCsrf.content : '';
+
+    const resp = await fetch('/pos/venta/procesar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const res = await resp.json();
+    if (res.ok) {
+      window.location.href = res.url;
+      return;
+    }
+
+    if (res.requiere_aprobacion) {
+      iniciarEsperaAprobacion(res.aprobacion_id, res.mensaje, res.estado_aprobacion, res.producto_id, res.variante_id);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>FINALIZAR Y COBRAR';
+      return;
+    }
+
+    alert('Error: ' + (res.error || 'No se pudo procesar la venta.'));
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>FINALIZAR Y COBRAR';
+  } catch (err) {
+    console.error(err);
+    alert('Ocurrió un error al procesar el pago.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>FINALIZAR Y COBRAR';
+  }
+}
+
+async function buscarClientesEnVivo(q) {
+  const dropdown = document.getElementById('dropdownClientes');
+  if (!dropdown) return;
+
+  dropdown.innerHTML = `
+    <div class="p-3 text-center text-muted small bg-white">
+      <span class="spinner-border spinner-border-sm me-1 text-primary"></span>Buscando clientes...
+    </div>
+  `;
+  dropdown.classList.remove('d-none');
 
   try {
     const resp = await fetch(`/api/pos/tutores-mascotas?q=${encodeURIComponent(q)}`);
     const data = await resp.json();
-    if (data && data.length > 0) {
-      const tutor = data[0];
-      tutorSeleccionado = tutor.id;
-      mascotaSeleccionada = tutor.mascotas.length > 0 ? tutor.mascotas[0].id : null;
+    listaTutoresCargados = data;
 
-      const div = document.getElementById('infoCliente');
-      div.innerText = `Cliente: ${tutor.nombre}` + (tutor.mascotas.length > 0 ? ` (Mascota: ${tutor.mascotas[0].nombre})` : '');
-      div.classList.remove('d-none');
+    if (!data || data.length === 0) {
+      dropdown.innerHTML = `
+        <div class="p-3 text-center text-muted small bg-white">
+          <i class="bi bi-person-x fs-4 d-block text-secondary mb-1"></i>
+          No se encontró ningún cliente con "<strong>${q}</strong>"
+        </div>
+      `;
+      return;
     }
+
+    dropdown.innerHTML = data.map((tutor, idx) => {
+      const mascotasHtml = tutor.mascotas && tutor.mascotas.length > 0
+        ? tutor.mascotas.map(m => `
+            <span class="badge bg-light text-dark border me-1 mb-1 py-1" onclick="event.stopPropagation(); seleccionarCliente(${idx}, ${m.id})">
+              ${m.emoji || '🐾'} ${m.nombre} (${m.especie})
+            </span>
+          `).join('')
+        : '<span class="small text-muted fst-italic">Sin mascotas registradas</span>';
+
+      return `
+        <div class="list-group-item list-group-item-action p-2 cursor-pointer border-bottom bg-white" onclick="seleccionarCliente(${idx}, null)" style="cursor: pointer;">
+          <div class="d-flex justify-content-between align-items-center">
+            <strong class="text-dark">${tutor.nombre}</strong>
+            <span class="badge bg-primary-subtle text-primary font-monospace">${tutor.documento}</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-1 text-secondary small">
+            <span><i class="bi bi-telephone me-1"></i>${tutor.telefono || 'Sin teléfono'}</span>
+          </div>
+          <div class="mt-1 pt-1 border-top">
+            <small class="text-muted d-block mb-1" style="font-size: 0.72rem;">Mascotas (haz clic para asociar directamente):</small>
+            ${mascotasHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
   } catch (err) {
-    console.error(err);
+    console.error('Error al buscar clientes:', err);
+    dropdown.innerHTML = '<div class="p-2 text-danger small text-center bg-white">Error de conexión al buscar clientes.</div>';
   }
+}
+
+function cerrarDropdownClientes() {
+  const dropdown = document.getElementById('dropdownClientes');
+  if (dropdown) dropdown.classList.add('d-none');
+}
+
+function limpiarInputCliente() {
+  const input = document.getElementById('inputCliente');
+  if (input) input.value = '';
+  const btn = document.getElementById('btnLimpiarInputCliente');
+  if (btn) btn.style.display = 'none';
+  cerrarDropdownClientes();
+}
+
+function seleccionarCliente(tutorIdx, mascotaId) {
+  const tutor = listaTutoresCargados[tutorIdx];
+  if (!tutor) return;
+
+  tutorSeleccionado = tutor.id;
+
+  if (mascotaId) {
+    mascotaSeleccionada = mascotaId;
+  } else if (tutor.mascotas && tutor.mascotas.length > 0) {
+    mascotaSeleccionada = tutor.mascotas[0].id;
+  } else {
+    mascotaSeleccionada = null;
+  }
+
+  cerrarDropdownClientes();
+
+  // Cambiar visualmente de input a tarjeta
+  document.getElementById('contenedorInputCliente').classList.add('d-none');
+  const tarjeta = document.getElementById('tarjetaClienteSeleccionado');
+  tarjeta.classList.remove('d-none');
+
+  document.getElementById('tutorNombreSeleccionado').innerText = tutor.nombre;
+  document.getElementById('tutorDocSeleccionado').innerText = `${tutor.documento} • Tel: ${tutor.telefono || 'N/A'}`;
+
+  const badge = document.getElementById('badgeClienteEstado');
+  badge.className = 'badge bg-success text-white fw-bold';
+  badge.innerText = 'Asignado';
+
+  // Configurar selector de mascotas
+  const contSelectMascota = document.getElementById('contenedorSelectorMascota');
+  const selectMascota = document.getElementById('selectMascotaCliente');
+  if (tutor.mascotas && tutor.mascotas.length > 0) {
+    contSelectMascota.classList.remove('d-none');
+    selectMascota.innerHTML = tutor.mascotas.map(m => `
+      <option value="${m.id}" ${m.id === mascotaSeleccionada ? 'selected' : ''}>
+        ${m.emoji || '🐾'} ${m.nombre} (${m.especie})
+      </option>
+    `).join('') + '<option value="">-- Sin especificar mascota --</option>';
+  } else {
+    contSelectMascota.classList.add('d-none');
+    selectMascota.innerHTML = '';
+  }
+}
+
+function seleccionarMascota(mascotaId) {
+  mascotaSeleccionada = mascotaId ? parseInt(mascotaId, 10) : null;
+}
+
+function desvincularCliente() {
+  tutorSeleccionado = null;
+  mascotaSeleccionada = null;
+
+  document.getElementById('tarjetaClienteSeleccionado').classList.add('d-none');
+  document.getElementById('contenedorInputCliente').classList.remove('d-none');
+  limpiarInputCliente();
+
+  const badge = document.getElementById('badgeClienteEstado');
+  badge.className = 'badge bg-secondary-subtle text-secondary fw-normal';
+  badge.innerText = 'Sin asignar';
+
+  const input = document.getElementById('inputCliente');
+  if (input) input.focus();
 }
 
 function abrirModalPago() {
@@ -426,7 +1213,8 @@ async function confirmarVenta() {
     mascota_id: mascotaSeleccionada,
     descuento_monto: descGlobal,
     items: carrito,
-    pagos: pagos
+    pagos: pagos,
+    cita_spa_id: citaSpaIdPendiente
   };
 
   try {

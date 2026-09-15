@@ -225,6 +225,138 @@
 .table { --bs-table-hover-bg: #FDF1E7; }
 .table thead th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--sandia-gris); font-weight: 800; }
 
+/* --- Botones con volumen, relieve y destellos Sandía ------------------------- */
+.btn-sandia {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #be123c 100%);
+  color: #ffffff !important;
+  border: 1px solid rgba(190, 18, 60, 0.4);
+  box-shadow: 0 4px 14px -2px rgba(225, 29, 72, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  font-weight: 700;
+  border-radius: 0.75rem;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.btn-sandia::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: rotate(25deg);
+  transition: all 0.55s ease;
+  pointer-events: none;
+}
+.btn-sandia:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 18px -2px rgba(225, 29, 72, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+}
+.btn-sandia:hover::after {
+  left: 130%;
+}
+.btn-sandia:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(225, 29, 72, 0.35);
+}
+
+.btn-sandia-verde {
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+  color: #ffffff !important;
+  border: 1px solid rgba(4, 120, 87, 0.4);
+  box-shadow: 0 4px 14px -2px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  font-weight: 700;
+  border-radius: 0.75rem;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.btn-sandia-verde::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: rotate(25deg);
+  transition: all 0.55s ease;
+  pointer-events: none;
+}
+.btn-sandia-verde:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 18px -2px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+}
+.btn-sandia-verde:hover::after {
+  left: 130%;
+}
+.btn-sandia-verde:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+}
+
+/* Botón de acción en tarjeta de paciente (Ver Ficha Médica) */
+.btn-tarjeta-accion {
+  background: #fff1f2;
+  color: #e11d48 !important;
+  border: 1.5px solid #fecdd3;
+  border-radius: 9999px;
+  font-weight: 700;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: 0 1px 4px rgba(225, 29, 72, 0.08);
+  transition: all 0.18s ease;
+  text-decoration: none;
+}
+.btn-tarjeta-accion i {
+  transition: transform 0.18s ease;
+}
+.btn-tarjeta-accion:hover {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff !important;
+  border-color: #e11d48;
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.32);
+  transform: translateY(-1px);
+}
+.btn-tarjeta-accion:hover i {
+  transform: translateX(3px);
+  color: #ffffff;
+}
+
+/* Tarjeta de Paciente */
+.tarjeta-paciente {
+  background: #ffffff;
+  border-radius: 1rem;
+  border: 1.5px solid #f1f5f9;
+  border-top: 3.5px solid #f43f5e;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.tarjeta-paciente:hover {
+  transform: translateY(-3px);
+  border-color: #fecdd3;
+  border-top-color: #e11d48;
+  box-shadow: 0 10px 24px -4px rgba(225, 29, 72, 0.14);
+}
+
 /* --- Marca ------------------------------------------------------------------ */
 .marca { display: inline-flex; align-items: center; gap: 0.6rem; text-decoration: none; color: inherit; }
 .marca__logo { width: 40px; height: 40px; flex: 0 0 auto; }
@@ -249,6 +381,52 @@
 .marca--grande .marca__nombre { font-size: 2.6rem; }
 .marca--grande .marca__subtitulo { font-size: 0.75rem; }
 
+/* --- Marca en la barra superior (Centrada y con mayor presencia) ------------ */
+.marca--navbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  text-decoration: none;
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+.marca--navbar:hover {
+  transform: scale(1.03);
+  filter: drop-shadow(0 2px 8px rgba(229, 57, 53, 0.18));
+}
+.marca--navbar .marca__logo {
+  width: 48px;
+  height: 48px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+}
+.marca--navbar .marca__nombre {
+  font-size: 1.85rem;
+  letter-spacing: 0.03em;
+  line-height: 0.95;
+}
+.marca--navbar .marca__subtitulo {
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  margin-top: 0.22rem;
+  font-weight: 800;
+}
+
+@media (max-width: 576px) {
+  .marca--navbar {
+    gap: 0.5rem;
+  }
+  .marca--navbar .marca__logo {
+    width: 40px;
+    height: 40px;
+  }
+  .marca--navbar .marca__nombre {
+    font-size: 1.55rem;
+  }
+  .marca--navbar .marca__subtitulo {
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+  }
+}
+
 h1, h2, h3, .h1, .h2, .h3 { font-family: var(--fuente-cuerpo); font-weight: 800; letter-spacing: -0.01em; }
 .titulo-pagina { font-size: 1.5rem; margin: 0; }
 @media (min-width: 768px) { .titulo-pagina { font-size: 1.85rem; } }
@@ -256,8 +434,32 @@ h1, h2, h3, .h1, .h2, .h3 { font-family: var(--fuente-cuerpo); font-weight: 800;
 /* --- Barra superior --------------------------------------------------------- */
 .barra-superior {
   background: var(--sandia-blanco);
-  border-bottom: 3px solid var(--sandia-rojo);
-  box-shadow: 0 2px 10px rgba(33, 33, 33, 0.06);
+  border-bottom: 3.5px solid var(--sandia-rojo);
+  box-shadow: 0 2px 14px rgba(33, 33, 33, 0.07);
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+.barra-superior__grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  width: 100%;
+}
+.barra-superior__izq {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+.barra-superior__centro {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.barra-superior__der {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 .btn-icono-menu {
   display: inline-flex; align-items: center; justify-content: center;

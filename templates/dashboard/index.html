@@ -1,34 +1,328 @@
 {% extends "base.html" %}
-{% block titulo %}Inicio{% endblock %}
+{% block titulo %}Inicio - Sandía{% endblock %}
 
 {% block contenido %}
-<!-- Encabezado / Hero dinámico -->
-<section class="saludo mb-4">
-  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+<style>
+  /* ==========================================================================
+     HERO & BOTONES CON DESTELLOS Y COLORES DEL LOGO SANDÍA
+     ========================================================================== */
+  .dashboard-hero-compact {
+    background: linear-gradient(135deg, #ffffff 0%, #fffbf8 50%, #f0fdf4 100%);
+    border: 1.5px solid #fecdd3;
+    border-top: 3px solid #e11d48;
+    border-radius: 1rem;
+    padding: 0.85rem 1.25rem;
+    box-shadow: 0 4px 16px -2px rgba(225, 29, 72, 0.08), 0 2px 6px rgba(0,0,0,0.03);
+    position: relative;
+    overflow: hidden;
+  }
+  .dashboard-hero-compact::after {
+    content: '';
+    position: absolute;
+    top: -25px;
+    right: -25px;
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle, rgba(74, 222, 128, 0.15) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  /* Efecto de Brillo/Destello (Shimmer) para los botones */
+  @keyframes destelloBrillo {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* Botón Base con Relieve 3D y Destello */
+  .btn-destello {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 0.83rem;
+    text-decoration: none;
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-destello::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.28) 50%, rgba(255,255,255,0) 100%);
+    background-size: 200% 100%;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+  .btn-destello:hover::before {
+    opacity: 1;
+    animation: destelloBrillo 1.5s infinite;
+  }
+  .btn-destello:hover {
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  /* Botón Nueva Mascota: Destello Rosado / Coral Sandía */
+  .btn-destello--rosado {
+    background: linear-gradient(135deg, #be123c 0%, #e11d48 45%, #fb7185 100%);
+    box-shadow: 0 4px 14px -1px rgba(225, 29, 72, 0.45), 0 0 10px rgba(251, 113, 133, 0.35);
+  }
+  .btn-destello--rosado:hover {
+    box-shadow: 0 6px 20px rgba(225, 29, 72, 0.6), 0 0 16px rgba(251, 113, 133, 0.5);
+    filter: brightness(1.06);
+  }
+
+  /* Botón Punto de Venta: Destello Verde Cáscara Sandía */
+  .btn-destello--verde {
+    background: linear-gradient(135deg, #15803d 0%, #16a34a 45%, #22c55e 100%);
+    box-shadow: 0 4px 14px -1px rgba(22, 163, 74, 0.45), 0 0 10px rgba(74, 222, 128, 0.35);
+  }
+  .btn-destello--verde:hover {
+    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.6), 0 0 16px rgba(74, 222, 128, 0.5);
+    filter: brightness(1.06);
+  }
+
+  /* Botón Agendar Cita: Destello Aqua / Burbuja Spa */
+  .btn-destello--aqua {
+    background: linear-gradient(135deg, #0f766e 0%, #0d9488 45%, #14b8a6 100%);
+    box-shadow: 0 4px 14px -1px rgba(13, 148, 136, 0.45), 0 0 10px rgba(45, 212, 191, 0.35);
+  }
+  .btn-destello--aqua:hover {
+    box-shadow: 0 6px 20px rgba(13, 148, 136, 0.6), 0 0 16px rgba(45, 212, 191, 0.5);
+    filter: brightness(1.06);
+  }
+
+  /* ==========================================================================
+     TARJETAS KPI CON DETALLES DE COLOR, PESTAÑAS Y DESTELLOS
+     ========================================================================== */
+  .kpi-card-compact {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.9rem;
+    padding: 0.75rem 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    text-decoration: none;
+    color: inherit;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card-compact::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3.5px;
+  }
+  .kpi-card-compact:hover {
+    transform: translateY(-2px);
+    color: inherit;
+  }
+
+  /* Citas Hoy (Azul Cielo / Aqua) */
+  .kpi-card-compact--citas::before { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+  .kpi-card-compact--citas:hover {
+    border-color: #7dd3fc;
+    box-shadow: 0 8px 22px -2px rgba(2, 132, 199, 0.2);
+  }
+
+  /* Pacientes (Rosado Sandía) */
+  .kpi-card-compact--pacientes::before { background: linear-gradient(90deg, #e11d48, #fb7185); }
+  .kpi-card-compact--pacientes:hover {
+    border-color: #fecdd3;
+    box-shadow: 0 8px 22px -2px rgba(225, 29, 72, 0.2);
+  }
+
+  /* Ventas (Verde Sandía) */
+  .kpi-card-compact--ventas::before { background: linear-gradient(90deg, #15803d, #4ade80); }
+  .kpi-card-compact--ventas:hover {
+    border-color: #bbf7d0;
+    box-shadow: 0 8px 22px -2px rgba(22, 163, 74, 0.2);
+  }
+
+  /* Stock (Ámbar Dorado) */
+  .kpi-card-compact--stock::before { background: linear-gradient(90deg, #d97706, #fbbf24); }
+  .kpi-card-compact--stock:hover {
+    border-color: #fde68a;
+    box-shadow: 0 8px 22px -2px rgba(217, 119, 6, 0.2);
+  }
+
+  .kpi-icon-box-compact {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    color: #ffffff;
+  }
+  .kpi-value-compact {
+    font-size: 1.28rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #0f172a;
+    font-family: var(--fuente-cuerpo);
+  }
+  .kpi-label-compact {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+  }
+
+  /* ==========================================================================
+     WIDGET COMPACTO DE RECOGIDA CON DETALLES DE MARCA
+     ========================================================================== */
+  .recogida-card-compact {
+    border-radius: 0.95rem;
+    border: 1.5px solid #fed7aa;
+    border-top: 3.5px solid #f97316;
+    background: #ffffff;
+    box-shadow: 0 2px 14px -2px rgba(249, 115, 22, 0.1);
+    overflow: hidden;
+  }
+  .recogida-header-compact {
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+    border-bottom: 1px solid #fed7aa;
+    padding: 0.5rem 0.9rem;
+  }
+
+  .item-recogida-compact {
+    padding: 0.45rem 0.9rem;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background-color 0.12s ease;
+  }
+  .item-recogida-compact:last-child {
+    border-bottom: none;
+  }
+  .item-recogida-compact:hover {
+    background-color: #fffaf5;
+  }
+
+  /* Pulso para Alerta Crítica */
+  @keyframes pulsoAlerta {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
+    70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+  .badge-tiempo-critico {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #f87171;
+    animation: pulsoAlerta 2s infinite;
+    font-weight: 800;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.55rem;
+  }
+  .badge-tiempo-alerta {
+    background-color: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fcd34d;
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.55rem;
+  }
+  .badge-tiempo-normal {
+    background-color: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.55rem;
+  }
+
+  /* Módulos en Grid Optimizados */
+  .tarjeta-modulo-compact {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 0.85rem;
+    padding: 0.85rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    text-decoration: none;
+    color: #1e293b;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+    transition: all 0.18s ease;
+    height: 100%;
+  }
+  .tarjeta-modulo-compact:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px -4px rgba(0,0,0,0.08);
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+  .tarjeta-modulo-compact__icono {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+  }
+  .tarjeta-modulo-compact__flecha {
+    font-size: 1.2rem;
+    color: #94a3b8;
+    transition: transform 0.18s ease, color 0.18s ease;
+  }
+  .tarjeta-modulo-compact:hover .tarjeta-modulo-compact__flecha {
+    transform: translateX(3px);
+    color: var(--sandia-rojo, #e53935);
+  }
+</style>
+
+<!-- 1. Encabezado Hero Compacto con Marca Sandía y Botones Destellantes -->
+<section class="dashboard-hero-compact mb-3">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
     <div>
-      <div class="saludo__fecha mb-1"><i class="bi bi-calendar3 me-1"></i>{{ ahora|fecha_larga }}</div>
-      <h1 class="titulo-pagina">¡Hola, {{ current_user.nombre.split(' ')[0] }}! 🐾</h1>
-      <div class="text-secondary mt-1">
-        Sesión iniciada como <span class="badge bg-danger-subtle text-danger-emphasis px-2 py-1 fw-bold">{{ current_user.rol_etiqueta }}</span>
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+        <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Sandía" width="24" height="24" class="align-middle">
+        <h1 class="h4 fw-bold text-dark mb-0">
+          ¡Hola, {{ current_user.nombre.split(' ')[0] }}! 🐾
+        </h1>
+        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-0 fw-bold rounded-pill" style="font-size: 0.72rem;">
+          {{ current_user.rol_etiqueta }}
+        </span>
         {% if metricas and metricas.turno_abierto %}
-          <span class="badge bg-success-subtle text-success-emphasis px-2 py-1 ms-1 fw-bold"><i class="bi bi-cash me-1"></i>Turno de caja abierto</span>
+        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0 fw-bold rounded-pill" style="font-size: 0.72rem;">
+          <i class="bi bi-cash-stack me-1"></i>Caja abierta
+        </span>
         {% endif %}
       </div>
+      <div class="text-secondary small">
+        <i class="bi bi-calendar3 me-1 text-danger"></i>{{ ahora|fecha_larga }}
+      </div>
     </div>
+
+    <!-- Botones con Relieve y Destellos en Colores Sandía -->
     <div class="d-flex flex-wrap gap-2">
-      <a href="{{ url_for('mascotas.nueva') }}" class="boton-accion-rapida">
-        <i class="bi bi-plus-circle-fill text-danger"></i>
+      <a href="{{ url_for('mascotas.nueva') }}" class="btn-destello btn-destello--rosado">
+        <i class="bi bi-plus-circle-fill fs-6"></i>
         <span>Nueva Mascota</span>
       </a>
       {% if current_user.rol in ('admin', 'cajero') %}
-      <a href="{{ url_for('pos.terminal') }}" class="boton-accion-rapida">
-        <i class="bi bi-cart-plus-fill text-success"></i>
+      <a href="{{ url_for('pos.terminal') }}" class="btn-destello btn-destello--verde">
+        <i class="bi bi-cart-check-fill fs-6"></i>
         <span>Punto de Venta</span>
       </a>
       {% endif %}
       {% if current_user.rol in ('admin', 'veterinario', 'auxiliar', 'recepcion') %}
-      <a href="{{ url_for('agenda.nueva') }}" class="boton-accion-rapida">
-        <i class="bi bi-calendar-plus-fill text-info"></i>
+      <a href="{{ url_for('agenda.nueva') }}" class="btn-destello btn-destello--aqua">
+        <i class="bi bi-calendar-plus-fill fs-6"></i>
         <span>Agendar Cita</span>
       </a>
       {% endif %}
@@ -36,102 +330,241 @@
   </div>
 </section>
 
-<!-- Indicadores y métricas en vivo -->
+<!-- 2. Indicadores Clave del Día (KPI Cards con Pestaña y Destellos de Color) -->
 {% if metricas %}
-<section class="row g-3 mb-4">
+<section class="row g-2 mb-3">
+  <!-- Citas Hoy -->
   <div class="col-6 col-md-3">
-    <a href="{{ url_for('agenda.lista') if 'agenda.lista' in modulos|map(attribute='endpoint') else '#' }}" class="tarjeta-metrica">
-      <div class="tarjeta-metrica__icono bg-primary-subtle text-primary">
-        <i class="bi bi-calendar-event"></i>
+    <a href="{{ url_for('agenda.lista') if 'agenda.lista' in modulos|map(attribute='endpoint') else '#' }}" class="kpi-card-compact kpi-card-compact--citas">
+      <div class="kpi-icon-box-compact" style="background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%); box-shadow: 0 4px 10px rgba(2, 132, 199, 0.35);">
+        <i class="bi bi-calendar-check-fill"></i>
       </div>
-      <div>
-        <div class="tarjeta-metrica__valor">{{ metricas.citas_hoy }}</div>
-        <div class="tarjeta-metrica__label">Citas para hoy</div>
+      <div class="min-w-0">
+        <div class="kpi-value-compact">{{ metricas.citas_hoy }}</div>
+        <div class="kpi-label-compact d-flex align-items-center gap-1">
+          <span>Citas hoy</span>
+          <span class="badge bg-primary-subtle text-primary border" style="font-size: 0.6rem; padding: 1px 4px;">Agenda</span>
+        </div>
       </div>
     </a>
   </div>
+
+  <!-- Pacientes Activos -->
   <div class="col-6 col-md-3">
-    <a href="{{ url_for('mascotas.lista') }}" class="tarjeta-metrica">
-      <div class="tarjeta-metrica__icono bg-danger-subtle text-danger">
+    <a href="{{ url_for('mascotas.lista') }}" class="kpi-card-compact kpi-card-compact--pacientes">
+      <div class="kpi-icon-box-compact" style="background: linear-gradient(135deg, #e11d48 0%, #fb7185 100%); box-shadow: 0 4px 10px rgba(225, 29, 72, 0.35);">
         <i class="bi bi-heart-pulse-fill"></i>
       </div>
-      <div>
-        <div class="tarjeta-metrica__valor">{{ metricas.total_pacientes }}</div>
-        <div class="tarjeta-metrica__label">Pacientes activos</div>
+      <div class="min-w-0">
+        <div class="kpi-value-compact">{{ metricas.total_pacientes }}</div>
+        <div class="kpi-label-compact d-flex align-items-center gap-1">
+          <span>Pacientes</span>
+          <span class="badge border" style="font-size: 0.6rem; padding: 1px 4px; background: #fff1f2; border-color: #fecdd3 !important; color: #e11d48;">Activos</span>
+        </div>
       </div>
     </a>
   </div>
+
+  <!-- Ventas Hoy / Turno de Caja -->
   {% if current_user.rol == 'admin' %}
   <div class="col-6 col-md-3">
-    <a href="{{ url_for('reportes.dashboard') }}" class="tarjeta-metrica">
-      <div class="tarjeta-metrica__icono bg-success-subtle text-success">
+    <a href="{{ url_for('reportes.dashboard') }}" class="kpi-card-compact kpi-card-compact--ventas">
+      <div class="kpi-icon-box-compact" style="background: linear-gradient(135deg, #15803d 0%, #22c55e 100%); box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);">
         <i class="bi bi-currency-dollar"></i>
       </div>
-      <div>
-        <div class="tarjeta-metrica__valor">{{ metricas.ventas_hoy|cop }}</div>
-        <div class="tarjeta-metrica__label">Ventas hoy</div>
+      <div class="min-w-0">
+        <div class="kpi-value-compact" style="font-size: 1.18rem;">{{ metricas.ventas_hoy|cop }}</div>
+        <div class="kpi-label-compact d-flex align-items-center gap-1">
+          <span>Ventas hoy</span>
+          <span class="badge border" style="font-size: 0.6rem; padding: 1px 4px; background: #f0fdf4; border-color: #bbf7d0 !important; color: #16a34a;">Caja</span>
+        </div>
       </div>
     </a>
   </div>
   {% else %}
   <div class="col-6 col-md-3">
-    <a href="{{ url_for('pos.caja_estado') if current_user.rol == 'cajero' else '#' }}" class="tarjeta-metrica">
-      <div class="tarjeta-metrica__icono {% if metricas.turno_abierto %}bg-success-subtle text-success{% else %}bg-secondary-subtle text-secondary{% endif %}">
+    <a href="{{ url_for('pos.caja_estado') if current_user.rol == 'cajero' else '#' }}" class="kpi-card-compact kpi-card-compact--ventas">
+      <div class="kpi-icon-box-compact" style="{% if metricas.turno_abierto %}background: linear-gradient(135deg, #15803d 0%, #22c55e 100%); box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);{% else %}background: #64748b;{% endif %}">
         <i class="bi bi-cash-coin"></i>
       </div>
-      <div>
-        <div class="tarjeta-metrica__valor" style="font-size: 1.1rem;">{% if metricas.turno_abierto %}Abierto{% else %}Cerrado{% endif %}</div>
-        <div class="tarjeta-metrica__label">Estado de Caja</div>
+      <div class="min-w-0">
+        <div class="kpi-value-compact" style="font-size: 1.05rem;">{% if metricas.turno_abierto %}Abierta{% else %}Cerrada{% endif %}</div>
+        <div class="kpi-label-compact">Estado Caja</div>
       </div>
     </a>
   </div>
   {% endif %}
+
+  <!-- Stock Bajo / Alerta -->
   <div class="col-6 col-md-3">
-    <a href="{{ url_for('inventario.alertas') if 'inventario.alertas' else url_for('inventario.lista') }}" class="tarjeta-metrica">
-      <div class="tarjeta-metrica__icono {% if metricas.stock_critico > 0 %}bg-warning-subtle text-warning{% else %}bg-secondary-subtle text-secondary{% endif %}">
-        <i class="bi bi-exclamation-diamond-fill"></i>
+    <a href="{{ url_for('inventario.alertas') if 'inventario.alertas' else url_for('inventario.lista') }}" class="kpi-card-compact kpi-card-compact--stock">
+      <div class="kpi-icon-box-compact" style="{% if metricas.stock_critico > 0 %}background: linear-gradient(135deg, #d97706 0%, #fbbf24 100%); box-shadow: 0 4px 10px rgba(217, 119, 6, 0.35);{% else %}background: #64748b;{% endif %}">
+        <i class="bi bi-exclamation-triangle-fill"></i>
       </div>
-      <div>
-        <div class="tarjeta-metrica__valor">{{ metricas.stock_critico }}</div>
-        <div class="tarjeta-metrica__label">Stock bajo / alerta</div>
+      <div class="min-w-0">
+        <div class="kpi-value-compact">{{ metricas.stock_critico }}</div>
+        <div class="kpi-label-compact d-flex align-items-center gap-1">
+          <span>Stock bajo</span>
+          <span class="badge border" style="font-size: 0.6rem; padding: 1px 4px; background: #fffbeb; border-color: #fde68a !important; color: #b45309;">Alerta</span>
+        </div>
       </div>
     </a>
   </div>
 </section>
 {% endif %}
 
-<!-- Recordatorios de vacunación prioritarios -->
-{% if vacunas_pendientes %}
-<section class="card mb-4 border-danger-subtle shadow-sm overflow-hidden">
-  <div class="card-header bg-danger-subtle d-flex align-items-center justify-content-between py-2 px-3">
-    <span class="fw-bold text-danger-emphasis">
-      <i class="bi bi-bell-fill text-danger me-2 animate-bounce"></i>Recordatorios de vacunación por vencer
-    </span>
-    <span class="badge bg-danger rounded-pill px-2">{{ vacunas_pendientes|length }}</span>
+<!-- 3. WIDGET COMPACTO: Mascotas Pendientes de Recogida (Con colapsable y scroll máx) -->
+<section class="mb-3">
+  <div class="recogida-card-compact">
+    <!-- Header Fino con Acento Sandía -->
+    <div class="recogida-header-compact d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-clock-history text-warning-emphasis fs-5"></i>
+        <strong class="text-dark" style="font-size: 0.92rem;">Mascotas Pendientes de Recogida</strong>
+        {% if mascotas_recogida %}
+        <span class="badge bg-warning text-dark fw-bold rounded-pill" style="font-size: 0.7rem; padding: 2px 8px;">
+          {{ mascotas_recogida|length }} en espera
+        </span>
+        {% endif %}
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('spa.agenda') }}" class="text-decoration-none small text-secondary fw-bold" style="font-size: 0.78rem;">
+          <i class="bi bi-scissors me-1 text-danger"></i>Ver Agenda Spa
+        </a>
+        <button class="btn btn-sm btn-link text-secondary p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRecogida" aria-expanded="true" aria-controls="collapseRecogida" title="Minimizar / Expandir lista">
+          <i class="bi bi-chevron-up" id="btnIconRecogida"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenedor Colapsable con Altura Máxima y Scroll -->
+    <div class="collapse show" id="collapseRecogida">
+      {% if mascotas_recogida %}
+      <div style="max-height: 200px; overflow-y: auto;">
+        {% for item in mascotas_recogida %}
+        <div class="item-recogida-compact d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+          
+          <!-- Lado Izquierdo: Datos de la Mascota y Tutor en Formato Compacto -->
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center flex-shrink-0" style="width: 34px; height: 34px; font-size: 1.15rem;">
+              {{ item.cita.mascota.especie_emoji or '🐾' }}
+            </div>
+            
+            <div class="min-w-0">
+              <!-- Fila 1: Nombre + Badges inline -->
+              <div class="d-flex align-items-center gap-1 flex-wrap">
+                <a href="{{ url_for('spa.cita_detalle', id=item.cita.id) }}" class="fw-bold text-dark text-decoration-none me-1" style="font-size: 0.88rem;">
+                  {{ item.cita.mascota.nombre }}
+                </a>
+                <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 0.65rem; padding: 2px 6px;">
+                  {{ item.cita.mascota.especie }}
+                </span>
+
+                <!-- Badge de Tiempo -->
+                {% if item.nivel_alerta == 'critico' %}
+                <span class="badge badge-tiempo-critico rounded-pill" title="Mascota lista hace más de 1 hora y media">
+                  <i class="bi bi-exclamation-octagon-fill me-1"></i>¡Tiempo Excedido! ({{ item.etiqueta_tiempo }})
+                </span>
+                {% elif item.nivel_alerta == 'alerta' %}
+                <span class="badge badge-tiempo-alerta rounded-pill">
+                  <i class="bi bi-clock-fill me-1"></i>{{ item.etiqueta_tiempo }}
+                </span>
+                {% else %}
+                <span class="badge badge-tiempo-normal rounded-pill">
+                  <i class="bi bi-check-circle-fill me-1"></i>{{ item.etiqueta_tiempo }}
+                </span>
+                {% endif %}
+
+                <!-- Estado de Pago -->
+                {% if item.pagado %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.65rem; padding: 2px 6px;">
+                  <i class="bi bi-check me-1"></i>Pagada
+                </span>
+                {% else %}
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill" style="font-size: 0.65rem; padding: 2px 6px;">
+                  Sin pagar
+                </span>
+                {% endif %}
+              </div>
+
+              <!-- Fila 2: Tutor y Servicio en 1 sola línea compacta -->
+              <div class="text-secondary text-truncate" style="font-size: 0.78rem; max-width: 580px;">
+                Tutor: <strong>{{ item.cita.tutor.nombre_completo if item.cita.tutor else 'N/A' }}</strong>
+                {% if item.cita.tutor and (item.cita.tutor.whatsapp or item.cita.tutor.telefono) %}
+                <span class="text-muted">• Tel: {{ item.cita.tutor.whatsapp or item.cita.tutor.telefono }}</span>
+                {% endif %}
+                <span class="text-muted">• {{ item.cita.servicio_spa.nombre if item.cita.servicio_spa else 'Grooming' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lado Derecho: Botones de Acción Miniatura -->
+          <div class="d-flex align-items-center gap-1 flex-shrink-0 ms-auto ms-md-0">
+            {% if item.wa_url %}
+            <a href="{{ item.wa_url }}" target="_blank" class="btn btn-sm text-white fw-bold shadow-xs py-1 px-2" style="background-color: #25D366; font-size: 0.75rem;" title="Enviar WhatsApp de aviso de recogida">
+              <i class="bi bi-whatsapp me-1"></i>Avisar
+            </a>
+            {% endif %}
+
+            {% if item.pagado %}
+            <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=item.cita.id) }}" class="m-0" onsubmit="return confirm('¿Confirmas la entrega de {{ item.cita.mascota.nombre }} a su tutor?')">
+              {{ form_csrf.csrf_token }}
+              <input type="hidden" name="estado" value="entregado">
+              <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+              <button type="submit" class="btn btn-sm btn-success fw-bold shadow-xs py-1 px-2" style="font-size: 0.75rem;" title="Marcar como entregada al tutor">
+                <i class="bi bi-check2 me-1"></i>Entregar
+              </button>
+            </form>
+            {% else %}
+            <a href="{{ url_for('pos.terminal', cita_spa_id=item.cita.id) }}" class="btn btn-sm btn-outline-success fw-bold shadow-xs py-1 px-2" style="font-size: 0.75rem;" title="Cobrar el servicio en POS">
+              <i class="bi bi-cart-check me-1"></i>Cobrar
+            </a>
+            {% endif %}
+
+            <a href="{{ url_for('spa.cita_detalle', id=item.cita.id) }}" class="btn btn-sm btn-light border py-1 px-2 text-secondary" style="font-size: 0.75rem;" title="Ver detalle de la cita">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </div>
+
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="p-3 text-center text-muted small">
+        <i class="bi bi-check-circle-fill text-success me-1"></i>
+        <span>No hay mascotas en espera de recogida. Todas han sido entregadas.</span>
+      </div>
+      {% endif %}
+    </div>
   </div>
-  <div class="list-group list-group-flush">
+</section>
+
+<!-- 4. Recordatorios de Vacunación Prioritarios (Compactos) -->
+{% if vacunas_pendientes %}
+<section class="card mb-3 border-0 shadow-sm rounded-3 overflow-hidden" style="border: 1.5px solid #fecaca !important; border-top: 3.5px solid #e11d48 !important;">
+  <div class="card-header bg-danger-subtle d-flex align-items-center justify-content-between py-1 px-3">
+    <span class="fw-bold text-danger-emphasis d-flex align-items-center gap-2" style="font-size: 0.82rem;">
+      <i class="bi bi-bell-fill text-danger"></i>Vacunaciones por Vencer
+    </span>
+    <span class="badge bg-danger rounded-pill px-2" style="font-size: 0.7rem;">{{ vacunas_pendientes|length }}</span>
+  </div>
+  <div class="list-group list-group-flush" style="max-height: 150px; overflow-y: auto;">
     {% for v in vacunas_pendientes %}
-    <div class="list-group-item d-flex align-items-center justify-content-between gap-2 flex-wrap py-2">
-      <div>
-        <div class="fw-bold">
-          <span class="me-1">{{ v.mascota.especie_emoji }}</span>
-          <a href="{{ url_for('mascotas.detalle', mascota_id=v.mascota.id) }}" class="text-decoration-none text-body fw-bold">
-            {{ v.mascota.nombre }}
-          </a>
-          <span class="text-secondary fw-normal">· {{ v.tutor.nombre_completo }}</span>
-        </div>
-        <div class="small">
-          <span class="badge bg-light text-dark border me-1">{{ v.nombre_vacuna }}</span>
-          {% if v.estado_vencimiento == 'vencida' %}
-            <span class="estado estado--urgente"><i class="bi bi-x-circle-fill"></i> Vencida el {{ v.fecha_proxima|fecha }}</span>
-          {% else %}
-            <span class="estado estado--alerta"><i class="bi bi-clock-fill"></i> Vence el {{ v.fecha_proxima|fecha }}</span>
-          {% endif %}
-        </div>
+    <div class="list-group-item d-flex align-items-center justify-content-between gap-2 flex-wrap py-1 px-3 border-bottom-0">
+      <div class="small">
+        <strong class="text-dark">{{ v.mascota.especie_emoji or '🐾' }} {{ v.mascota.nombre }}</strong>
+        <span class="text-muted">· {{ v.tutor.nombre_completo }}</span>
+        <span class="badge bg-light text-dark border ms-1" style="font-size: 0.68rem;">{{ v.nombre_vacuna }}</span>
+        {% if v.estado_vencimiento == 'vencida' %}
+          <span class="badge bg-danger text-white rounded-pill px-2" style="font-size: 0.65rem;">Vencida {{ v.fecha_proxima|fecha }}</span>
+        {% else %}
+          <span class="badge bg-warning text-dark rounded-pill px-2" style="font-size: 0.65rem;">Vence {{ v.fecha_proxima|fecha }}</span>
+        {% endif %}
       </div>
       {% if v.enlace_whatsapp %}
-      <a href="{{ v.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-sm btn-success px-3 shadow-sm">
-        <i class="bi bi-whatsapp me-1"></i>Avisar al Tutor
+      <a href="{{ v.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-xs btn-success py-1 px-2 fw-bold" style="background-color: #25D366; border-color: #25D366; font-size: 0.72rem;">
+        <i class="bi bi-whatsapp me-1"></i>Avisar
       </a>
       {% endif %}
     </div>
@@ -140,63 +573,170 @@
 </section>
 {% endif %}
 
-<!-- Módulos del Sistema con buscador instantáneo -->
-<section>
-  <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
-    <h2 class="h5 text-secondary text-uppercase fw-bold m-0" style="letter-spacing: .08em;">
-      <i class="bi bi-grid-fill me-2 text-danger"></i>Módulos del Sistema
-    </h2>
-    <div class="buscador-modulos d-flex align-items-center gap-2 w-100 w-sm-auto" style="min-width: 250px;">
-      <i class="bi bi-search text-secondary"></i>
-      <input type="text" id="filtroModulos" placeholder="Buscar módulo rápido (ej. caja, citas)..." autocomplete="off">
+{% macro render_modulo(modulo, es_secundario=False) %}
+  {% set icon_style = 'background: #f1f5f9; color: #475569;' %}
+  {% if modulo.clave == 'historias' %}{% set icon_style = 'background: #dbeafe; color: #1d4ed8;' %}
+  {% elif modulo.clave == 'mascotas' %}{% set icon_style = 'background: #fee2e2; color: #dc2626;' %}
+  {% elif modulo.clave == 'tutores' %}{% set icon_style = 'background: #f3e8ff; color: #7e22ce;' %}
+  {% elif modulo.clave == 'spa' %}{% set icon_style = 'background: #ccfbf1; color: #0f766e;' %}
+  {% elif modulo.clave == 'pos' %}{% set icon_style = 'background: #fef3c7; color: #b45309;' %}
+  {% elif modulo.clave == 'caja' %}{% set icon_style = 'background: #dcfce7; color: #15803d;' %}
+  {% elif modulo.clave == 'inventario' %}{% set icon_style = 'background: #e0e7ff; color: #4338ca;' %}
+  {% elif modulo.clave == 'agenda' %}{% set icon_style = 'background: #e0f2fe; color: #0369a1;' %}
+  {% elif modulo.clave == 'proveedores' %}{% set icon_style = 'background: #ffe4e6; color: #be123c;' %}
+  {% elif modulo.clave == 'reportes' %}{% set icon_style = 'background: #d1fae5; color: #065f46;' %}
+  {% elif modulo.clave == 'gastos' %}{% set icon_style = 'background: #ffedd5; color: #c2410c;' %}
+  {% elif modulo.clave == 'cuentas_por_pagar' %}{% set icon_style = 'background: #e0f2fe; color: #0284c7;' %}
+  {% elif modulo.clave == 'aprobaciones_precio' %}{% set icon_style = 'background: #fef9c3; color: #a16207;' %}
+  {% elif modulo.clave == 'usuarios' %}{% set icon_style = 'background: #f1f5f9; color: #334155;' %}
+  {% elif modulo.clave == 'configuracion' %}{% set icon_style = 'background: #e2e8f0; color: #1e293b;' %}
+  {% elif modulo.clave == 'razas' %}{% set icon_style = 'background: #fef3c7; color: #d97706;' %}
+  {% elif modulo.clave == 'mi_cuenta' %}{% set icon_style = 'background: #f3e8ff; color: #9333ea;' %}
+  {% endif %}
+
+  <div class="col-12 col-sm-6 col-lg-4 item-modulo" data-nombre="{{ modulo.nombre|lower }}" data-desc="{{ modulo.descripcion|lower }}" data-secundario="{{ 'true' if es_secundario else 'false' }}">
+    <a class="tarjeta-modulo-compact" href="{{ url_for(modulo.endpoint) }}" data-modulo="{{ modulo.clave }}">
+      <span class="tarjeta-modulo-compact__icono" style="{{ icon_style }}">
+        <i class="bi {{ modulo.icono }}"></i>
+      </span>
+      <span class="flex-grow-1 min-w-0">
+        <strong class="d-block text-truncate" style="font-size: 0.9rem;">{{ modulo.nombre }}</strong>
+        <span class="text-secondary small d-block text-truncate" style="font-size: 0.78rem;">{{ modulo.descripcion }}</span>
+      </span>
+      <i class="bi bi-arrow-right-short tarjeta-modulo-compact__flecha"></i>
+    </a>
+  </div>
+{% endmacro %}
+
+<!-- 5. Módulos Esenciales del Sistema -->
+<section class="mb-4">
+  <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-2">
+    <div>
+      <h2 class="h6 fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+        <i class="bi bi-grid-fill text-danger"></i>Módulos Esenciales
+      </h2>
+    </div>
+    <div class="buscador-modulos d-flex align-items-center gap-2 w-100 w-sm-auto py-1 px-3" style="min-width: 250px;">
+      <i class="bi bi-search text-secondary" style="font-size: 0.85rem;"></i>
+      <input type="text" id="filtroModulos" class="form-control border-0 bg-transparent p-0 small" placeholder="Buscar módulo (ej. caja, gastos)..." autocomplete="off" style="box-shadow: none; font-size: 0.82rem;">
     </div>
   </div>
 
-  <div class="row g-3" id="grillaModulos">
-    {% for modulo in modulos %}
-    <div class="col-12 col-sm-6 col-lg-4 item-modulo" data-nombre="{{ modulo.nombre|lower }}" data-desc="{{ modulo.descripcion|lower }}">
-      <a class="tarjeta-modulo" href="{{ url_for(modulo.endpoint) }}" data-modulo="{{ modulo.clave }}">
-        <span class="tarjeta-modulo__icono">
-          <i class="bi {{ modulo.icono }}"></i>
-        </span>
-        <span class="flex-grow-1 min-w-0">
-          <span class="tarjeta-modulo__titulo d-block text-truncate">{{ modulo.nombre }}</span>
-          <span class="tarjeta-modulo__descripcion d-block">{{ modulo.descripcion }}</span>
-        </span>
-        <i class="bi bi-arrow-right-short tarjeta-modulo__flecha text-secondary"></i>
-      </a>
-    </div>
+  <!-- Grilla de Módulos Esenciales -->
+  <div class="row g-2" id="grillaModulosEsenciales">
+    {% for modulo in modulos_esenciales %}
+      {{ render_modulo(modulo, es_secundario=False) }}
     {% endfor %}
   </div>
 
-  <div id="sinModulosMensaje" class="alert alert-light border text-center my-4 py-4 d-none">
-    <i class="bi bi-search fs-3 text-secondary d-block mb-2"></i>
-    <span class="fw-bold">No se encontraron módulos coincidentes.</span>
+  <!-- Desplegable para Módulos de Administración y Herramientas Secundarias -->
+  {% if modulos_secundarios %}
+  <div class="mt-3 text-center" id="contenedorToggleSecundarios">
+    <button class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-3 fw-semibold shadow-xs d-inline-flex align-items-center gap-2" 
+            type="button" 
+            data-bs-toggle="collapse" 
+            data-bs-target="#collapseModulosSecundarios" 
+            aria-expanded="false" 
+            id="btnToggleSecundarios"
+            style="font-size: 0.8rem; background: #ffffff;">
+      <i class="bi bi-tools text-secondary"></i>
+      <span>Más herramientas y administración ({{ modulos_secundarios|length }})</span>
+      <i class="bi bi-chevron-down" id="iconoChevronSecundarios"></i>
+    </button>
+  </div>
+
+  <div class="collapse mt-2" id="collapseModulosSecundarios">
+    <div class="p-2 pt-3 rounded-3 bg-light border border-dashed">
+      <div class="text-secondary small fw-bold text-uppercase mb-2 ps-1" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+        <i class="bi bi-sliders me-1 text-primary"></i>Herramientas Administrativas y Configuración
+      </div>
+      <div class="row g-2" id="grillaModulosSecundarios">
+        {% for modulo in modulos_secundarios %}
+          {{ render_modulo(modulo, es_secundario=True) }}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div id="sinModulosMensaje" class="alert alert-light border text-center my-3 py-3 d-none rounded-3">
+    <i class="bi bi-search fs-4 text-secondary d-block mb-1"></i>
+    <span class="fw-bold text-dark small">No se encontraron módulos coincidentes.</span>
   </div>
 </section>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // Filtro instantáneo de tarjetas de módulo
+  // Cambiar icono del colapsable de recogida al abrir o cerrar
+  const collapseEl = document.getElementById('collapseRecogida');
+  const iconRecogida = document.getElementById('btnIconRecogida');
+  if (collapseEl && iconRecogida) {
+    collapseEl.addEventListener('show.bs.collapse', () => {
+      iconRecogida.className = 'bi bi-chevron-up';
+    });
+    collapseEl.addEventListener('hide.bs.collapse', () => {
+      iconRecogida.className = 'bi bi-chevron-down';
+    });
+  }
+
+  // Filtro instantáneo de módulos y control de colapsable
   const inputFiltro = document.getElementById('filtroModulos');
   const items = document.querySelectorAll('.item-modulo');
   const sinModulos = document.getElementById('sinModulosMensaje');
+  const collapseSecundariosEl = document.getElementById('collapseModulosSecundarios');
+  const iconoChevronSecundarios = document.getElementById('iconoChevronSecundarios');
+  const contenedorToggle = document.getElementById('contenedorToggleSecundarios');
+
+  if (collapseSecundariosEl && iconoChevronSecundarios) {
+    collapseSecundariosEl.addEventListener('show.bs.collapse', () => {
+      iconoChevronSecundarios.className = 'bi bi-chevron-up';
+    });
+    collapseSecundariosEl.addEventListener('hide.bs.collapse', () => {
+      iconoChevronSecundarios.className = 'bi bi-chevron-down';
+    });
+  }
+
+  let bsCollapseSecundarios = null;
+  if (collapseSecundariosEl && typeof bootstrap !== 'undefined') {
+    bsCollapseSecundarios = bootstrap.Collapse.getOrCreateInstance(collapseSecundariosEl, { toggle: false });
+  }
 
   if (inputFiltro) {
     inputFiltro.addEventListener('input', function () {
       const q = this.value.trim().toLowerCase();
       let visibles = 0;
+      let tieneMatchSecundario = false;
+
       items.forEach(function (item) {
         const nombre = item.getAttribute('data-nombre') || '';
         const desc = item.getAttribute('data-desc') || '';
-        if (!q || nombre.includes(q) || desc.includes(q)) {
+        const match = !q || nombre.includes(q) || desc.includes(q);
+        if (match) {
           item.classList.remove('d-none');
           visibles++;
+          if (item.getAttribute('data-secundario') === 'true') {
+            tieneMatchSecundario = true;
+          }
         } else {
           item.classList.add('d-none');
         }
       });
+
+      // Si el usuario escribe y coincide con un módulo secundario, expandirlo automáticamente
+      if (bsCollapseSecundarios) {
+        if (q && tieneMatchSecundario) {
+          bsCollapseSecundarios.show();
+        } else if (!q) {
+          bsCollapseSecundarios.hide();
+        }
+      }
+
+      // Ocultar el botón de toggle mientras se busca para mantener la vista limpia
+      if (contenedorToggle) {
+        contenedorToggle.classList.toggle('d-none', Boolean(q));
+      }
+
       if (sinModulos) {
         sinModulos.classList.toggle('d-none', visibles > 0);
       }

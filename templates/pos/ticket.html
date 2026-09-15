@@ -2,128 +2,450 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Ticket {{ venta.numero_factura }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ticket {{ venta.numero_factura }} - Sandía</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
-    @page {
+    :root {
+      --brand-red: #e53935;
+      --brand-green: #2e7d32;
+      --brand-teal: #0f766e;
+      --wa-green: #25D366;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
-      size: 80mm auto;
+      padding: 0;
     }
+
     body {
-      font-family: 'Courier New', Courier, monospace;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, monospace;
+      background-color: #f1f5f9;
+      color: #1e293b;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 12px 48px;
+    }
+
+    /* Barra Superior de Acciones en Pantalla */
+    .top-toolbar {
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      border: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+
+    .btn-action:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+    }
+
+    .btn-print {
+      background-color: #0f172a;
+      color: #ffffff;
+    }
+    .btn-print:hover {
+      background-color: #1e293b;
+      color: #ffffff;
+    }
+
+    .btn-whatsapp {
+      background-color: var(--wa-green);
+      color: #ffffff;
+    }
+    .btn-whatsapp:hover {
+      background-color: #20ba5a;
+      color: #ffffff;
+    }
+
+    .btn-secondary-nav {
+      background-color: #ffffff;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-secondary-nav:hover {
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+
+    .btn-spa-nav {
+      background-color: #0f766e;
+      color: #ffffff;
+    }
+    .btn-spa-nav:hover {
+      background-color: #115e59;
+      color: #ffffff;
+    }
+
+    /* Tarjeta del Ticket Físico (Simulación de Papel Térmico 80mm) */
+    .ticket-paper {
+      width: 80mm;
+      max-width: 100%;
+      background-color: #ffffff;
+      padding: 6mm 4mm;
+      border-radius: 6px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
       font-size: 12px;
-      width: 76mm;
-      margin: 0 auto;
-      padding: 5mm 2mm;
+      line-height: 1.35;
+      color: #000000;
+      position: relative;
+    }
+
+    /* Encabezado con Logo y Marca */
+    .ticket-header {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .ticket-logo {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 4px;
+      display: block;
+    }
+
+    .brand-name {
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 1px;
       color: #000;
-      background: #fff;
+      line-height: 1.1;
     }
-    .text-center { text-align: center; }
-    .text-end { text-align: right; }
-    .bold { font-weight: bold; }
-    .divider {
+
+    .brand-subtitle {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .brand-details {
+      font-size: 10px;
+      color: #444;
+      line-height: 1.3;
+    }
+
+    /* Separadores de Recibo Térmico */
+    .dashed-divider {
       border-top: 1px dashed #000;
-      margin: 6px 0;
+      margin: 7px 0;
     }
-    table {
+
+    .solid-divider {
+      border-top: 1.5px solid #000;
+      margin: 8px 0;
+    }
+
+    /* Metadatos */
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+      font-size: 11px;
+    }
+
+    .meta-label {
+      font-weight: 700;
+    }
+
+    .meta-value {
+      text-align: right;
+    }
+
+    /* Tabla de Ítems */
+    .items-table {
       width: 100%;
       border-collapse: collapse;
+      margin: 4px 0;
+      font-size: 11px;
     }
-    th, td {
-      padding: 2px 0;
+
+    .items-table th {
+      text-align: left;
+      font-weight: 800;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #000;
+      font-size: 10px;
+    }
+
+    .items-table td {
+      padding: 4px 0;
       vertical-align: top;
     }
-    .no-print {
-      margin-bottom: 15px;
+
+    .item-desc {
+      font-weight: 600;
+      padding-right: 4px;
     }
+
+    .item-qty {
+      text-align: center;
+      width: 26px;
+    }
+
+    .item-total {
+      text-align: right;
+      font-weight: 700;
+      width: 70px;
+      white-space: nowrap;
+    }
+
+    /* Totales */
+    .totals-box {
+      margin-top: 4px;
+      font-size: 12px;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+
+    .grand-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 16px;
+      font-weight: 900;
+      padding: 6px 0;
+      border-top: 1.5px solid #000;
+      border-bottom: 1.5px solid #000;
+      margin: 6px 0;
+    }
+
+    /* Pagos */
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+
+    /* Pie de Recibo */
+    .ticket-footer {
+      text-align: center;
+      margin-top: 10px;
+      padding-top: 6px;
+      font-size: 10px;
+      color: #333;
+    }
+
+    .thank-you {
+      font-weight: 800;
+      font-size: 12px;
+      margin-bottom: 3px;
+      color: #000;
+    }
+
+    /* Estilos Estrictos de Impresión Térmica */
     @media print {
-      .no-print { display: none; }
+      @page {
+        margin: 0;
+        size: 80mm auto;
+      }
+      body {
+        background-color: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 80mm;
+      }
+      .top-toolbar {
+        display: none !important;
+      }
+      .ticket-paper {
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        width: 80mm !important;
+        padding: 4mm 3mm !important;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="no-print text-center">
-    <button onclick="window.print()" style="padding: 8px 16px; font-size: 14px; cursor: pointer; background: #28a745; color: #fff; border: none; border-radius: 4px;">
-      🖨️ Imprimir Recibo
-    </button>
+
+  <!-- Barra de Herramientas Superior (No se imprime) -->
+  <div class="top-toolbar">
+    <div class="toolbar-actions">
+      <button onclick="window.print()" class="btn-action btn-print" title="Imprimir en impresora térmica o PDF">
+        <i class="bi bi-printer-fill fs-5"></i>
+        <span>Imprimir Recibo (80mm)</span>
+      </button>
+
+      {% if venta.enlace_whatsapp %}
+      <a href="{{ venta.enlace_whatsapp }}" target="_blank" class="btn-action btn-whatsapp" title="Enviar copia del recibo por WhatsApp al tutor">
+        <i class="bi bi-whatsapp fs-5"></i>
+        <span>Enviar por WhatsApp</span>
+      </a>
+      {% endif %}
+
+      {% if cita_spa %}
+      <a href="{{ url_for('spa.cita_detalle', id=cita_spa.id) }}" class="btn-action btn-spa-nav">
+        <i class="bi bi-scissors"></i>
+        <span>Ir a Entregar Mascota</span>
+      </a>
+      {% endif %}
+
+      <a href="{{ url_for('pos.venta_detalle', id=venta.id) }}" class="btn-action btn-secondary-nav">
+        <i class="bi bi-arrow-left"></i>
+        <span>Volver a Factura</span>
+      </a>
+    </div>
   </div>
 
-  <div class="text-center">
-    <div class="bold" style="font-size: 16px;">VETCARE - SANDÍA</div>
-    <div>Medicina & Spa Veterinario</div>
-    <div>NIT: 901.234.567-8</div>
-    <div>Calle 10 # 40-20, Medellín</div>
-    <div>WhatsApp: +57 300 123 4567</div>
-  </div>
+  <!-- Contenido del Recibo Térmico -->
+  <div class="ticket-paper">
+    
+    <!-- Encabezado con Logo Oficial de Sandía -->
+    <div class="ticket-header">
+      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Logo Sandía" class="ticket-logo">
+      <div class="brand-name">SANDÍA</div>
+      <div class="brand-subtitle">Medicina & Spa Veterinario</div>
+      <div class="brand-details">
+        NIT: 901.234.567-8 · Régimen Simplificado<br>
+        Calle 10 # 40-20, Medellín<br>
+        WhatsApp: +57 300 123 4567
+      </div>
+    </div>
 
-  <div class="divider"></div>
+    <div class="dashed-divider"></div>
 
-  <div>
-    <div><span class="bold">FACTURA:</span> {{ venta.numero_factura }}</div>
-    <div><span class="bold">FECHA:</span> {{ venta.fecha_venta|fecha_hora }}</div>
-    <div><span class="bold">CAJERO:</span> {{ venta.usuario.nombre }}</div>
-    {% if venta.tutor %}
-    <div><span class="bold">CLIENTE:</span> {{ venta.tutor.nombre_completo }}</div>
-    {% endif %}
-    {% if venta.mascota %}
-    <div><span class="bold">MASCOTA:</span> {{ venta.mascota.nombre }}</div>
-    {% endif %}
-  </div>
+    <!-- Metadatos de la Factura -->
+    <div>
+      <div class="meta-row">
+        <span class="meta-label">FACTURA:</span>
+        <span class="meta-value bold" style="font-weight: 800;">{{ venta.numero_factura }}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">FECHA:</span>
+        <span class="meta-value">{{ venta.fecha_venta|fecha_hora }}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">CAJERO:</span>
+        <span class="meta-value">{{ venta.usuario.nombre }}</span>
+      </div>
+      {% if venta.tutor %}
+      <div class="meta-row">
+        <span class="meta-label">CLIENTE:</span>
+        <span class="meta-value" style="font-weight: 700;">{{ venta.tutor.nombre_completo }}</span>
+      </div>
+      {% if venta.tutor.numero_documento %}
+      <div class="meta-row">
+        <span class="meta-label">DOC:</span>
+        <span class="meta-value">{{ venta.tutor.documento_texto }}</span>
+      </div>
+      {% endif %}
+      {% endif %}
+      {% if venta.mascota %}
+      <div class="meta-row">
+        <span class="meta-label">MASCOTA:</span>
+        <span class="meta-value" style="font-weight: 700;">{{ venta.mascota.nombre }} ({{ venta.mascota.especie }})</span>
+      </div>
+      {% endif %}
+    </div>
 
-  <div class="divider"></div>
+    <div class="dashed-divider"></div>
 
-  <table>
-    <thead>
-      <tr>
-        <th style="text-align: left;">DESCRIPCIÓN</th>
-        <th style="text-align: center; width: 25px;">CANT</th>
-        <th style="text-align: right; width: 65px;">TOTAL</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for d in venta.detalles %}
-      <tr>
-        <td>{{ d.descripcion }}</td>
-        <td class="text-center">{{ d.cantidad }}</td>
-        <td class="text-end">${{ "{:,.2f}".format(d.total_linea) }}</td>
-      </tr>
+    <!-- Tabla de Ítems Vendidos -->
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>DESCRIPCIÓN</th>
+          <th class="item-qty">CANT</th>
+          <th class="item-total">TOTAL</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in venta.detalles %}
+        <tr>
+          <td class="item-desc">
+            {{ d.descripcion }}
+            {% if d.tipo_item == 'servicio' %}
+            <span style="font-size: 9px; font-weight: normal; font-style: italic;">(Servicio)</span>
+            {% endif %}
+          </td>
+          <td class="item-qty">{{ "{:,.0f}".format(d.cantidad) if d.cantidad == d.cantidad|int else d.cantidad }}</td>
+          <td class="item-total">{{ d.total_linea|cop }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="dashed-divider"></div>
+
+    <!-- Totales -->
+    <div class="totals-box">
+      <div class="total-row">
+        <span>SUBTOTAL:</span>
+        <span style="font-weight: 700;">{{ venta.subtotal|cop }}</span>
+      </div>
+      {% if venta.descuento_monto > 0 %}
+      <div class="total-row" style="color: #b91c1c;">
+        <span>DESCUENTO:</span>
+        <span style="font-weight: 700;">-{{ venta.descuento_monto|cop }}</span>
+      </div>
+      {% endif %}
+      <div class="grand-total">
+        <span>TOTAL A PAGAR:</span>
+        <span>{{ venta.total|cop }}</span>
+      </div>
+    </div>
+
+    <!-- Métodos de Pago -->
+    <div style="margin-top: 4px;">
+      <div class="meta-label" style="margin-bottom: 2px;">PAGOS RECIBIDOS:</div>
+      {% for p in venta.pagos %}
+      <div class="payment-row">
+        <span>• {{ p.metodo_etiqueta }}{% if p.referencia_transaccion %} (Ref: {{ p.referencia_transaccion }}){% endif %}:</span>
+        <span style="font-weight: 700;">{{ p.monto|cop }}</span>
+      </div>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
 
-  <div class="divider"></div>
+    <div class="solid-divider"></div>
 
-  <table>
-    <tr>
-      <td>SUBTOTAL:</td>
-      <td class="text-end">${{ "{:,.2f}".format(venta.subtotal) }}</td>
-    </tr>
-    {% if venta.descuento_monto > 0 %}
-    <tr>
-      <td>DESCUENTO:</td>
-      <td class="text-end">-${{ "{:,.2f}".format(venta.descuento_monto) }}</td>
-    </tr>
-    {% endif %}
-    <tr class="bold" style="font-size: 14px;">
-      <td>TOTAL:</td>
-      <td class="text-end">${{ "{:,.2f}".format(venta.total) }}</td>
-    </tr>
-  </table>
+    <!-- Pie de Ticket -->
+    <div class="ticket-footer">
+      <div class="thank-you">¡Gracias por confiar en Sandía! 🐾</div>
+      <div>Cuidamos a tu mascota con amor y dedicación.</div>
+      <div style="margin-top: 4px; font-size: 9px; color: #555;">Conserva este ticket para cualquier consulta o garantía.</div>
+      <div style="margin-top: 6px; font-size: 9px; font-weight: bold; letter-spacing: 0.5px;">*** SISTEMA VETCARE POS ***</div>
+    </div>
 
-  <div class="divider"></div>
-
-  <div class="bold">PAGOS:</div>
-  {% for p in venta.pagos %}
-  <div style="display: flex; justify-content: space-between;">
-    <span>{{ p.metodo_etiqueta }}:</span>
-    <span>${{ "{:,.2f}".format(p.monto) }}</span>
   </div>
-  {% endfor %}
 
-  <div class="divider"></div>
-
-  <div class="text-center" style="margin-top: 10px;">
-    <div class="bold">¡Gracias por su visita!</div>
-    <div style="font-size: 10px; margin-top: 4px;">Conserve este recibo para cualquier reclamo o garantía.</div>
-  </div>
 </body>
 </html>

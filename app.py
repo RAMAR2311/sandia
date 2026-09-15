@@ -315,3 +315,32 @@ def _registrar_comandos(app: Flask) -> None:
 
     from commands import backup_cli
     app.cli.add_command(backup_cli)
+
+
+def _asegurar_postgres() -> None:
+    """Verifica si PostgreSQL responde en el puerto 5432; si no, lo inicia automáticamente."""
+    import socket
+    import subprocess
+    import time
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(0.6)
+    try:
+        s.connect(("127.0.0.1", 5432))
+        s.close()
+    except Exception:
+        pg_ctl = r"C:\Users\jhond\pgsql\bin\pg_ctl.exe"
+        pg_data = r"C:\Program Files\PostgreSQL\17\data"
+        pg_log = r"C:\Users\jhond\pgsql\logfile.log"
+        if os.path.exists(pg_ctl) and os.path.exists(pg_data):
+            print("Iniciando servicio de base de datos PostgreSQL...")
+            subprocess.Popen([pg_ctl, "-D", pg_data, "-l", pg_log, "start"])
+            time.sleep(2)
+
+
+if __name__ == "__main__":
+    _asegurar_postgres()
+
+    app = create_app()
+    app.run(host="127.0.0.1", port=5000, debug=True)
+

@@ -8,7 +8,7 @@ from flask import Blueprint, jsonify, request, url_for
 from flask_login import login_required
 from sqlalchemy import or_, select
 
-from models import ESPECIES, Mascota, Producto, Raza, Tutor, db
+from models import ESPECIES, Mascota, Producto, Raza, ServicioSpa, Tutor, db
 from utils import PREFIJO_MINIATURA, normalizar_texto, solo_digitos
 
 bp = Blueprint("api", __name__, url_prefix="/api")
@@ -207,48 +207,85 @@ def buscar_productos():
 def pos_buscar_items():
     """Búsqueda rápida de productos y servicios para la terminal POS."""
     texto = request.args.get("q", "").strip()
+    categoria_filtro = request.args.get("categoria", "").strip()
+    limite_pos = min(request.args.get("limite", 36, type=int), 60)
     normalizado = normalizar_texto(texto)
 
-    consulta = select(Producto).where(Producto.activo.is_(True))
-    if normalizado:
-        consulta = consulta.where(
-            or_(
-                Producto.nombre_busqueda.ilike(f"%{normalizado}%"),
-                Producto.sku.ilike(f"%{normalizado}%"),
-                Producto.codigo_barras.ilike(f"%{normalizado}%"),
-            )
-        )
-    
-    consulta = consulta.order_by(Producto.tipo.desc(), Producto.nombre_busqueda).limit(_limite())
-    productos = db.session.execute(consulta).scalars().all()
-
     items = []
-    for p in productos:
-        variantes = []
-        if p.tiene_variantes:
-            for v in p.variantes:
-                if v.activo:
-                    variantes.append({
-                        "id": v.id,
-                        "nombre": v.nombre_variante,
-                        "sku": v.sku or p.sku,
-                        "codigo_barras": v.codigo_barras or p.codigo_barras,
-                        "precio_sugerido": float(v.precio_sugerido),
-                        "stock_total": float(v.cantidad_stock),
-                    })
-        items.append({
-            "id": p.id,
-            "sku": p.sku,
-            "codigo_barras": p.codigo_barras or "",
-            "nombre": p.nombre,
-            "tipo": p.tipo,
-            "categoria": p.categoria,
-            "precio_sugerido": float(p.precio_sugerido),
-            "stock_total": float(p.stock_total),
-            "controla_lote": p.controla_lote,
-            "requiere_receta": p.requiere_receta,
-            "variantes": variantes,
-        })
+
+    # 1. Buscar en catálogo de productos y servicios clínicos
+    if categoria_filtro in ("", "todos", "productos", "clinica"):
+        consulta = select(Producto).where(Producto.activo.is_(True))
+        if categoria_filtro == "productos":
+            consulta = consulta.where(Producto.tipo == "producto")
+        elif categoria_filtro == "clinica":
+            consulta = consulta.where(Producto.tipo == "servicio")
+
+        if normalizado:
+            consulta = consulta.where(
+                or_(
+                    Producto.nombre_busqueda.ilike(f"%{normalizado}%"),
+                    Producto.sku.ilike(f"%{normalizado}%"),
+                    Producto.codigo_barras.ilike(f"%{normalizado}%"),
+                )
+            )
+
+        consulta = consulta.order_by(Producto.tipo.desc(), Producto.nombre_busqueda).limit(limite_pos)
+        productos = db.session.execute(consulta).scalars().all()
+
+        for p in productos:
+            variantes = []
+            if p.tiene_variantes:
+                for v in p.variantes:
+                    if v.activo:
+                        variantes.append({
+                            "id": v.id,
+                            "nombre": v.nombre_variante,
+                            "sku": v.sku or p.sku,
+                            "codigo_barras": v.codigo_barras or p.codigo_barras,
+                            "precio_sugerido": float(v.precio_sugerido),
+                            "stock_total": float(v.cantidad_stock),
+                        })
+            items.append({
+                "id": p.id,
+                "sku": p.sku,
+                "codigo_barras": p.codigo_barras or "",
+                "nombre": p.nombre,
+                "tipo": p.tipo,
+                "categoria": "clinica" if p.tipo == "servicio" else p.categoria,
+                "precio_sugerido": float(p.precio_sugerido),
+                "stock_total": float(p.stock_total) if p.tipo == "producto" else None,
+                "controla_lote": p.controla_lote,
+                "requiere_receta": p.requiere_receta,
+                "variantes": variantes,
+            })
+
+    # 2. Buscar en catálogo de Spa & Peluquería
+    if categoria_filtro in ("", "todos", "spa"):
+        consulta_spa = select(ServicioSpa).where(ServicioSpa.activo.is_(True))
+        if normalizado:
+            consulta_spa = consulta_spa.where(ServicioSpa.nombre.ilike(f"%{normalizado}%"))
+        consulta_spa = consulta_spa.order_by(ServicioSpa.nombre).limit(limite_pos)
+        servicios_spa = db.session.execute(consulta_spa).scalars().all()
+
+        for s in servicios_spa:
+            items.append({
+                "id": f"spa_{s.id}",
+                "servicio_spa_id": s.id,
+                "sku": f"SPA-{s.id:02d}",
+                "codigo_barras": "",
+                "nombre": s.nombre,
+                "tipo": "servicio",
+                "categoria": "spa",
+                "precio_sugerido": float(s.precio_sugerido),
+                "stock_total": None,
+                "controla_lote": False,
+                "requiere_receta": False,
+                "variantes": [],
+            })
+
+    if categoria_filtro in ("", "todos"):
+        items.sort(key=lambda x: x["nombre"].lower())
 
     return jsonify(items)
 
@@ -264,31 +301,44 @@ def pos_buscar_tutores_mascotas():
     normalizado = normalizar_texto(texto)
     digitos = solo_digitos(texto)
 
-    filtros = [Tutor.nombre_busqueda.ilike(f"%{normalizado}%")]
-    if len(digitos) >= 3:
+    filtros = []
+    if normalizado:
+        filtros.append(Tutor.nombre_busqueda.ilike(f"%{normalizado}%"))
+        filtros.append(
+            Tutor.id.in_(
+                select(Mascota.tutor_id).where(
+                    Mascota.activo.is_(True),
+                    Mascota.nombre_busqueda.ilike(f"%{normalizado}%")
+                )
+            )
+        )
+    if len(digitos) >= 2:
         filtros.append(Tutor.numero_documento.ilike(f"%{digitos}%"))
         filtros.append(Tutor.telefono.ilike(f"%{digitos}%"))
         filtros.append(Tutor.whatsapp.ilike(f"%{digitos}%"))
 
+    if not filtros:
+        return jsonify([])
+
     consulta = (
         select(Tutor)
-        .where(or_(*filtros))
+        .where(Tutor.activo.is_(True), or_(*filtros))
         .order_by(Tutor.nombre_busqueda)
-        .limit(_limite())
+        .limit(15)
     )
     tutores = db.session.execute(consulta).scalars().all()
 
     resultado = []
     for t in tutores:
         mascotas = [
-            {"id": m.id, "nombre": m.nombre, "especie": m.especie}
-            for m in t.mascotas if m.activo
+            {"id": m.id, "nombre": m.nombre, "especie": m.especie, "emoji": m.especie_emoji}
+            for m in t.mascotas if m.activo and not m.fallecido
         ]
         resultado.append({
             "id": t.id,
             "nombre": t.nombre_completo,
             "documento": t.documento_texto or "Sin documento",
-            "telefono": t.telefono,
+            "telefono": t.telefono or t.whatsapp or "",
             "mascotas": mascotas,
         })
 

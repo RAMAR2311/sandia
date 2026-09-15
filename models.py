@@ -1008,6 +1008,41 @@ class Venta(BaseModel):
     def estado_etiqueta(self):
         return ESTADOS_VENTA.get(self.estado, self.estado)
 
+    @property
+    def mensaje_whatsapp(self) -> str:
+        """Mensaje pre-redactado con el resumen de la factura para enviar por WhatsApp."""
+        nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
+        nombre_mascota = f" (Mascota: {self.mascota.nombre})" if self.mascota else ""
+        
+        lineas_items = []
+        for d in self.detalles:
+            cant_str = f"x{int(d.cantidad)}" if d.cantidad == int(d.cantidad) else f"x{d.cantidad:.2f}"
+            lineas_items.append(f"• {d.descripcion} {cant_str} - ${int(d.total_linea):,}".replace(",", "."))
+        items_txt = "\n".join(lineas_items) if lineas_items else "• Detalle de servicios y productos"
+        total_str = f"${int(self.total):,}".replace(",", ".")
+        pagos_txt = ", ".join([f"{p.metodo_etiqueta}" for p in self.pagos]) if self.pagos else "Pago registrado"
+
+        return (
+            f"¡Hola {nombre_tutor}! 👋🍉\n\n"
+            f"Te compartimos el comprobante de pago de *Sandía Medicina & Spa Veterinario*{nombre_mascota}:\n\n"
+            f"📄 *Factura:* {self.numero_factura}\n"
+            f"📅 *Fecha:* {self.fecha_venta.strftime('%d/%m/%Y %I:%M %p')}\n"
+            f"💳 *Medio de pago:* {pagos_txt}\n\n"
+            f"*Ítems:*\n{items_txt}\n\n"
+            f"💰 *TOTAL PAGADO:* {total_str}\n\n"
+            f"¡Muchas gracias por tu visita y por confiar en nosotros! 🐾❤️\n"
+            f"_Sandía Medicina & Spa Veterinario_"
+        )
+
+    @property
+    def enlace_whatsapp(self) -> str:
+        if not self.tutor:
+            return ""
+        tel = self.tutor.whatsapp or self.tutor.telefono
+        if not tel:
+            return ""
+        return enlace_whatsapp(tel, self.mensaje_whatsapp)
+
     def __repr__(self):
         return f"<Venta {self.id} {self.numero_factura} total={self.total}>"
 
@@ -1107,6 +1142,7 @@ class CitaSpa(BaseModel):
     notas_ingreso = db.Column(db.Text)
     notas_salida = db.Column(db.Text)
     notificado_whatsapp = db.Column(db.Boolean, nullable=False, default=False)
+    fecha_listo = db.Column(db.DateTime(timezone=True))
     venta_id = db.Column(db.Integer, db.ForeignKey("ventas.id"))
 
     creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
