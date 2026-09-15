@@ -1213,11 +1213,14 @@ class CitaSpa(BaseModel):
         nombre_servicio = self.servicio_spa.nombre if self.servicio_spa else "Spa"
         url_doc = _generar_url_segura("spa.cita_spa_pdf", id=self.id)
 
+        observaciones = f"✏️ *Observaciones del estilista:*\n_{self.notas_salida}_\n\n" if self.notas_salida else ""
+
         return (
             f"🐾 *Sandía · Medicina & Spa Veterinario* ✂️🧼\n"
             f"✨ *¡{nombre_mascota} ESTÁ LISTO/A PARA RECOGIDA!*\n\n"
             f"Hola *{nombre_tutor}*,\n"
             f"Te informamos que *{nombre_mascota}* ha terminado su servicio de *{nombre_servicio}* y ya está listo/a y hermoso/a para su recogida.\n\n"
+            f"{observaciones}"
             f"📄 *Descargar Certificado de Spa en PDF:*\n"
             f"👉 {url_doc}\n\n"
             f"¡Te esperamos pronto! 🐾❤️\n"
