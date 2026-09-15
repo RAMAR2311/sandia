@@ -1,131 +1,217 @@
 {% extends "base.html" %}
-{% from "_macros.html" import encabezado %}
-{% block titulo %}{% if producto %}Editar {{ producto.nombre }}{% else %}Nuevo Producto{% endif %}{% endblock %}
+{% block titulo %}{% if producto %}Editar {{ producto.nombre }}{% else %}Nuevo Producto{% endif %} · Sandía{% endblock %}
 
 {% block contenido %}
-{% call encabezado(
-    'Editar producto' if producto else 'Nuevo producto',
-    'Ingresa los datos generales, precios e indicadores de lote'
-) %}
-  <a class="btn btn-outline-secondary" href="{{ url_for('inventario.lista') }}"><i class="bi bi-arrow-left me-1"></i>Volver</a>
-{% endcall %}
+{# 1. Cabecera de Página #}
+<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <a href="{{ url_for('inventario.lista') }}" class="btn btn-sm btn-outline-secondary rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <span class="badge badge-sandia-rosa rounded-pill px-3 py-1">
+        <i class="bi bi-box-seam me-1"></i> {% if producto %}Modificación de Ficha{% else %}Registro de Producto{% endif %}
+      </span>
+    </div>
+    <h1 class="h3 fw-bold text-dark mb-1 ms-1" style="font-family: var(--fuente-marca); color: #BE123C;">
+      {% if producto %}Editar {{ producto.nombre }}{% else %}Registrar Nuevo Producto{% endif %}
+    </h1>
+    <p class="text-secondary small mb-0 ms-1">
+      Ingresa los datos generales, códigos, tarifas de venta, costo y controles de lote FEFO
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 shadow-xs" href="{{ url_for('inventario.lista') }}">
+      <i class="bi bi-x-circle me-1"></i> Cancelar
+    </a>
+  </div>
+</div>
 
 <div class="row justify-content-center">
   <div class="col-12 col-lg-10">
-    <form method="post" enctype="multipart/form-data" class="card shadow-sm">
+    <form method="post" enctype="multipart/form-data" novalidate>
       {{ form.hidden_tag() }}
-      <div class="card-body">
-        
-        <div class="row g-3 mb-3">
-          <div class="col-12 col-md-4">
-            <label class="form-label fw-bold" for="sku">SKU / Código interno *</label>
-            {{ form.sku(class="form-control" ~ (' is-invalid' if form.sku.errors else ''), placeholder="ej. ALI-001") }}
-            {% for err in form.sku.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
-          </div>
-          <div class="col-12 col-md-4">
-            <label class="form-label" for="codigo_barras">Código de barras (Lector)</label>
-            {{ form.codigo_barras(class="form-control" ~ (' is-invalid' if form.codigo_barras.errors else ''), placeholder="ej. 7701234567890") }}
-            {% for err in form.codigo_barras.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
-          </div>
-          <div class="col-12 col-md-4">
-            <label class="form-label fw-bold" for="tipo">Tipo de registro</label>
-            {{ form.tipo(class="form-select") }}
-          </div>
-        </div>
 
-        <div class="row g-3 mb-3">
-          <div class="col-12 col-md-8">
-            <label class="form-label fw-bold" for="nombre">Nombre comercial *</label>
-            {{ form.nombre(class="form-control" ~ (' is-invalid' if form.nombre.errors else ''), placeholder="ej. Amoxicilina 250mg 10 tabletas") }}
-            {% for err in form.nombre.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
-          </div>
-          <div class="col-12 col-md-4">
-            <label class="form-label fw-bold" for="categoria">Categoría</label>
-            {{ form.categoria(class="form-select") }}
-          </div>
-        </div>
+      <div class="row g-4">
+        {# Bloque 1: Identificación y Clasificación #}
+        <div class="col-12">
+          <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+            <div class="card-header card-header-sandia py-3 px-4 d-flex align-items-center gap-2">
+              <span class="fs-5">🏷️</span>
+              <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">1. Identificación y Clasificación</span>
+            </div>
+            <div class="card-body p-4">
+              <div class="row g-3 mb-3">
+                <div class="col-12 col-md-4">
+                  <label class="form-label small fw-bold text-secondary mb-1" for="sku">
+                    SKU / Código Interno *
+                  </label>
+                  {{ form.sku(class="form-control bg-light text-uppercase fw-bold" ~ (' is-invalid' if form.sku.errors else ''), placeholder="ej. MED-AMOX-01") }}
+                  {% for err in form.sku.errors %}<div class="invalid-feedback d-block">{{ err }}</div>{% endfor %}
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label small fw-bold text-secondary mb-1" for="codigo_barras">
+                    <i class="bi bi-upc-scan me-1 text-danger"></i>Código de Barras (Lector)
+                  </label>
+                  {{ form.codigo_barras(class="form-control bg-light" ~ (' is-invalid' if form.codigo_barras.errors else ''), placeholder="ej. 7701234567890") }}
+                  {% for err in form.codigo_barras.errors %}<div class="invalid-feedback d-block">{{ err }}</div>{% endfor %}
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label small fw-bold text-secondary mb-1" for="tipo">
+                    Tipo de Registro *
+                  </label>
+                  {{ form.tipo(class="form-select bg-light") }}
+                </div>
+              </div>
 
-        <div class="mb-3">
-          <label class="form-label" for="descripcion">Descripción detallada</label>
-          {{ form.descripcion(class="form-control", rows="2", placeholder="Indicaciones, componentes u observaciones...") }}
-        </div>
+              <div class="row g-3 mb-3">
+                <div class="col-12 col-md-8">
+                  <label class="form-label small fw-bold text-secondary mb-1" for="nombre">
+                    Nombre Comercial del Producto *
+                  </label>
+                  {{ form.nombre(class="form-control bg-light fw-bold" ~ (' is-invalid' if form.nombre.errors else ''), placeholder="ej. Bravecto Perros 10 - 20 kg") }}
+                  {% for err in form.nombre.errors %}<div class="invalid-feedback d-block">{{ err }}</div>{% endfor %}
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label small fw-bold text-secondary mb-1" for="categoria">
+                    Categoría *
+                  </label>
+                  {{ form.categoria(class="form-select bg-light") }}
+                </div>
+              </div>
 
-        <hr class="my-4">
-
-        <h6 class="fw-bold mb-3"><i class="bi bi-tag me-2"></i>Precios y Unidades de Medida</h6>
-
-        <div class="row g-3 mb-3">
-          <div class="col-12 col-md-3">
-            <label class="form-label fw-bold" for="unidad_medida">Unidad de medida</label>
-            {{ form.unidad_medida(class="form-select") }}
-          </div>
-          <div class="col-12 col-md-3">
-            <label class="form-label fw-bold" for="precio_sugerido">Precio Venta (COP) *</label>
-            {{ form.precio_sugerido(class="form-control" ~ (' is-invalid' if form.precio_sugerido.errors else ''), step="100") }}
-            {% for err in form.precio_sugerido.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
-          </div>
-          <div class="col-12 col-md-3">
-            <label class="form-label" for="precio_minimo">Precio Mínimo (Mínimo POS)</label>
-            {{ form.precio_minimo(class="form-control" ~ (' is-invalid' if form.precio_minimo.errors else ''), step="100") }}
-            {% for err in form.precio_minimo.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
-          </div>
-          <div class="col-12 col-md-3">
-            <label class="form-label {% if current_user.es_admin %}text-danger fw-bold{% endif %}" for="precio_costo">
-              {% if current_user.es_admin %}<i class="bi bi-lock-fill me-1"></i>{% endif %}Precio Costo (COP)
-            </label>
-            {{ form.precio_costo(class="form-control" ~ (' is-invalid' if form.precio_costo.errors else ''), step="100", readonly=not current_user.es_admin) }}
-            {% for err in form.precio_costo.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
+              <div class="mb-0">
+                <label class="form-label small fw-semibold text-secondary mb-1" for="descripcion">
+                  Descripción o Indicaciones Clínicas
+                </label>
+                {{ form.descripcion(class="form-control bg-light", rows="2", placeholder="Componentes, principio activo, posología u observaciones...") }}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="row g-3 mb-3">
-          <div class="col-12 col-md-4">
-            <label class="form-label" for="stock_minimo">Stock mínimo de alerta</label>
-            {{ form.stock_minimo(class="form-control", step="1") }}
+        {# Bloque 2: Precios, Costos e Inventario #}
+        <div class="col-12">
+          <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+            <div class="card-header card-header-sandia py-3 px-4 d-flex align-items-center gap-2">
+              <span class="fs-5">💰</span>
+              <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">2. Precios, Costos y Proveedor</span>
+            </div>
+            <div class="card-body p-4">
+              <div class="row g-3 mb-3">
+                <div class="col-12 col-md-3">
+                  <label class="form-label small fw-bold text-secondary mb-1" for="unidad_medida">
+                    Unidad de Medida
+                  </label>
+                  {{ form.unidad_medida(class="form-select bg-light") }}
+                </div>
+                <div class="col-12 col-md-3">
+                  <label class="form-label small fw-bold text-secondary mb-1" for="precio_sugerido">
+                    <i class="bi bi-cash-stack text-success me-1"></i>Precio Venta (COP) *
+                  </label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light text-success fw-bold">$</span>
+                    {{ form.precio_sugerido(class="form-control bg-light font-monospace fw-bold" ~ (' is-invalid' if form.precio_sugerido.errors else ''), step="100", placeholder="0") }}
+                  </div>
+                  {% for err in form.precio_sugerido.errors %}<div class="invalid-feedback d-block">{{ err }}</div>{% endfor %}
+                </div>
+                <div class="col-12 col-md-3">
+                  <label class="form-label small fw-semibold text-secondary mb-1" for="precio_minimo">
+                    Precio Mínimo (Límite POS)
+                  </label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light text-muted">$</span>
+                    {{ form.precio_minimo(class="form-control bg-light font-monospace" ~ (' is-invalid' if form.precio_minimo.errors else ''), step="100", placeholder="0") }}
+                  </div>
+                  {% for err in form.precio_minimo.errors %}<div class="invalid-feedback d-block">{{ err }}</div>{% endfor %}
+                </div>
+                <div class="col-12 col-md-3">
+                  <label class="form-label small fw-semibold text-secondary mb-1" for="precio_costo">
+                    {% if current_user.es_admin %}<i class="bi bi-lock-fill text-danger me-1"></i>{% endif %}Costo Unitario (COP)
+                  </label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light text-muted">$</span>
+                    {{ form.precio_costo(class="form-control bg-light font-monospace" ~ (' is-invalid' if form.precio_costo.errors else ''), step="100", readonly=not current_user.es_admin, placeholder="0") }}
+                  </div>
+                  {% for err in form.precio_costo.errors %}<div class="invalid-feedback d-block">{{ err }}</div>{% endfor %}
+                </div>
+              </div>
+
+              <div class="row g-3 mb-0">
+                <div class="col-12 col-md-4">
+                  <label class="form-label small fw-bold text-secondary mb-1" for="stock_minimo">
+                    <i class="bi bi-layers text-danger me-1"></i>Stock Mínimo de Alerta
+                  </label>
+                  {{ form.stock_minimo(class="form-control bg-light font-monospace", step="1", placeholder="5") }}
+                </div>
+                <div class="col-12 col-md-8">
+                  <label class="form-label small fw-semibold text-secondary mb-1" for="proveedor_id">
+                    <i class="bi bi-truck text-secondary me-1"></i>Proveedor Principal
+                  </label>
+                  {{ form.proveedor_id(class="form-select bg-light") }}
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="col-12 col-md-8">
-            <label class="form-label" for="proveedor_id">Proveedor principal</label>
-            {{ form.proveedor_id(class="form-select") }}
+        </div>
+
+        {# Bloque 3: Controles, Lotes y Seguridad #}
+        <div class="col-12">
+          <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+            <div class="card-header card-header-sandia py-3 px-4 d-flex align-items-center gap-2">
+              <span class="fs-5">🛡️</span>
+              <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">3. Controles, Lotes y Seguridad</span>
+            </div>
+            <div class="card-body p-4">
+              <div class="p-3 bg-light rounded-4 border mb-3">
+                <div class="form-check form-switch mb-2">
+                  {{ form.controla_lote(class="form-check-input", id="controla_lote") }}
+                  <label class="form-check-label fw-bold text-dark small" for="controla_lote">
+                    <i class="bi bi-calendar-check text-danger me-1"></i>Controlar lotes y fechas de vencimiento (Estrategia FEFO para vacunas, medicamentos, etc.)
+                  </label>
+                </div>
+
+                <div class="form-check form-switch mb-2">
+                  {{ form.requiere_receta(class="form-check-input", id="requiere_receta") }}
+                  <label class="form-check-label fw-bold text-dark small" for="requiere_receta">
+                    <i class="bi bi-prescription2 text-danger me-1"></i>Requiere fórmula o receta médica para la venta en POS
+                  </label>
+                </div>
+
+                <div class="form-check form-switch mb-0">
+                  {{ form.activo(class="form-check-input", id="activo") }}
+                  <label class="form-check-label fw-bold text-dark small" for="activo">
+                    <i class="bi bi-check-circle text-success me-1"></i>Producto activo y habilitado para ventas y clínica
+                  </label>
+                </div>
+              </div>
+
+              <div class="mb-0">
+                <label class="form-label small fw-semibold text-secondary mb-1" for="imagen">
+                  <i class="bi bi-image text-danger me-1"></i>Foto o Imagen del Producto (Opcional)
+                </label>
+                {{ form.imagen(class="form-control bg-light" ~ (' is-invalid' if form.imagen.errors else '')) }}
+                {% for err in form.imagen.errors %}<div class="invalid-feedback d-block">{{ err }}</div>{% endfor %}
+              </div>
+            </div>
           </div>
         </div>
-
-        <hr class="my-4">
-
-        <h6 class="fw-bold mb-3"><i class="bi bi-sliders me-2"></i>Controles y Seguridad</h6>
-
-        <div class="form-check form-switch mb-2">
-          {{ form.controla_lote(class="form-check-input", id="controla_lote") }}
-          <label class="form-check-input-label fw-bold" for="controla_lote">
-            Controlar lotes y fechas de vencimiento (Estrategia FEFO para vacunas, medicamentos, etc.)
-          </label>
-        </div>
-
-        <div class="form-check form-switch mb-3">
-          {{ form.requiere_receta(class="form-check-input", id="requiere_receta") }}
-          <label class="form-check-input-label" for="requiere_receta">
-            Requiere receta médica para la venta en POS
-          </label>
-        </div>
-
-        <div class="form-check form-switch mb-3">
-          {{ form.activo(class="form-check-input", id="activo") }}
-          <label class="form-check-input-label" for="activo">
-            Producto activo para venta y clínica
-          </label>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label" for="imagen">Imagen del producto</label>
-          {{ form.imagen(class="form-control" ~ (' is-invalid' if form.imagen.errors else '')) }}
-          {% for err in form.imagen.errors %}<div class="invalid-feedback">{{ err }}</div>{% endfor %}
-        </div>
-
       </div>
-      <div class="card-footer d-flex justify-content-between">
-        <a class="btn btn-secondary" href="{{ url_for('inventario.lista') }}">Cancelar</a>
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar producto</button>
+
+      {# Barra de Acciones #}
+      <div class="card border-0 shadow-sm rounded-4 bg-white mt-4 p-3 p-md-4" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3">
+          <a class="btn btn-outline-secondary rounded-pill px-4 fw-semibold shadow-xs" href="{{ url_for('inventario.lista') }}">
+            <i class="bi bi-x-circle me-1"></i> Cancelar
+          </a>
+          <button type="submit" class="btn btn-sandia-coral rounded-pill px-5 py-2 fw-bold shadow-sm d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill"></i>
+            <span>{% if producto %}Guardar Cambios del Producto{% else %}Registrar Producto en Inventario{% endif %}</span>
+          </button>
+        </div>
       </div>
     </form>
   </div>
 </div>
 {% endblock %}
+

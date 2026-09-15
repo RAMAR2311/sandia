@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from decorators import recepcion_required
 from forms import CambiarEstadoCitaForm, CitaForm, SoloCsrfForm
-from models import ESTADOS_CITA, Cita, Mascota, Tutor, Usuario, db
+from models import ESTADOS_CITA, TIPOS_CITA, Cita, Mascota, Tutor, Usuario, db
 from utils import ZONA_BOGOTA, hoy_bogota
 
 bp = Blueprint("agenda", __name__, url_prefix="/agenda")
@@ -43,7 +43,17 @@ def lista():
         .options(selectinload(Cita.mascota), selectinload(Cita.tutor), selectinload(Cita.profesional))
         .order_by(Cita.fecha_hora)
     ).scalars().all()
-    return render_template("agenda/lista.html", citas=citas, fecha=fecha, ESTADOS_CITA=ESTADOS_CITA)
+    fecha_anterior = fecha - timedelta(days=1)
+    fecha_siguiente = fecha + timedelta(days=1)
+    return render_template(
+        "agenda/lista.html",
+        citas=citas,
+        fecha=fecha,
+        fecha_anterior=fecha_anterior,
+        fecha_siguiente=fecha_siguiente,
+        ESTADOS_CITA=ESTADOS_CITA,
+        TIPOS_CITA=TIPOS_CITA,
+    )
 
 
 @bp.route("/nueva", methods=["GET", "POST"])
@@ -56,8 +66,8 @@ def nueva():
         form.fecha.data = hoy_bogota()
 
     if form.validate_on_submit():
-        tutor = db.session.get(Tutor, int(form.tutor_id.data)) if form.tutor_id.data else None
         mascota = db.session.get(Mascota, int(form.mascota_id.data)) if form.mascota_id.data else None
+        tutor = db.session.get(Tutor, int(form.tutor_id.data)) if form.tutor_id.data else (mascota.tutor if mascota else None)
         if not tutor or not mascota:
             flash("Selecciona la mascota (y su tutor) de la cita.", "danger")
         else:
@@ -83,7 +93,7 @@ def nueva():
             else:
                 flash(f"Cita de {mascota.nombre} agendada.", "success")
                 return redirect(url_for("agenda.lista", fecha=form.fecha.data.isoformat()))
-    return render_template("agenda/form.html", form=form)
+    return render_template("agenda/form.html", form=form, hoy=hoy_bogota())
 
 
 @bp.route("/<int:id>", methods=["GET"])

@@ -1,49 +1,261 @@
 {% extends "base.html" %}
 {% from "_macros.html" import avatar_mascota, campo_select %}
-{% block titulo %}Cita #{{ cita.id }}{% endblock %}
+{% block titulo %}Gestionar Cita #{{ cita.id }} · {{ cita.mascota.nombre }} · Sandía{% endblock %}
 
 {% block contenido %}
-<nav class="small mb-2"><a href="{{ url_for('agenda.lista', fecha=cita.fecha_hora.strftime('%Y-%m-%d')) }}" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Agenda</a></nav>
-
-<div class="card mb-3">
-  <div class="card-body">
-    <div class="d-flex align-items-center gap-3">
-      {{ avatar_mascota(cita.mascota, 64) }}
-      <div class="flex-grow-1 min-w-0">
-        <h1 class="titulo-pagina">{{ cita.mascota.nombre }}</h1>
-        <div class="text-secondary">{{ cita.tutor.nombre_completo }} · {{ cita.tipo_etiqueta }}</div>
-      </div>
-      <span class="estado estado--info">{{ cita.estado_etiqueta }}</span>
-    </div>
-    <dl class="lista-datos mt-3 mb-0">
-      <dt>Fecha</dt><dd>{{ cita.fecha_hora|fecha_hora }}</dd>
-      <dt>Duración</dt><dd>{{ cita.duracion_minutos }} min</dd>
-      <dt>Profesional</dt><dd>{{ cita.profesional.nombre if cita.profesional else '—' }}</dd>
-      <dt>Motivo</dt><dd>{{ cita.motivo or '—' }}</dd>
-      <dt>Notas</dt><dd>{{ cita.notas or '—' }}</dd>
-    </dl>
-    {% if cita.enlace_whatsapp %}
-    <a href="{{ cita.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-success mt-3">
-      <i class="bi bi-whatsapp me-1"></i>{{ 'Reenviar recordatorio' if cita.recordatorio_enviado else 'Enviar recordatorio' }}
+{# Barra de Navegación y Accesos Rápidos #}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <div>
+    <a href="{{ url_for('agenda.lista', fecha=cita.fecha_hora.strftime('%Y-%m-%d')) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs">
+      <i class="bi bi-arrow-left me-1"></i> Volver a la Agenda
     </a>
-    {% if not cita.recordatorio_enviado %}
-    <form method="post" action="{{ url_for('agenda.marcar_recordatorio', id=cita.id) }}" class="d-inline">
-      {{ form_csrf.hidden_tag() }}
-      <button class="btn btn-outline-secondary mt-3" type="submit">Marcar como enviado</button>
-    </form>
-    {% endif %}
-    {% endif %}
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{{ url_for('historias.ficha_medica', mascota_id=cita.mascota.id) }}" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-xs">
+      <i class="bi bi-heart-pulse me-1"></i> Ver Ficha Médica
+    </a>
+    <a href="{{ url_for('historias.consulta_nueva', mascota_id=cita.mascota.id) }}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-xs">
+      <i class="bi bi-journal-medical me-1"></i> Iniciar Consulta SOAP
+    </a>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-header">Cambiar estado</div>
-  <div class="card-body">
-    <form method="post" action="{{ url_for('agenda.cambiar_estado', id=cita.id) }}" class="row g-2 align-items-end">
-      {{ form_estado.hidden_tag() }}
-      <div class="col-8">{{ campo_select(form_estado.estado, clase_extra="mb-0") }}</div>
-      <div class="col-4 d-grid">{{ form_estado.enviar(class_="btn btn-primary") }}</div>
-    </form>
+{# Banner Hero: Datos Principales del Paciente y Cita #}
+<div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden" style="background: linear-gradient(135deg, #FFFFFF 0%, #FDF6EE 100%);">
+  <div class="card-body p-4">
+    <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+      <div class="d-flex align-items-center gap-3 min-w-0">
+        <div class="position-relative">
+          {{ avatar_mascota(cita.mascota, 72) }}
+          <span class="position-absolute bottom-0 end-0 bg-white rounded-circle shadow-xs fs-6 d-flex align-items-center justify-content-center" style="width: 26px; height: 26px;">
+            {{ cita.mascota.especie_emoji }}
+          </span>
+        </div>
+        <div class="min-w-0">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca);">{{ cita.mascota.nombre }}</h1>
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small">
+              {{ cita.tipo_etiqueta }}
+            </span>
+          </div>
+          <div class="text-secondary mt-1 small">
+            <i class="bi bi-person me-1"></i><strong>Tutor:</strong> {{ cita.tutor.nombre_completo }}
+            {% if cita.tutor.telefono %}
+              <span class="ms-2">· <i class="bi bi-telephone me-1"></i>{{ cita.tutor.telefono }}</span>
+            {% endif %}
+            {% if cita.mascota.raza %}
+              <span class="ms-2">· {{ cita.mascota.raza.nombre }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="text-end">
+        <div class="small text-muted mb-1 text-uppercase fw-semibold" style="letter-spacing: 0.5px;">Estado de la Cita</div>
+        {% if cita.estado == 'programada' %}
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2 fs-6">
+            <i class="bi bi-calendar-event me-1"></i> Programada
+          </span>
+        {% elif cita.estado == 'confirmada' %}
+          <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill px-3 py-2 fs-6">
+            <i class="bi bi-check2-circle me-1"></i> Confirmada
+          </span>
+        {% elif cita.estado == 'en_atencion' %}
+          <span class="badge bg-danger text-white rounded-pill px-3 py-2 fs-6 shadow-sm animate-pulse">
+            <i class="bi bi-activity me-1"></i> En Atención Médica
+          </span>
+        {% elif cita.estado == 'cumplida' %}
+          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 fs-6">
+            <i class="bi bi-check-all me-1"></i> Cumplida
+          </span>
+        {% elif cita.estado == 'cancelada' %}
+          <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-3 py-2 fs-6">
+            <i class="bi bi-x-circle me-1"></i> Cancelada
+          </span>
+        {% else %}
+          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-2 fs-6">
+            <i class="bi bi-exclamation-triangle me-1"></i> No asistió
+          </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  {# Columna Izquierda: Detalles Médicos y Cambio de Estado #}
+  <div class="col-lg-7">
+    {# Card 1: Detalles de la Cita #}
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+      <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">📋</span>
+          <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Detalles de la Cita Médica</span>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="p-3 rounded-3 bg-light border">
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-calendar3 me-1 text-primary"></i> Fecha y Hora</div>
+              <div class="fw-bold text-dark fs-6 mt-1">{{ cita.fecha_hora|fecha_hora }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 rounded-3 bg-light border">
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-stopwatch me-1 text-primary"></i> Duración Estimada</div>
+              <div class="fw-bold text-dark fs-6 mt-1">{{ cita.duracion_minutos }} minutos</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 rounded-3 bg-light border">
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-person-badge me-1 text-primary"></i> Profesional Asignado</div>
+              <div class="fw-bold text-dark fs-6 mt-1">{{ cita.profesional.nombre if cita.profesional else 'Sin asignar / General' }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 rounded-3 bg-light border">
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-tag me-1 text-primary"></i> Tipo de Cita</div>
+              <div class="fw-bold text-dark fs-6 mt-1">{{ cita.tipo_etiqueta }}</div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="p-3 rounded-3 bg-light border">
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-chat-left-text me-1 text-primary"></i> Motivo de Consulta / Agendamiento</div>
+              <div class="text-dark mt-1">{{ cita.motivo or 'Sin motivo específico registrado.' }}</div>
+            </div>
+          </div>
+
+          {% if cita.notas %}
+          <div class="col-12">
+            <div class="p-3 rounded-3 border" style="background-color: #FDF6EE; border-color: #F7D6B5 !important;">
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-journal-text me-1 text-danger"></i> Notas Clínicas / Indicaciones del Tutor</div>
+              <div class="text-dark mt-1">{{ cita.notas }}</div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {# Card 2: Cambiar Estado de la Cita #}
+    <div class="card border-0 shadow-sm rounded-4 bg-white">
+      <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">🔄</span>
+          <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Actualizar Estado</span>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" action="{{ url_for('agenda.cambiar_estado', id=cita.id) }}">
+          {{ form_estado.hidden_tag() }}
+          <div class="row g-3 align-items-end">
+            <div class="col-sm-8">
+              {{ campo_select(form_estado.estado, ayuda="Selecciona el nuevo estado de la cita médica", clase_extra="mb-0") }}
+            </div>
+            <div class="col-sm-4 d-grid">
+              {{ form_estado.enviar(class_="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm") }}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# Columna Derecha: Recordatorio WhatsApp y Ficha Rápida #}
+  <div class="col-lg-5">
+    {# Card WhatsApp #}
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+      <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-whatsapp fs-5 text-success"></i>
+          <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Notificación WhatsApp</span>
+        </div>
+        {% if cita.recordatorio_enviado %}
+          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small">
+            <i class="bi bi-check-circle me-1"></i> Enviado
+          </span>
+        {% else %}
+          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1 small">
+            <i class="bi bi-clock me-1"></i> Pendiente
+          </span>
+        {% endif %}
+      </div>
+      <div class="card-body p-4">
+        {% if cita.enlace_whatsapp %}
+          <div class="p-3 rounded-3 mb-3 position-relative" style="background-color: #DCF8C6; border-left: 4px solid #25D366;">
+            <div class="small text-dark font-monospace" style="font-size: 0.85rem; line-height: 1.4;">
+              {{ cita.mensaje_whatsapp }}
+            </div>
+          </div>
+
+          <div class="d-grid gap-2">
+            <a href="{{ cita.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-success btn-lg rounded-pill fw-bold shadow-sm">
+              <i class="bi bi-whatsapp me-2"></i>{{ 'Reenviar Recordatorio' if cita.recordatorio_enviado else 'Enviar Recordatorio WhatsApp' }}
+            </a>
+
+            {% if not cita.recordatorio_enviado %}
+            <form method="post" action="{{ url_for('agenda.marcar_recordatorio', id=cita.id) }}" class="d-grid mt-1">
+              {{ form_csrf.hidden_tag() }}
+              <button class="btn btn-outline-secondary btn-sm rounded-pill" type="submit">
+                <i class="bi bi-check2-all me-1"></i> Marcar como enviado manualmente
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        {% else %}
+          <div class="alert alert-warning py-3 px-3 small rounded-3 mb-0">
+            <i class="bi bi-exclamation-triangle me-1"></i> El tutor no tiene un número telefónico registrado para enviar recordatorios por WhatsApp.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Card Acciones Clínicas del Paciente #}
+    <div class="card border-0 shadow-sm rounded-4 bg-white">
+      <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">🩺</span>
+          <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Acciones Clínicas</span>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <div class="d-grid gap-2">
+          <a href="{{ url_for('historias.consulta_nueva', mascota_id=cita.mascota.id) }}" class="btn btn-outline-danger p-3 text-start d-flex align-items-center justify-content-between rounded-3">
+            <div>
+              <div class="fw-bold"><i class="bi bi-journal-medical me-2"></i>Registrar Consulta SOAP</div>
+              <div class="small text-secondary">Abre el formulario clínico con examen físico y diagnóstico</div>
+            </div>
+            <i class="bi bi-chevron-right text-muted"></i>
+          </a>
+
+          <a href="{{ url_for('historias.ficha_medica', mascota_id=cita.mascota.id) }}" class="btn btn-outline-secondary p-3 text-start d-flex align-items-center justify-content-between rounded-3">
+            <div>
+              <div class="fw-bold"><i class="bi bi-heart-pulse me-2 text-danger"></i>Historia Clínica Integral</div>
+              <div class="small text-secondary">Vacunas, desparasitaciones, peso, cirugías y laboratorio</div>
+            </div>
+            <i class="bi bi-chevron-right text-muted"></i>
+          </a>
+
+          <a href="{{ url_for('mascotas.detalle', mascota_id=cita.mascota.id) }}" class="btn btn-outline-secondary p-3 text-start d-flex align-items-center justify-content-between rounded-3">
+            <div>
+              <div class="fw-bold"><i class="bi bi-person-lines-fill me-2 text-dark"></i>Perfil del Paciente</div>
+              <div class="small text-secondary">Ficha general y línea de tiempo</div>
+            </div>
+            <i class="bi bi-chevron-right text-muted"></i>
+          </a>
+
+          <a href="{{ url_for('tutores.detalle', tutor_id=cita.tutor.id) }}" class="btn btn-outline-secondary p-3 text-start d-flex align-items-center justify-content-between rounded-3">
+            <div>
+              <div class="fw-bold"><i class="bi bi-person-vcard me-2 text-primary"></i>Perfil del Tutor</div>
+              <div class="small text-secondary">{{ cita.tutor.nombre_completo }}</div>
+            </div>
+            <i class="bi bi-chevron-right text-muted"></i>
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

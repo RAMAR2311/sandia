@@ -8,8 +8,9 @@ el descuento automático de stock mediante FEFO y la emisión y anulación de fa
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
-from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, send_file, url_for
 from decorators import admin_required, caja_required
+from pdf_generator import generar_pdf_factura
 from flask_login import current_user, login_required
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
@@ -194,13 +195,11 @@ def abrir_caja():
     turno_activo = obtener_turno_activo(current_user.id)
     if turno_activo:
         flash("Ya tienes una caja abierta. No puedes abrir otra simultáneamente.", "warning")
-        return redirect(url_for("pos.terminal"))
+        return redirect(url_for("pos.caja_estado"))
 
     datos_post = request.form.copy()
     if "monto_apertura" in datos_post:
-        raw = datos_post["monto_apertura"].strip()
-        limpio = raw.replace(".", "").replace(" ", "").replace(",", ".")
-        datos_post["monto_apertura"] = limpio
+        datos_post["monto_apertura"] = _limpiar_monto(datos_post["monto_apertura"])
 
     form = AperturaCajaForm(formdata=datos_post)
     if form.validate():
@@ -208,9 +207,9 @@ def abrir_caja():
             nuevo_turno = TurnoCaja(
                 usuario_id=current_user.id,
                 monto_apertura=form.monto_apertura.data,
+                notas_apertura=form.notas.data,
                 estado="abierta",
                 fecha_apertura=obtener_hora_bogota(),
-                notas_apertura=form.notas.data,
             )
             db.session.add(nuevo_turno)
             db.session.commit()
@@ -219,10 +218,12 @@ def abrir_caja():
         except Exception:
             db.session.rollback()
             current_app.logger.exception("Error al abrir turno de caja")
-            flash("Ocurrió un error al abrir la caja. Inténtalo de nuevo.", "danger")
+            flash("Error interno al abrir turno. Intenta nuevamente.", "danger")
+    else:
+        for errs in form.errors.values():
+            for e in errs:
+                flash(e, "danger")
 
-    for err in form.monto_apertura.errors:
-        flash(err, "danger")
     return redirect(url_for("pos.caja_estado"))
 
 
@@ -232,15 +233,13 @@ def abrir_caja():
 def cerrar_caja():
     turno_activo = obtener_turno_activo(current_user.id)
     if not turno_activo:
-        flash("No tienes un turno de caja abierto para cerrar.", "warning")
+        flash("No hay ningún turno de caja abierto para cerrar.", "warning")
         return redirect(url_for("pos.caja_estado"))
 
     datos_post = request.form.copy()
     for campo in ["monto_efectivo", "monto_nequi", "monto_daviplata", "monto_tarjetas", "monto_transferencia"]:
         if campo in datos_post:
-            raw = datos_post[campo].strip()
-            limpio = raw.replace(".", "").replace(" ", "").replace(",", ".")
-            datos_post[campo] = limpio
+            datos_post[campo] = _limpiar_monto(datos_post[campo])
 
     form = CierreCajaForm(formdata=datos_post)
     if form.validate():
@@ -426,36 +425,6 @@ def procesar_venta():
             variante = db.session.get(VarianteProducto, variante_id) if variante_id else None
             descripcion = f"{producto.nombre} ({variante.nombre_variante})" if variante else producto.nombre
 
-            # Regla de negocio: un cajero no puede vender bajo el precio mínimo
-            # sin aprobación del admin. El admin no tiene esta restricción.
-            precio_minimo_aplicable = variante.precio_minimo if variante else producto.precio_minimo
-            if not current_user.es_admin and precio_unitario < precio_minimo_aplicable:
-                aprobacion_activa = _buscar_aprobacion_activa(
-                    current_user.id, producto.id, variante.id if variante else None, precio_unitario
-                )
-                if aprobacion_activa is None:
-                    db.session.rollback()
-                    solicitud = _resolver_solicitud_precio(
-                        current_user, producto, variante, descripcion, precio_minimo_aplicable, precio_unitario
-                    )
-                    return jsonify(
-                        ok=False,
-                        requiere_aprobacion=True,
-                        aprobacion_id=solicitud.id,
-                        estado_aprobacion=solicitud.estado,
-                        motivo_rechazo=solicitud.motivo_rechazo,
-                        precio_minimo=float(precio_minimo_aplicable),
-                        producto_id=producto.id,
-                        variante_id=variante.id if variante else None,
-                        mensaje=(
-                            f"'{descripcion}' está por debajo del precio mínimo "
-                            f"(${precio_minimo_aplicable:,.2f}). Se envió la solicitud al administrador."
-                            if solicitud.estado == "pendiente"
-                            else f"La solicitud anterior para '{descripcion}' fue rechazada: {solicitud.motivo_rechazo or 'sin motivo indicado'}."
-                        ),
-                    ), 409
-                aprobaciones_a_consumir.append(aprobacion_activa)
-
             if not descuenta_stock:
                 # El ajuste "Descontar inventario automáticamente" está apagado:
                 # se registra la venta sin tocar cantidades de stock ni kardex.
@@ -624,12 +593,6 @@ def procesar_venta():
             p.venta_id = venta.id
             db.session.add(p)
 
-        # Marcar como usadas las aprobaciones de precio consumidas en esta venta:
-        # no pueden reutilizarse en otra factura.
-        for aprobacion in aprobaciones_a_consumir:
-            aprobacion.estado = "utilizada"
-            aprobacion.venta_id = venta.id
-
         # Si la venta proviene de una cita de spa, vincularla automáticamente
         cita_spa_id = datos.get("cita_spa_id")
         if cita_spa_id:
@@ -725,6 +688,33 @@ def venta_detalle(id: int):
 
     form_anular = AnularVentaForm()
     return render_template("pos/venta_detalle.html", venta=venta, form_anular=form_anular, cita_spa=cita_spa)
+
+
+@bp.route("/venta/<int:id>/pdf", methods=["GET"])
+def venta_pdf(id: int):
+    venta = db.session.execute(
+        select(Venta)
+        .filter_by(id=id)
+        .options(
+            selectinload(Venta.detalles),
+            selectinload(Venta.pagos),
+            selectinload(Venta.tutor),
+            selectinload(Venta.mascota),
+            selectinload(Venta.usuario),
+        )
+    ).scalar_one_or_none()
+    if not venta:
+        flash("La factura no existe.", "danger")
+        return redirect(url_for("pos.ventas_lista"))
+
+    pdf_buffer = generar_pdf_factura(venta, db.session)
+    nombre_archivo = f"Factura_{venta.numero_factura}.pdf"
+    return send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=nombre_archivo,
+    )
 
 
 @bp.route("/venta/<int:id>/anular", methods=["POST"])

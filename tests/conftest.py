@@ -52,32 +52,16 @@ def app(tmp_path_factory):
 def limpiar_tablas(app):
     """Deja usuarios e intentos vacíos antes de cada prueba (la configuración se conserva)."""
     with app.app_context():
-        db.session.execute(text("UPDATE configuracion_sistema SET actualizado_por_id = NULL"))
-        for tabla in (
-            "aprobaciones_precio",
-            "desparasitaciones_mascotas",
-            "vacunas_mascotas",
-            "consultas_medicas",
-            "citas_spa",
-            "servicios_spa",
-            "pagos_venta",
-            "detalles_venta",
-            "ventas",
-            "turnos_caja",
-            "movimientos_stock",
-            "lotes",
-            "variantes_producto",
-            "productos",
-            "proveedores",
-            "registros_peso",
-            "mascotas",
-            "tutores",
-            "intentos_login",
-            "usuarios",
-        ):
-            db.session.execute(text(f"DELETE FROM {tabla}"))
-            db.session.execute(text(f"ALTER SEQUENCE {tabla}_id_seq RESTART WITH 1"))
-        db.session.commit()
+        res = db.session.execute(text(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
+            "AND table_name NOT IN ('configuracion_sistema', 'alembic_version', 'razas')"
+        )).scalars().all()
+        if res:
+            tablas = ", ".join(f'"{t}"' for t in res)
+            db.session.execute(text(f"TRUNCATE TABLE {tablas} RESTART IDENTITY CASCADE"))
+            db.session.execute(text("UPDATE configuracion_sistema SET actualizado_por_id = NULL"))
+            db.session.commit()
     yield
 
 

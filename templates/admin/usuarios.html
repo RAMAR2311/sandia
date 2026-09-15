@@ -4,20 +4,26 @@
 
 {% block contenido %}
 {% call encabezado("Usuarios", "Cuentas y roles del personal") %}
-  <a class="btn btn-primary" href="{{ url_for('admin.usuario_nuevo') }}"><i class="bi bi-person-plus-fill me-1"></i>Nuevo usuario</a>
+  <a class="btn btn-sandia" href="{{ url_for('admin.usuario_nuevo') }}">
+    <i class="bi bi-person-plus-fill"></i>Nuevo usuario
+  </a>
 {% endcall %}
 
-<form method="get" class="card mb-3">
+{# Filtros #}
+<form method="get" class="card mb-4" style="border-top: 3px solid var(--sandia-rojo);">
   <div class="card-body py-3">
     <div class="row g-2 align-items-end">
       <div class="col-12 col-md-5">
         <label class="form-label mb-1" for="q">Buscar</label>
-        <input class="form-control" type="search" id="q" name="q" value="{{ filtro_texto }}" placeholder="Nombre o correo">
+        <div class="input-group">
+          <span class="input-group-text bg-white"><i class="bi bi-search text-secondary"></i></span>
+          <input class="form-control border-start-0" type="search" id="q" name="q" value="{{ filtro_texto }}" placeholder="Nombre o correo">
+        </div>
       </div>
       <div class="col-6 col-md-3">
         <label class="form-label mb-1" for="rol">Rol</label>
         <select class="form-select" id="rol" name="rol">
-          <option value="">Todos</option>
+          <option value="">Todos los roles</option>
           {% for clave, etiqueta in ROLES.items() %}
           <option value="{{ clave }}" {% if filtro_rol == clave %}selected{% endif %}>{{ etiqueta }}</option>
           {% endfor %}
@@ -32,42 +38,60 @@
         </select>
       </div>
       <div class="col-12 col-md-2 d-grid">
-        <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search me-1"></i>Filtrar</button>
+        <button class="btn btn-primary" type="submit"><i class="bi bi-funnel-fill me-1"></i>Filtrar</button>
       </div>
     </div>
   </div>
 </form>
 
 {% if not usuarios %}
-<div class="card"><div class="card-body text-center text-secondary py-5">
-  <i class="bi bi-people fs-1 d-block mb-2"></i>No hay usuarios que coincidan con el filtro.
-</div></div>
+<div class="card">
+  <div class="card-body text-center text-secondary py-5">
+    <div style="font-size:3rem; opacity:0.35;">👥</div>
+    <div class="fw-bold mt-2">No hay usuarios que coincidan</div>
+    <div class="small mt-1">Intenta con otro filtro o crea uno nuevo</div>
+  </div>
+</div>
 {% else %}
 
-{# Vista de tarjetas en celular #}
-<div class="d-md-none d-flex flex-column gap-2">
+{# Contador #}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <span class="badge rounded-pill" style="background:var(--sandia-rojo);font-size:0.85rem;padding:0.4em 0.85em;">{{ usuarios|length }}</span>
+  <span class="text-secondary small fw-bold">{{ 'usuario' if usuarios|length == 1 else 'usuarios' }} encontrado{{ 's' if usuarios|length != 1 else '' }}</span>
+</div>
+
+{# ── Tarjetas en celular ── #}
+<div class="d-md-none d-flex flex-column gap-3">
   {% for u in usuarios %}
-  <div class="fila-lista">
+  <div class="usuario-card">
     <div class="d-flex align-items-center gap-3">
-      <span class="avatar-usuario" style="{% if not u.activo %}background:#9CA3AF{% endif %}">{{ u.nombre[:1]|upper }}</span>
+      <div class="usuario-avatar usuario-avatar--{{ loop.index0 % 6 }}{% if not u.activo %} usuario-avatar--inactivo{% endif %}">
+        {{ u.nombre[:1]|upper }}
+      </div>
       <div class="flex-grow-1 min-w-0">
-        <div class="fw-bold text-truncate">{{ u.nombre }}</div>
+        <div class="fw-bold text-truncate" style="font-size:1rem;">{{ u.nombre }}</div>
         <div class="small text-secondary text-truncate">{{ u.email }}</div>
-        <div class="mt-1 d-flex flex-wrap gap-1">
-          <span class="estado estado--info">{{ u.rol_etiqueta }}</span>
-          {% if u.activo %}<span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Activo</span>
-          {% else %}<span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>{% endif %}
+        {% if u.telefono %}<div class="small text-secondary"><i class="bi bi-telephone me-1"></i>{{ u.telefono }}</div>{% endif %}
+        <div class="mt-2 d-flex flex-wrap gap-1">
+          <span class="rol-badge rol-badge--{{ u.rol }}">{{ u.rol_etiqueta }}</span>
+          {% if u.activo %}
+          <span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Activo</span>
+          {% else %}
+          <span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>
+          {% endif %}
         </div>
       </div>
     </div>
-    <div class="d-flex gap-2 mt-3">
-      <a class="btn btn-outline-primary flex-grow-1" href="{{ url_for('admin.usuario_editar', usuario_id=u.id) }}"><i class="bi bi-pencil me-1"></i>Editar</a>
+    <div class="d-flex gap-2 mt-3 pt-3" style="border-top:1px solid var(--sandia-gris-claro);">
+      <a class="btn btn-sm btn-outline-primary flex-grow-1" href="{{ url_for('admin.usuario_editar', usuario_id=u.id) }}">
+        <i class="bi bi-pencil-square me-1"></i>Editar
+      </a>
       {% if u.id != current_user.id %}
       <form method="post" action="{{ url_for('admin.usuario_cambiar_estado', usuario_id=u.id, estado=filtro_estado) }}" class="flex-grow-1 d-grid"
             data-confirmar="¿{{ 'Desactivar' if u.activo else 'Activar' }} a {{ u.nombre }}?">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-outline-{{ 'danger' if u.activo else 'success' }}" type="submit">
-          <i class="bi {{ 'bi-person-x' if u.activo else 'bi-person-check' }} me-1"></i>{{ 'Desactivar' if u.activo else 'Activar' }}
+        <button class="btn btn-sm btn-outline-{{ 'danger' if u.activo else 'success' }}" type="submit">
+          <i class="bi {{ 'bi-person-dash' if u.activo else 'bi-person-check' }} me-1"></i>{{ 'Desactivar' if u.activo else 'Activar' }}
         </button>
       </form>
       {% endif %}
@@ -76,40 +100,66 @@
   {% endfor %}
 </div>
 
-{# Tabla en tablet y escritorio #}
-<div class="card d-none d-md-block">
+{# ── Tabla desktop ── #}
+<div class="card d-none d-md-block" style="border-top: 3px solid var(--sandia-rojo); overflow:hidden;">
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0 usuarios-tabla">
       <thead>
         <tr>
-          <th>Nombre</th>
-          <th>Correo</th>
+          <th style="padding-left:1.25rem;">Miembro del equipo</th>
+          <th>Contacto</th>
           <th>Rol</th>
           <th>Estado</th>
           <th>Último acceso</th>
-          <th class="text-end">Acciones</th>
+          <th class="text-end" style="padding-right:1.25rem;">Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for u in usuarios %}
-        <tr>
-          <td class="fw-bold">{{ u.nombre }}</td>
-          <td>{{ u.email }}{% if u.telefono %}<div class="small text-secondary">{{ u.telefono }}</div>{% endif %}</td>
-          <td><span class="estado estado--info">{{ u.rol_etiqueta }}</span></td>
-          <td>
-            {% if u.activo %}<span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Activo</span>
-            {% else %}<span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>{% endif %}
+        <tr class="usuario-fila{% if not u.activo %} usuario-fila--inactivo{% endif %}">
+          <td style="padding-left:1.25rem; padding-top:0.85rem; padding-bottom:0.85rem;">
+            <div class="d-flex align-items-center gap-3">
+              <div class="usuario-avatar usuario-avatar--sm usuario-avatar--{{ loop.index0 % 6 }}{% if not u.activo %} usuario-avatar--inactivo{% endif %}">
+                {{ u.nombre[:1]|upper }}
+              </div>
+              <div>
+                <div class="fw-bold" style="font-size:0.95rem;">{{ u.nombre }}</div>
+                {% if u.id == current_user.id %}
+                <span class="badge" style="background:#FEF3C7;color:#92400E;font-size:0.7rem;border:1px solid #FDE68A;">Tú</span>
+                {% endif %}
+              </div>
+            </div>
           </td>
-          <td class="text-secondary">{{ u.ultimo_acceso|fecha_hora if u.ultimo_acceso else 'Nunca' }}</td>
-          <td class="text-end">
-            <div class="d-inline-flex gap-1">
-              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.usuario_editar', usuario_id=u.id) }}"><i class="bi bi-pencil me-1"></i>Editar</a>
+          <td>
+            <div style="font-size:0.88rem;">{{ u.email }}</div>
+            {% if u.telefono %}<div class="small text-secondary"><i class="bi bi-telephone me-1"></i>{{ u.telefono }}</div>{% endif %}
+          </td>
+          <td><span class="rol-badge rol-badge--{{ u.rol }}">{{ u.rol_etiqueta }}</span></td>
+          <td>
+            {% if u.activo %}
+            <span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Activo</span>
+            {% else %}
+            <span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.ultimo_acceso %}
+            <div style="font-size:0.85rem;">{{ u.ultimo_acceso|fecha_hora }}</div>
+            {% else %}
+            <span class="text-secondary small">Nunca</span>
+            {% endif %}
+          </td>
+          <td class="text-end" style="padding-right:1.25rem;">
+            <div class="d-inline-flex gap-2">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.usuario_editar', usuario_id=u.id) }}">
+                <i class="bi bi-pencil-square me-1"></i>Editar
+              </a>
               {% if u.id != current_user.id %}
               <form method="post" action="{{ url_for('admin.usuario_cambiar_estado', usuario_id=u.id, estado=filtro_estado) }}"
                     data-confirmar="¿{{ 'Desactivar' if u.activo else 'Activar' }} a {{ u.nombre }}?">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="btn btn-sm btn-outline-{{ 'danger' if u.activo else 'success' }}" type="submit">
-                  {{ 'Desactivar' if u.activo else 'Activar' }}
+                  <i class="bi {{ 'bi-person-dash' if u.activo else 'bi-person-check' }} me-1"></i>{{ 'Desactivar' if u.activo else 'Activar' }}
                 </button>
               </form>
               {% endif %}

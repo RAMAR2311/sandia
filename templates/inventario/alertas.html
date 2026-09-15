@@ -1,210 +1,411 @@
 {% extends "base.html" %}
-{% from "_macros.html" import encabezado %}
-{% block titulo %}Alertas de Inventario{% endblock %}
+{% block titulo %}Alertas de Inventario y Vencimientos · Sandía{% endblock %}
 
 {% block contenido %}
-{% call encabezado("Alertas de Inventario", "Monitoreo de stock mínimo y control de vencimientos (FEFO)") %}
-  <a class="btn btn-outline-secondary" href="{{ url_for('inventario.lista') }}"><i class="bi bi-arrow-left me-1"></i>Volver al inventario</a>
-{% endcall %}
+{# 1. Cabecera Principal #}
+<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <a href="{{ url_for('inventario.lista') }}" class="btn btn-sm btn-outline-secondary rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <span class="badge badge-sandia-rosa rounded-pill px-3 py-1">
+        <i class="bi bi-shield-exclamation me-1"></i> Monitoreo & Control FEFO
+      </span>
+    </div>
+    <h1 class="h3 fw-bold text-dark mb-1 ms-1" style="font-family: var(--fuente-marca); color: #BE123C;">
+      Alertas de Stock y Vencimientos
+    </h1>
+    <p class="text-secondary small mb-0 ms-1">
+      Supervisión de productos con bajo stock y control anticipado de lotes próximos a vencer
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 shadow-xs" href="{{ url_for('inventario.lista') }}">
+      <i class="bi bi-box-seam me-1"></i> Catálogo Completo
+    </a>
+  </div>
+</div>
 
-<!-- Nav Pestañas -->
-<ul class="nav nav-tabs mb-3" id="alertasTab" role="tablist">
+{# 2. Strip de KPIs y Métricas de Alertas #}
+<div class="row g-3 mb-4">
+  {# KPI 1: Vencidos #}
+  <div class="col-6 col-md-4 col-xl">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 hover-shadow transition-all" style="border: 1.5px solid {% if lotes_vencidos %}#FDA4AF{% else %}#FECDD3{% endif %} !important;">
+      <div class="d-flex align-items-center gap-2.5">
+        <div class="rounded-circle {% if lotes_vencidos %}bg-danger text-white{% else %}bg-danger-subtle text-danger{% endif %} d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px; font-size: 1.2rem;">
+          <i class="bi bi-exclamation-octagon-fill"></i>
+        </div>
+        <div>
+          <div class="h4 fw-bold {% if lotes_vencidos %}text-danger{% else %}text-dark{% endif %} mb-0 font-monospace">{{ lotes_vencidos|length }}</div>
+          <div class="text-secondary small fw-semibold" style="font-size: 0.76rem;">Lotes Vencidos</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# KPI 2: <= 30 días #}
+  <div class="col-6 col-md-4 col-xl">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 hover-shadow transition-all" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="d-flex align-items-center gap-2.5">
+        <div class="rounded-circle bg-danger-subtle text-danger d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px; font-size: 1.2rem;">
+          <i class="bi bi-alarm-fill"></i>
+        </div>
+        <div>
+          <div class="h4 fw-bold text-danger mb-0 font-monospace">{{ lotes_30|length }}</div>
+          <div class="text-secondary small fw-semibold" style="font-size: 0.76rem;">Vencen en ≤ 30d</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# KPI 3: 31-60 días #}
+  <div class="col-6 col-md-4 col-xl">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 hover-shadow transition-all" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="d-flex align-items-center gap-2.5">
+        <div class="rounded-circle bg-warning-subtle text-dark d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px; font-size: 1.2rem;">
+          <i class="bi bi-clock-history"></i>
+        </div>
+        <div>
+          <div class="h4 fw-bold text-dark mb-0 font-monospace">{{ lotes_60|length }}</div>
+          <div class="text-secondary small fw-semibold" style="font-size: 0.76rem;">Vencen 31-60d</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# KPI 4: 61-90 días #}
+  <div class="col-6 col-md-4 col-xl">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 hover-shadow transition-all" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="d-flex align-items-center gap-2.5">
+        <div class="rounded-circle bg-info-subtle text-info-emphasis d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px; font-size: 1.2rem;">
+          <i class="bi bi-calendar3"></i>
+        </div>
+        <div>
+          <div class="h4 fw-bold text-dark mb-0 font-monospace">{{ lotes_90|length }}</div>
+          <div class="text-secondary small fw-semibold" style="font-size: 0.76rem;">Vencen 61-90d</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# KPI 5: Stock Bajo #}
+  <div class="col-12 col-md-4 col-xl">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 hover-shadow transition-all" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="d-flex align-items-center gap-2.5">
+        <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px; font-size: 1.2rem;">
+          <i class="bi bi-box-seam"></i>
+        </div>
+        <div>
+          <div class="h4 fw-bold text-primary mb-0 font-monospace">{{ productos_bajo|length }}</div>
+          <div class="text-secondary small fw-semibold" style="font-size: 0.76rem;">Stock Bajo / 0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# 3. Pestañas de Navegación de Alertas #}
+<ul class="nav nav-pills gap-2 mb-4 p-2 bg-white rounded-4 border shadow-xs" id="alertasTab" role="tablist" style="border-color: #FECDD3 !important;">
   <li class="nav-item">
-    <button class="nav-link active fw-bold text-danger" id="vencidos-tab" data-bs-toggle="tab" data-bs-target="#vencidos" type="button">
-      <i class="bi bi-exclamation-octagon-fill me-1"></i>Lotes Vencidos ({{ lotes_vencidos|length }})
+    <button class="nav-link active rounded-pill px-3 py-1.5 fw-bold text-danger d-flex align-items-center gap-1.5" id="vencidos-tab" data-bs-toggle="tab" data-bs-target="#vencidos" type="button">
+      <i class="bi bi-exclamation-octagon-fill"></i>
+      <span>Lotes Vencidos</span>
+      <span class="badge bg-danger text-white rounded-pill ms-1">{{ lotes_vencidos|length }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link fw-bold text-danger" id="dias30-tab" data-bs-toggle="tab" data-bs-target="#dias30" type="button">
-      <i class="bi bi-alarm-fill me-1"></i>Vencen &le; 30 días ({{ lotes_30|length }})
+    <button class="nav-link rounded-pill px-3 py-1.5 fw-bold text-secondary d-flex align-items-center gap-1.5" id="dias30-tab" data-bs-toggle="tab" data-bs-target="#dias30" type="button">
+      <i class="bi bi-alarm-fill text-danger"></i>
+      <span>Vencen ≤ 30 días</span>
+      <span class="badge bg-danger-subtle text-danger rounded-pill ms-1">{{ lotes_30|length }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link text-warning" id="dias60-tab" data-bs-toggle="tab" data-bs-target="#dias60" type="button">
-      <i class="bi bi-clock-history me-1"></i>Vencen 31-60 días ({{ lotes_60|length }})
+    <button class="nav-link rounded-pill px-3 py-1.5 fw-bold text-secondary d-flex align-items-center gap-1.5" id="dias60-tab" data-bs-toggle="tab" data-bs-target="#dias60" type="button">
+      <i class="bi bi-clock-history text-warning"></i>
+      <span>31 a 60 días</span>
+      <span class="badge bg-warning-subtle text-dark rounded-pill ms-1">{{ lotes_60|length }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link text-dark" id="dias90-tab" data-bs-toggle="tab" data-bs-target="#dias90" type="button">
-      <i class="bi bi-calendar3 me-1"></i>Vencen 61-90 días ({{ lotes_90|length }})
+    <button class="nav-link rounded-pill px-3 py-1.5 fw-bold text-secondary d-flex align-items-center gap-1.5" id="dias90-tab" data-bs-toggle="tab" data-bs-target="#dias90" type="button">
+      <i class="bi bi-calendar3 text-info"></i>
+      <span>61 a 90 días</span>
+      <span class="badge bg-info-subtle text-dark rounded-pill ms-1">{{ lotes_90|length }}</span>
     </button>
   </li>
   <li class="nav-item">
-    <button class="nav-link fw-bold text-primary" id="stock-tab" data-bs-toggle="tab" data-bs-target="#stock" type="button">
-      <i class="bi bi-box-seam me-1"></i>Stock Bajo / Agotado ({{ productos_bajo|length }})
+    <button class="nav-link rounded-pill px-3 py-1.5 fw-bold text-secondary d-flex align-items-center gap-1.5" id="stock-tab" data-bs-toggle="tab" data-bs-target="#stock" type="button">
+      <i class="bi bi-box-seam text-primary"></i>
+      <span>Stock Bajo / Agotado</span>
+      <span class="badge bg-primary-subtle text-primary rounded-pill ms-1">{{ productos_bajo|length }}</span>
     </button>
   </li>
 </ul>
 
+{# 4. Contenido de las Pestañas #}
 <div class="tab-content" id="alertasTabContent">
-  <!-- Pestaña Lotes Vencidos -->
+  {# Pestaña: Lotes Vencidos #}
   <div class="tab-pane fade show active" id="vencidos" role="tabpanel">
     {% if not lotes_vencidos %}
-    <div class="card"><div class="card-body text-center text-success py-4">
-      <i class="bi bi-check-circle-fill fs-1 d-block mb-2"></i>No hay lotes vencidos en el inventario.
-    </div></div>
+    <div class="card border-0 shadow-sm rounded-4 bg-white" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-body text-center text-success py-5">
+        <i class="bi bi-check-circle-fill fs-1 d-block mb-2 text-success"></i>
+        <h5 class="fw-bold text-dark" style="font-family: var(--fuente-marca);">¡Excelente! No hay lotes vencidos</h5>
+        <p class="text-secondary small mb-0">Todos los lotes en inventario cuentan con fecha de caducidad vigente.</p>
+      </div>
+    </div>
     {% else %}
-    <div class="card table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-danger">
-          <tr>
-            <th>Producto</th>
-            <th>Número de Lote</th>
-            <th>Fecha Vencimiento</th>
-            <th class="text-center">Disponible</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for lote in lotes_vencidos %}
-          <tr>
-            <td class="fw-bold"><a href="{{ url_for('inventario.detalle', producto_id=lote.producto_id) }}">{{ lote.producto.nombre }}</a></td>
-            <td><code>{{ lote.numero_lote }}</code></td>
-            <td class="text-danger fw-bold">{{ lote.fecha_vencimiento|fecha }} (Hace {{ -lote.dias_para_vencer }} días)</td>
-            <td class="text-center fw-bold text-danger">{{ lote.cantidad_disponible }}</td>
-            <td><a class="btn btn-sm btn-outline-danger" href="{{ url_for('inventario.detalle', producto_id=lote.producto_id) }}">Ajustar / Dar de baja</a></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-header card-header-sandia py-3 px-4 d-flex justify-content-between align-items-center">
+        <span class="fw-bold text-danger fs-6"><i class="bi bi-exclamation-octagon-fill me-1"></i>Lotes Vencidos en Existencia</span>
+        <span class="badge bg-danger rounded-pill px-3 py-1">{{ lotes_vencidos|length }} lotes</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead style="background-color: #FFF5F6; border-bottom: 1.5px solid #FECDD3;">
+              <tr>
+                <th class="ps-4 py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Producto</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">N° Lote</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Fecha Vencimiento</th>
+                <th class="py-2.5 text-center small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Disponible</th>
+                <th class="pe-4 py-2.5 text-end small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lote in lotes_vencidos %}
+              <tr>
+                <td class="ps-4 py-3">
+                  <a class="fw-bold text-dark text-decoration-none" href="{{ url_for('inventario.detalle', producto_id=lote.producto_id) }}" style="font-family: var(--fuente-marca);">
+                    {{ lote.producto.nombre }}
+                  </a>
+                  <div class="text-secondary small" style="font-size: 0.72rem;">SKU: {{ lote.producto.sku }}</div>
+                </td>
+                <td class="py-3"><code class="fw-bold text-dark">{{ lote.numero_lote }}</code></td>
+                <td class="py-3 text-danger fw-bold small">
+                  {{ lote.fecha_vencimiento|fecha }}
+                  <span class="badge bg-danger-subtle text-danger ms-1">Venció hace {{ -lote.dias_para_vencer }}d</span>
+                </td>
+                <td class="py-3 text-center fw-bold text-danger font-monospace fs-6">{{ lote.cantidad_disponible }}</td>
+                <td class="pe-4 py-3 text-end">
+                  <a class="btn btn-xs btn-sandia-coral rounded-pill px-3 shadow-xs" href="{{ url_for('inventario.detalle', producto_id=lote.producto_id) }}">
+                    <i class="bi bi-arrow-down-circle me-1"></i>Ajustar / Dar de baja
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
     {% endif %}
   </div>
 
-  <!-- Pestaña 30 días -->
+  {# Pestaña: 30 Días #}
   <div class="tab-pane fade" id="dias30" role="tabpanel">
     {% if not lotes_30 %}
-    <div class="card"><div class="card-body text-center text-secondary py-4">No hay lotes por vencer en los próximos 30 días.</div></div>
+    <div class="card border-0 shadow-sm rounded-4 bg-white" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-body text-center text-secondary py-5">
+        <i class="bi bi-calendar-check fs-1 d-block mb-2 text-success"></i>
+        <h5 class="fw-bold text-dark" style="font-family: var(--fuente-marca);">Sin lotes críticos por vencer</h5>
+        <p class="text-muted small mb-0">No hay lotes que caduquen en los próximos 30 días.</p>
+      </div>
+    </div>
     {% else %}
-    <div class="card table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-warning">
-          <tr>
-            <th>Producto</th>
-            <th>Número de Lote</th>
-            <th>Fecha Vencimiento</th>
-            <th class="text-center">Disponible</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for lote in lotes_30 %}
-          <tr>
-            <td class="fw-bold"><a href="{{ url_for('inventario.detalle', producto_id=lote.producto_id) }}">{{ lote.producto.nombre }}</a></td>
-            <td><code>{{ lote.numero_lote }}</code></td>
-            <td>{{ lote.fecha_vencimiento|fecha }}</td>
-            <td class="text-center fw-bold">{{ lote.cantidad_disponible }}</td>
-            <td><span class="badge bg-danger">Vence en {{ lote.dias_para_vencer }} días</span></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead style="background-color: #FFF5F6; border-bottom: 1.5px solid #FECDD3;">
+              <tr>
+                <th class="ps-4 py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Producto</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">N° Lote</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Fecha Vencimiento</th>
+                <th class="py-2.5 text-center small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Disponible</th>
+                <th class="pe-4 py-2.5 text-end small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lote in lotes_30 %}
+              <tr>
+                <td class="ps-4 py-3">
+                  <a class="fw-bold text-dark text-decoration-none" href="{{ url_for('inventario.detalle', producto_id=lote.producto_id) }}" style="font-family: var(--fuente-marca);">
+                    {{ lote.producto.nombre }}
+                  </a>
+                </td>
+                <td class="py-3"><code>{{ lote.numero_lote }}</code></td>
+                <td class="py-3 fw-bold text-dark small">{{ lote.fecha_vencimiento|fecha }}</td>
+                <td class="py-3 text-center fw-bold font-monospace">{{ lote.cantidad_disponible }}</td>
+                <td class="pe-4 py-3 text-end">
+                  <span class="badge bg-danger rounded-pill px-3 py-1 shadow-xs">Vence en {{ lote.dias_para_vencer }} días</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
     {% endif %}
   </div>
 
-  <!-- Pestaña 60 días -->
+  {# Pestaña: 31-60 Días #}
   <div class="tab-pane fade" id="dias60" role="tabpanel">
     {% if not lotes_60 %}
-    <div class="card"><div class="card-body text-center text-secondary py-4">No hay lotes por vencer entre 31 y 60 días.</div></div>
+    <div class="card border-0 shadow-sm rounded-4 bg-white" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-body text-center text-secondary py-5">
+        <i class="bi bi-calendar-check fs-1 d-block mb-2 text-muted"></i>
+        <h5 class="fw-bold text-dark" style="font-family: var(--fuente-marca);">Sin lotes en rango 31-60 días</h5>
+      </div>
+    </div>
     {% else %}
-    <div class="card table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>Producto</th>
-            <th>Número de Lote</th>
-            <th>Fecha Vencimiento</th>
-            <th class="text-center">Disponible</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for lote in lotes_60 %}
-          <tr>
-            <td class="fw-bold"><a href="{{ url_for('inventario.detalle', producto_id=lote.producto_id) }}">{{ lote.producto.nombre }}</a></td>
-            <td><code>{{ lote.numero_lote }}</code></td>
-            <td>{{ lote.fecha_vencimiento|fecha }}</td>
-            <td class="text-center fw-bold">{{ lote.cantidad_disponible }}</td>
-            <td><span class="badge bg-warning text-dark">Vence en {{ lote.dias_para_vencer }} días</span></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead style="background-color: #FFF5F6; border-bottom: 1.5px solid #FECDD3;">
+              <tr>
+                <th class="ps-4 py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Producto</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">N° Lote</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Fecha Vencimiento</th>
+                <th class="py-2.5 text-center small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Disponible</th>
+                <th class="pe-4 py-2.5 text-end small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lote in lotes_60 %}
+              <tr>
+                <td class="ps-4 py-3">
+                  <a class="fw-bold text-dark text-decoration-none" href="{{ url_for('inventario.detalle', producto_id=lote.producto_id) }}" style="font-family: var(--fuente-marca);">
+                    {{ lote.producto.nombre }}
+                  </a>
+                </td>
+                <td class="py-3"><code>{{ lote.numero_lote }}</code></td>
+                <td class="py-3 fw-bold text-dark small">{{ lote.fecha_vencimiento|fecha }}</td>
+                <td class="py-3 text-center fw-bold font-monospace">{{ lote.cantidad_disponible }}</td>
+                <td class="pe-4 py-3 text-end">
+                  <span class="badge bg-warning text-dark rounded-pill px-3 py-1">Vence en {{ lote.dias_para_vencer }} días</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
     {% endif %}
   </div>
 
-  <!-- Pestaña 90 días -->
+  {# Pestaña: 61-90 Días #}
   <div class="tab-pane fade" id="dias90" role="tabpanel">
     {% if not lotes_90 %}
-    <div class="card"><div class="card-body text-center text-secondary py-4">No hay lotes por vencer entre 61 y 90 días.</div></div>
+    <div class="card border-0 shadow-sm rounded-4 bg-white" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-body text-center text-secondary py-5">
+        <i class="bi bi-calendar-check fs-1 d-block mb-2 text-muted"></i>
+        <h5 class="fw-bold text-dark" style="font-family: var(--fuente-marca);">Sin lotes en rango 61-90 días</h5>
+      </div>
+    </div>
     {% else %}
-    <div class="card table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>Producto</th>
-            <th>Número de Lote</th>
-            <th>Fecha Vencimiento</th>
-            <th class="text-center">Disponible</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for lote in lotes_90 %}
-          <tr>
-            <td class="fw-bold"><a href="{{ url_for('inventario.detalle', producto_id=lote.producto_id) }}">{{ lote.producto.nombre }}</a></td>
-            <td><code>{{ lote.numero_lote }}</code></td>
-            <td>{{ lote.fecha_vencimiento|fecha }}</td>
-            <td class="text-center fw-bold">{{ lote.cantidad_disponible }}</td>
-            <td><span class="badge bg-info text-dark">Vence en {{ lote.dias_para_vencer }} días</span></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead style="background-color: #FFF5F6; border-bottom: 1.5px solid #FECDD3;">
+              <tr>
+                <th class="ps-4 py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Producto</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">N° Lote</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Fecha Vencimiento</th>
+                <th class="py-2.5 text-center small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Disponible</th>
+                <th class="pe-4 py-2.5 text-end small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lote in lotes_90 %}
+              <tr>
+                <td class="ps-4 py-3">
+                  <a class="fw-bold text-dark text-decoration-none" href="{{ url_for('inventario.detalle', producto_id=lote.producto_id) }}" style="font-family: var(--fuente-marca);">
+                    {{ lote.producto.nombre }}
+                  </a>
+                </td>
+                <td class="py-3"><code>{{ lote.numero_lote }}</code></td>
+                <td class="py-3 fw-bold text-dark small">{{ lote.fecha_vencimiento|fecha }}</td>
+                <td class="py-3 text-center fw-bold font-monospace">{{ lote.cantidad_disponible }}</td>
+                <td class="pe-4 py-3 text-end">
+                  <span class="badge bg-info-subtle text-info-emphasis rounded-pill px-3 py-1">Vence en {{ lote.dias_para_vencer }} días</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
     {% endif %}
   </div>
 
-  <!-- Pestaña Stock Bajo -->
+  {# Pestaña: Stock Bajo / Agotado #}
   <div class="tab-pane fade" id="stock" role="tabpanel">
     {% if not productos_bajo %}
-    <div class="card"><div class="card-body text-center text-success py-4">
-      <i class="bi bi-check-circle-fill fs-1 d-block mb-2"></i>Todos los productos tienen niveles de stock adecuados.
-    </div></div>
+    <div class="card border-0 shadow-sm rounded-4 bg-white" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-body text-center text-success py-5">
+        <i class="bi bi-check-circle-fill fs-1 d-block mb-2 text-success"></i>
+        <h5 class="fw-bold text-dark" style="font-family: var(--fuente-marca);">Niveles de stock óptimos</h5>
+        <p class="text-secondary small mb-0">Todos los productos activos cuentan con existencias por encima de su stock mínimo.</p>
+      </div>
+    </div>
     {% else %}
-    <div class="card table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>Producto</th>
-            <th>Categoría</th>
-            <th class="text-center">Stock Actual</th>
-            <th class="text-center">Stock Mínimo</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in productos_bajo %}
-          <tr>
-            <td class="fw-bold"><a href="{{ url_for('inventario.detalle', producto_id=p.id) }}">{{ p.nombre }}</a> (SKU: <code>{{ p.sku }}</code>)</td>
-            <td>{{ p.categoria_etiqueta }}</td>
-            <td class="text-center fw-bold {% if p.stock_total <= 0 %}text-danger{% else %}text-warning{% endif %}">
-              {{ p.stock_total }} {{ p.unidad_medida }}
-            </td>
-            <td class="text-center">{{ p.stock_minimo }}</td>
-            <td>
-              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('inventario.detalle', producto_id=p.id) }}">
-                <i class="bi bi-box-arrow-in-down me-1"></i>Reabastecer
-              </a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-header card-header-sandia py-3 px-4 d-flex justify-content-between align-items-center">
+        <span class="fw-bold text-sandia-rosa fs-6"><i class="bi bi-box-seam me-1"></i>Productos con Stock Bajo o Agotados</span>
+        <span class="badge badge-sandia-rosa rounded-pill px-3 py-1">{{ productos_bajo|length }} productos</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead style="background-color: #FFF5F6; border-bottom: 1.5px solid #FECDD3;">
+              <tr>
+                <th class="ps-4 py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Producto</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Categoría</th>
+                <th class="py-2.5 text-center small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Stock Actual</th>
+                <th class="py-2.5 text-center small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Stock Mínimo</th>
+                <th class="pe-4 py-2.5 text-end small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in productos_bajo %}
+              <tr>
+                <td class="ps-4 py-3">
+                  <a class="fw-bold text-dark text-decoration-none" href="{{ url_for('inventario.detalle', producto_id=p.id) }}" style="font-family: var(--fuente-marca);">
+                    {{ p.nombre }}
+                  </a>
+                  <div class="small text-secondary" style="font-size: 0.72rem;">SKU: <code class="text-danger">{{ p.sku }}</code></div>
+                </td>
+                <td class="py-3"><span class="badge bg-light text-secondary border rounded-pill px-2 py-0.5 small">{{ p.categoria_etiqueta }}</span></td>
+                <td class="py-3 text-center">
+                  {% if p.stock_total <= 0 %}
+                    <span class="badge bg-danger rounded-pill px-2.5 py-1 small fw-semibold">Agotado (0)</span>
+                  {% else %}
+                    <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 small fw-semibold">{{ p.stock_total }} {{ p.unidad_medida }}</span>
+                  {% endif %}
+                </td>
+                <td class="py-3 text-center fw-semibold text-secondary small">{{ p.stock_minimo }} {{ p.unidad_medida }}</td>
+                <td class="pe-4 py-3 text-end">
+                  <a class="btn btn-xs btn-sandia-rosa rounded-pill px-3 shadow-xs" href="{{ url_for('inventario.detalle', producto_id=p.id) }}">
+                    <i class="bi bi-box-arrow-in-down me-1"></i>Reabastecer
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
     {% endif %}
   </div>
 </div>
 {% endblock %}
+

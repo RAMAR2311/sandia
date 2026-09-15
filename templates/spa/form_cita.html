@@ -1,72 +1,172 @@
 {% extends "base.html" %}
-{% from "_macros.html" import encabezado %}
-{% block titulo %}Agendar Cita de Grooming - VetCare{% endblock %}
+{% block titulo %}Agendar Cita de Spa & Grooming · Sandía{% endblock %}
 
 {% block contenido %}
-{% call encabezado("Agendar Cita de Spa", "Reserva de turno para baño, peluquería y spa") %}
-  <a href="{{ url_for('spa.agenda') }}" class="btn btn-outline-secondary">
-    <i class="bi bi-arrow-left me-1"></i>Volver a la Agenda
-  </a>
-{% endcall %}
+{# Cabecera de Página #}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('spa.agenda') }}" class="btn btn-sm btn-outline-secondary rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca);">
+        Agendar Cita de Spa & Peluquería
+      </h1>
+    </div>
+    <p class="text-secondary small mb-0 mt-1 ms-4 ps-2">
+      Reserva de turno para baño, corte, deslanado y estética canina y felina
+    </p>
+  </div>
+</div>
 
-<div class="row justify-content-center">
-  <div class="col-12 col-md-10 col-lg-8">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <form method="post">
-          {{ form.csrf_token }}
+<form method="post" enctype="multipart/form-data" novalidate id="form-cita-spa">
+  {{ form.csrf_token }}
 
-          <div class="row g-3 mb-3">
-            <div class="col-12 col-md-6">
-              {{ form.tutor_id.label(class="form-label fw-bold") }}
-              {{ form.tutor_id(class="form-select") }}
-              {% for error in form.tutor_id.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+  <div class="row g-4">
+    {# Bloque 1: Paciente y Tutor #}
+    <div class="col-12 col-lg-6">
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="card-header card-header-sandia py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">🐾</span>
+            <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Paciente y Tutor Responsable</span>
+          </div>
+          <span class="badge badge-sandia-rosa rounded-pill px-2 py-1 small">Requerido</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.tutor_id.id }}">
+              <i class="bi bi-person-fill text-danger me-1"></i>Tutor Responsable *
+            </label>
+            {{ form.tutor_id(class_="form-select bg-light" + (" is-invalid" if form.tutor_id.errors else "")) }}
+            {% for error in form.tutor_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.mascota_id.id }}">
+              <i class="bi bi-tag-fill text-danger me-1"></i>Mascota / Paciente *
+            </label>
+            {{ form.mascota_id(class_="form-select bg-light" + (" is-invalid" if form.mascota_id.errors else "")) }}
+            {% for error in form.mascota_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+
+          <div class="p-3 rounded-4 mb-0" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%); border: 1.5px solid #FECDD3;">
+            <div class="small fw-bold text-danger mb-2 d-flex align-items-center gap-1" style="color: #BE123C !important;">
+              <i class="bi bi-info-circle-fill"></i> ¿El tutor o paciente no están registrados?
             </div>
-            <div class="col-12 col-md-6">
-              {{ form.mascota_id.label(class="form-label fw-bold") }}
-              {{ form.mascota_id(class="form-select") }}
-              {% for error in form.mascota_id.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+              <a href="{{ url_for('tutores.nuevo') }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 shadow-xs">
+                <i class="bi bi-person-plus-fill me-1" style="color: #E11D48;"></i>Crear nuevo tutor
+              </a>
+              <a href="{{ url_for('mascotas.nueva') }}" class="btn btn-sm btn-sandia-coral rounded-pill px-3 shadow-xs">
+                <i class="bi bi-plus-circle-fill me-1"></i>Crear nueva mascota
+              </a>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Bloque 2: Servicio, Estilista, Fecha y Hora #}
+    <div class="col-12 col-lg-6">
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="card-header card-header-sandia py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">✂️</span>
+            <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Servicio y Horario</span>
+          </div>
+          <span class="badge badge-sandia-rosa rounded-pill px-2 py-1 small">Spa</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.servicio_spa_id.id }}">
+              Servicio de Spa o Peluquería *
+            </label>
+            {{ form.servicio_spa_id(class_="form-select bg-light" + (" is-invalid" if form.servicio_spa_id.errors else "")) }}
+            {% for error in form.servicio_spa_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.groomer_id.id }}">
+              <i class="bi bi-person-badge text-danger me-1"></i>Estilista / Groomer Asignado
+            </label>
+            {{ form.groomer_id(class_="form-select bg-light") }}
           </div>
 
           <div class="row g-3 mb-3">
-            <div class="col-12 col-md-6">
-              {{ form.servicio_spa_id.label(class="form-label fw-bold") }}
-              {{ form.servicio_spa_id(class="form-select") }}
-              {% for error in form.servicio_spa_id.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.fecha.id }}">
+                <i class="bi bi-calendar3 text-danger me-1"></i>Fecha *
+              </label>
+              {{ form.fecha(class_="form-control bg-light" + (" is-invalid" if form.fecha.errors else ""), type="date") }}
+              {% for error in form.fecha.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
             </div>
-            <div class="col-12 col-md-6">
-              {{ form.groomer_id.label(class="form-label") }}
-              {{ form.groomer_id(class="form-select") }}
-            </div>
-          </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-12 col-md-4">
-              {{ form.fecha.label(class="form-label fw-bold") }}
-              {{ form.fecha(class="form-control") }}
-              {% for error in form.fecha.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-            </div>
-            <div class="col-12 col-md-4">
-              {{ form.hora.label(class="form-label fw-bold") }}
-              {{ form.hora(class="form-control") }}
-              {% for error in form.hora.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
-            </div>
-            <div class="col-12 col-md-4">
-              {{ form.duracion_minutos.label(class="form-label fw-bold") }}
-              {{ form.duracion_minutos(class="form-control") }}
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.hora.id }}">
+                <i class="bi bi-clock text-danger me-1"></i>Hora *
+              </label>
+              {{ form.hora(class_="form-control bg-light" + (" is-invalid" if form.hora.errors else ""), type="time") }}
+              {% for error in form.hora.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
             </div>
           </div>
 
-          <div class="mb-4">
-            {{ form.notas_ingreso.label(class="form-label") }}
-            {{ form.notas_ingreso(class="form-control", rows="3", placeholder="Indicaciones especiales, nudos, alergias, comportamiento...") }}
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.duracion_minutos.id }}">
+              <i class="bi bi-stopwatch text-danger me-1"></i>Duración Estimada (Minutos)
+            </label>
+            {{ form.duracion_minutos(class_="form-control bg-light mb-2", id="inputDuracionSpa") }}
+            <div class="d-flex flex-wrap gap-1">
+              <button type="button" class="btn btn-xs btn-sandia-rosa rounded-pill btn-duracion-spa" data-min="30">30 min</button>
+              <button type="button" class="btn btn-xs btn-sandia-rosa rounded-pill btn-duracion-spa" data-min="45">45 min</button>
+              <button type="button" class="btn btn-xs btn-sandia-rosa rounded-pill btn-duracion-spa" data-min="60">1 hora</button>
+              <button type="button" class="btn btn-xs btn-sandia-rosa rounded-pill btn-duracion-spa" data-min="90">1.5 horas</button>
+              <button type="button" class="btn btn-xs btn-sandia-rosa rounded-pill btn-duracion-spa" data-min="120">2 horas</button>
+            </div>
           </div>
 
-          {{ form.enviar(class="btn btn-primary w-100 py-3 fw-bold fs-5") }}
-        </form>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.notas_ingreso.id }}">
+              <i class="bi bi-card-text text-muted me-1"></i>Notas de Ingreso y Condiciones Especiales
+            </label>
+            {{ form.notas_ingreso(class_="form-control bg-light", rows="2", placeholder="Nudos, corte de uñas, limpieza de oídos, comportamiento...") }}
+          </div>
+
+          <div class="p-3 bg-light rounded-3 border">
+            <label class="form-label small fw-semibold text-dark mb-1" for="{{ form.foto_ingreso.id }}">
+              <i class="bi bi-camera-fill text-danger me-1"></i>Foto de Ingreso / Antes (Opcional)
+            </label>
+            <input type="file" name="foto_ingreso" id="{{ form.foto_ingreso.id }}" class="form-control" accept="image/*" capture="environment">
+            <div class="form-text small mt-1">Puedes tomar la foto de llegada de la mascota con la cámara o seleccionarla de la galería.</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-</div>
+
+  {# Barra de Botones #}
+  <div class="card border-0 shadow-sm rounded-4 bg-white mt-4 p-3 p-md-4" style="border: 1.5px solid #FECDD3 !important;">
+    <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3">
+      <a class="btn btn-outline-secondary rounded-pill px-4 fw-semibold shadow-xs" href="{{ url_for('spa.agenda') }}">
+        <i class="bi bi-x-circle me-1"></i> Cancelar
+      </a>
+      <button type="submit" class="btn btn-sandia-coral rounded-pill px-5 py-2 fw-bold shadow-sm d-flex align-items-center gap-2">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>Agendar Turno de Spa</span>
+      </button>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('.btn-duracion-spa').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const input = document.getElementById('inputDuracionSpa');
+      if (input) {
+        input.value = this.getAttribute('data-min');
+      }
+    });
+  });
+</script>
 {% endblock %}

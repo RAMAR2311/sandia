@@ -274,7 +274,7 @@ def eliminar_imagen(subcarpeta: str, nombre: str) -> None:
             current_app.logger.warning("No se pudo borrar la imagen %s", ruta)
 
 
-EXTENSIONES_DOCUMENTO = {"pdf", "jpg", "jpeg", "png", "webp"}
+EXTENSIONES_DOCUMENTO = {"pdf", "jpg", "jpeg", "png", "webp", "doc", "docx", "dcm", "dicom", "txt"}
 
 
 def guardar_documento(archivo, subcarpeta: str) -> str:
@@ -285,7 +285,7 @@ def guardar_documento(archivo, subcarpeta: str) -> str:
     nombre_original = secure_filename(archivo.filename or "")
     extension = nombre_original.rsplit(".", 1)[-1].lower() if "." in nombre_original else ""
     if extension not in EXTENSIONES_DOCUMENTO:
-        raise ValueError("Formato no permitido. Usa PDF, JPG, PNG o WEBP.")
+        raise ValueError("Formato no permitido. Usa PDF, JPG, PNG, WEBP, DOCX o DICOM.")
     carpeta = Path(current_app.config["UPLOAD_FOLDER"]) / subcarpeta
     carpeta.mkdir(parents=True, exist_ok=True)
     nombre = f"{uuid.uuid4().hex}.{extension}"

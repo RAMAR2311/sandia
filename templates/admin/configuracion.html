@@ -3,27 +3,66 @@
 {% block titulo %}Configuración{% endblock %}
 
 {% block contenido %}
-{{ encabezado("Configuración", "Datos de la clínica y ajustes del sistema") }}
+{% call encabezado("Configuración", "Datos de la clínica y ajustes del sistema") %}
+  {# sin botones en el encabezado #}
+{% endcall %}
+
 <form method="post" novalidate>
   {{ form.hidden_tag() }}
-  <div class="row g-3">
+
+  {# Iconos y colores por grupo #}
+  {% set grupo_meta = {
+    "Datos de la clínica":    {"icono": "bi-hospital-fill",      "color": "#E53935", "bg": "linear-gradient(135deg,#FDECEB,#FEE2E2)"},
+    "Ventas e inventario":    {"icono": "bi-cart-check-fill",    "color": "#16A34A", "bg": "linear-gradient(135deg,#DCFCE7,#BBF7D0)"},
+    "Agenda y citas":         {"icono": "bi-calendar2-heart-fill","color": "#0284C7", "bg": "linear-gradient(135deg,#E0F2FE,#BAE6FD)"},
+    "Facturación":            {"icono": "bi-receipt-cutoff",     "color": "#D97706", "bg": "linear-gradient(135deg,#FEF3C7,#FDE68A)"},
+    "Notificaciones":         {"icono": "bi-bell-fill",          "color": "#7C3AED", "bg": "linear-gradient(135deg,#EDE9FE,#DDD6FE)"},
+    "General":                {"icono": "bi-sliders",            "color": "#00897B", "bg": "linear-gradient(135deg,#E0F2F1,#B2DFDB)"}
+  } %}
+
+  <div class="row g-4">
     {% for titulo, campos in grupos %}
+    {% set meta = grupo_meta.get(titulo, {"icono": "bi-gear-fill", "color": "var(--sandia-rojo)", "bg": "linear-gradient(135deg,#FDECEB,#FEE2E2)"}) %}
     <div class="col-12 col-lg-6">
-      <div class="card h-100">
-        <div class="card-header">{{ titulo }}</div>
-        <div class="card-body">
+      <div class="config-card h-100">
+
+        {# Header de sección #}
+        <div class="config-card__header">
+          <div class="config-card__icono" style="background: {{ meta.bg }}; color: {{ meta.color }};">
+            <i class="bi {{ meta.icono }}"></i>
+          </div>
+          <div>
+            <div class="config-card__titulo">{{ titulo }}</div>
+            <div class="config-card__subtitulo">{{ campos|length }} ajuste{{ 's' if campos|length != 1 else '' }}</div>
+          </div>
+        </div>
+
+        {# Campos #}
+        <div class="config-card__body">
           {% for campo in campos %}
+          <div class="config-campo">
             {{ campo_auto(campo) }}
+          </div>
           {% endfor %}
         </div>
+
       </div>
     </div>
     {% endfor %}
   </div>
-  <div class="acciones-fijas mt-3">
+
+  {# Botón guardar #}
+  <div class="acciones-fijas mt-4">
     <div class="d-grid d-sm-flex gap-2">
-      {{ form.enviar(class_="btn btn-primary btn-lg") }}
+      <button type="submit" class="btn btn-sandia btn-lg" style="min-width:200px;">
+        <i class="bi bi-floppy2-fill"></i>Guardar cambios
+      </button>
+      <a href="{{ url_for('admin.configuracion') }}" class="btn btn-outline-secondary btn-lg">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Descartar
+      </a>
     </div>
   </div>
+
 </form>
 {% endblock %}
+

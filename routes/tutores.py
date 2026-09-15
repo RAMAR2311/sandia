@@ -11,7 +11,8 @@ from utils import hoy_bogota, normalizar_texto, solo_digitos
 
 bp = Blueprint("tutores", __name__, url_prefix="/tutores")
 
-POR_PAGINA = 30
+POR_PAGINA = 12
+
 
 
 def _consulta_busqueda(texto: str):

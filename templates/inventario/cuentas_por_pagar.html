@@ -1,27 +1,193 @@
 {% extends "base.html" %}
-{% from "_macros.html" import encabezado %}
-{% block titulo %}Cuentas por pagar{% endblock %}
+{% block titulo %}Cuentas por Pagar · Sandía{% endblock %}
+
 {% block contenido %}
-{{ encabezado("Cuentas por pagar", "Facturas pendientes con proveedores") }}
-<div class="card mb-3"><div class="card-body d-flex justify-content-between align-items-center">
-  <span class="fw-bold">Total pendiente</span><span class="fs-4 fw-bold text-danger">{{ total_pendiente|cop }}</span>
-</div></div>
-<div class="card">
-  <div class="table-responsive"><table class="table table-hover align-middle mb-0">
-    <thead class="table-light"><tr><th>Proveedor</th><th>Factura</th><th>Vence</th><th class="text-end">Saldo</th><th></th></tr></thead>
-    <tbody>
-      {% for f in facturas %}
-      <tr>
-        <td>{{ f.proveedor.nombre }}</td>
-        <td>{{ f.numero_factura }}</td>
-        <td>{{ f.fecha_vencimiento|fecha if f.fecha_vencimiento else '—' }}</td>
-        <td class="text-end fw-bold text-danger">{{ f.saldo_pendiente|cop }}</td>
-        <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('inventario.facturas_proveedor', proveedor_id=f.proveedor_id) }}">Ver / abonar</a></td>
-      </tr>
-      {% else %}
-      <tr><td colspan="5" class="text-center text-muted py-4">Sin cuentas pendientes. 🎉</td></tr>
-      {% endfor %}
-    </tbody>
-  </table></div>
+{# 1. Cabecera Principal #}
+<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge badge-sandia-rosa rounded-pill px-3 py-1">
+        <i class="bi bi-receipt me-1"></i> Finanzas & Pasivos Comerciales
+      </span>
+    </div>
+    <h1 class="h3 fw-bold text-dark mb-1" style="font-family: var(--fuente-marca); color: #BE123C;">
+      Cuentas por Pagar
+    </h1>
+    <p class="text-secondary small mb-0">
+      Control de facturas a crédito pendientes y compromisos de pago con proveedores
+    </p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <a href="{{ url_for('inventario.proveedores_lista') }}" class="btn btn-sm btn-sandia-coral rounded-pill px-3 py-2 shadow-sm d-flex align-items-center gap-1.5">
+      <i class="bi bi-truck"></i>
+      <span>Directorio de Proveedores</span>
+    </a>
+  </div>
+</div>
+
+{# 2. KPIs de Cuentas por Pagar #}
+{% set proveedores_acreedores = facturas|map(attribute='proveedor_id')|unique|list|length %}
+
+<div class="row g-3 mb-4">
+  {# KPI 1: Saldo Pendiente Total #}
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 p-xl-4" style="border: 1.5px solid #FECDD3 !important; border-top: 4px solid #E53935 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 56px; height: 56px; background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%); color: #BE123C; border: 1.5px solid #FECDD3;">
+          <i class="bi bi-cash-stack fs-2"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Total Pasivo Pendiente</div>
+          <div class="h3 fw-bold mb-0 font-monospace" style="color: #BE123C !important;">{{ total_pendiente|cop }}</div>
+          <div class="text-muted small mt-0.5" style="font-size: 0.75rem;">
+            Obligaciones comerciales por saldar
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# KPI 2: Facturas por Pagar #}
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 p-xl-4" style="border: 1.5px solid #FED7AA !important; border-top: 4px solid #EA580C !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 56px; height: 56px; background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); color: #C2410C; border: 1.5px solid #FED7AA;">
+          <i class="bi bi-file-earmark-spreadsheet fs-2"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Facturas a Crédito</div>
+          <div class="h3 fw-bold text-dark mb-0 font-monospace">{{ facturas|length }}</div>
+          <div class="text-muted small mt-0.5" style="font-size: 0.75rem;">
+            Documentos con saldo activo
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# KPI 3: Proveedores con Saldo #}
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 p-xl-4" style="border: 1.5px solid #BAE6FD !important; border-top: 4px solid #0284C7 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 56px; height: 56px; background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%); color: #0369A1; border: 1.5px solid #BAE6FD;">
+          <i class="bi bi-truck fs-2"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">Proveedores Acreedores</div>
+          <div class="h3 fw-bold text-info-emphasis mb-0 font-monospace">{{ proveedores_acreedores }}</div>
+          <div class="text-muted small mt-0.5" style="font-size: 0.75rem;">
+            Empresas con créditos pendientes
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# 3. Tabla Principal de Cuentas por Pagar #}
+<div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden mb-4" style="border: 1.5px solid #FECDD3 !important;">
+  <div class="card-header card-header-sandia py-3 px-4 d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-2">
+      <span class="fs-5">📋</span>
+      <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Detalle de Facturas Pendientes</span>
+    </div>
+    <span class="badge badge-sandia-rosa rounded-pill px-3 py-1 small">
+      {{ facturas|length }} facturas
+    </span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light text-secondary" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">
+        <tr>
+          <th class="ps-4 py-3">Proveedor</th>
+          <th class="py-3">N° Factura</th>
+          <th class="py-3">Fecha Emisión</th>
+          <th class="py-3">Fecha Vencimiento</th>
+          <th class="text-end py-3">Monto Original</th>
+          <th class="text-end py-3">Saldo Pendiente</th>
+          <th class="text-center pe-4 py-3">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in facturas %}
+        <tr>
+          {# Proveedor #}
+          <td class="ps-4 py-3">
+            <div class="d-flex align-items-center gap-2">
+              <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center text-secondary fw-bold flex-shrink-0" style="width: 34px; height: 34px; font-size: 0.9rem;">
+                🏢
+              </div>
+              <div>
+                <a href="{{ url_for('inventario.facturas_proveedor', proveedor_id=f.proveedor_id) }}" class="fw-bold text-dark text-decoration-none hover-coral">
+                  {{ f.proveedor.nombre }}
+                </a>
+                <div class="text-muted small font-monospace">NIT: {{ f.proveedor.nit or 'Sin NIT' }}</div>
+              </div>
+            </div>
+          </td>
+
+          {# Factura #}
+          <td class="py-3">
+            <span class="badge bg-light text-dark border font-monospace px-2.5 py-1.5 fw-bold shadow-xs">
+              <i class="bi bi-receipt me-1 text-danger"></i>{{ f.numero_factura }}
+            </span>
+          </td>
+
+          {# Fecha Emisión #}
+          <td class="py-3">
+            <span class="small text-secondary fw-semibold">{{ f.fecha_factura|fecha }}</span>
+          </td>
+
+          {# Fecha Vencimiento #}
+          <td class="py-3">
+            {% if f.fecha_vencimiento %}
+              <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill px-2.5 py-1 font-monospace">
+                <i class="bi bi-calendar-event me-1"></i>{{ f.fecha_vencimiento|fecha }}
+              </span>
+            {% else %}
+              <span class="text-muted small fst-italic">—</span>
+            {% endif %}
+          </td>
+
+          {# Monto Total #}
+          <td class="text-end py-3 font-monospace text-secondary small">
+            {{ f.monto_total|cop }}
+          </td>
+
+          {# Saldo Pendiente #}
+          <td class="text-end py-3">
+            <span class="fw-bold font-monospace fs-6" style="color: #BE123C !important;">
+              {{ f.saldo_pendiente|cop }}
+            </span>
+          </td>
+
+          {# Acción #}
+          <td class="text-center pe-4 py-3">
+            <a class="btn btn-sm btn-sandia-coral rounded-pill px-3 py-1 shadow-xs d-inline-flex align-items-center gap-1" 
+               href="{{ url_for('inventario.facturas_proveedor', proveedor_id=f.proveedor_id) }}">
+              <i class="bi bi-wallet2"></i>
+              <span>Ver / Abonar</span>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">
+            <div class="fs-1 mb-2">🎉</div>
+            <div class="fw-bold fs-6 text-dark">¡Al día! No hay cuentas pendientes por pagar</div>
+            <div class="small text-secondary mb-3">No existen facturas a crédito con saldo pendiente con proveedores</div>
+            <a href="{{ url_for('inventario.proveedores_lista') }}" class="btn btn-sm btn-sandia-coral rounded-pill px-3 py-1.5 shadow-xs">
+              <i class="bi bi-truck me-1"></i>Ir a Directorio de Proveedores
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

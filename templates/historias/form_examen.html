@@ -1,18 +1,704 @@
 {% extends "base.html" %}
-{% from "_macros.html" import campo, encabezado %}
-{% block titulo %}Solicitar examen{% endblock %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}Nueva Ayuda Diagnóstica - {{ mascota.nombre }}{% endblock %}
+
 {% block contenido %}
-{{ encabezado("Solicitar examen de laboratorio", mascota.nombre) }}
-<form method="post" novalidate>
-  {{ form.hidden_tag() }}
-  <div class="card"><div class="card-body">
-    {{ campo(form.tipo_examen) }}
-    {{ campo(form.fecha_toma, type="date") }}
-    {{ campo(form.laboratorio_externo) }}
-  </div></div>
-  <div class="acciones-fijas"><div class="d-flex gap-2">
-    {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
-    <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}">Cancelar</a>
-  </div></div>
-</form>
+<div class="container-fluid px-0" style="max-width: 1060px;">
+  <!-- Navegación de retorno -->
+  <nav class="small mb-3">
+    <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="text-decoration-none text-muted d-inline-flex align-items-center gap-1 hover-link">
+      <i class="bi bi-arrow-left"></i> Volver a Ficha Médica de <strong>{{ mascota.nombre }}</strong>
+    </a>
+  </nav>
+
+  <!-- Banner Paciente Elegante -->
+  <div class="patient-header-card mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="patient-avatar-circle shadow-sm">
+          {% if mascota.especie == 'canino' %}🐶
+          {% elif mascota.especie == 'felino' %}🐱
+          {% elif mascota.especie == 'ave' %}🦜
+          {% elif mascota.especie == 'roedor' %}🐹
+          {% else %}🐾{% endif %}
+        </div>
+        <div>
+          <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+            <h4 class="fw-bold mb-0 text-dark">{{ mascota.nombre }}</h4>
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5 small">{{ mascota.especie|capitalize }}</span>
+            {% if mascota.raza %}<span class="badge bg-light text-secondary border rounded-pill px-2 py-0.5 small">{{ mascota.raza.nombre }}</span>{% endif %}
+            <span class="badge bg-light text-muted border rounded-pill px-2 py-0.5 small text-capitalize">{{ mascota.sexo or 'Sexo N/R' }}</span>
+          </div>
+          <div class="text-muted small d-flex flex-wrap gap-x-3 gap-y-1 align-items-center">
+            <span><i class="bi bi-person me-1 text-secondary"></i>{{ mascota.tutor.nombre_completo if mascota.tutor else 'Sin tutor' }}</span>
+            <span class="text-slate-300">·</span>
+            <span><i class="bi bi-calendar3 me-1 text-secondary"></i>{{ mascota.edad_formateada if mascota.edad_formateada else 'Edad N/R' }}</span>
+            <span class="text-slate-300">·</span>
+            <span><i class="bi bi-speedometer2 me-1 text-secondary"></i>{{ (mascota.peso_actual.peso_kg ~ ' kg') if mascota.peso_actual else 'Sin peso' }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="d-none d-md-block text-end">
+        <span class="badge bg-white text-dark border shadow-xs px-3 py-2 rounded-pill d-inline-flex align-items-center gap-1">
+          <i class="bi bi-shield-check text-success"></i>
+          <span class="fw-semibold">Módulo Clínico</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" novalidate id="form-examen-diagnostico">
+    {{ form.hidden_tag() }}
+
+    <!-- Contenedor Principal Unificado -->
+    <div class="exam-main-card shadow-sm border mb-4">
+      
+      <!-- 1. CATEGORÍA DEL ESTUDIO -->
+      <div class="p-4 border-bottom bg-white">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-grid-fill text-primary"></i> Tipo de Ayuda Diagnóstica
+            </h6>
+            <p class="text-muted small mb-0 mt-0.5">Selecciona el tipo de estudio para cargar sugerencias y opciones frecuentes</p>
+          </div>
+        </div>
+
+        <div class="category-grid" id="selector-categorias">
+          <!-- Radiografía -->
+          <label class="category-tab {% if form.categoria.data == 'radiografia' %}active{% endif %}" data-cat="radiografia">
+            <input type="radio" class="d-none" name="categoria" value="radiografia" {% if form.categoria.data == 'radiografia' %}checked{% endif %}>
+            <div class="category-icon cat-radiografia"><i class="bi bi-film"></i></div>
+            <div class="category-text">
+              <div class="title">Radiografía</div>
+              <div class="subtitle">Rayos X y Placas</div>
+            </div>
+          </label>
+
+          <!-- Laboratorio -->
+          <label class="category-tab {% if form.categoria.data == 'laboratorio' or not form.categoria.data %}active{% endif %}" data-cat="laboratorio">
+            <input type="radio" class="d-none" name="categoria" value="laboratorio" {% if form.categoria.data == 'laboratorio' or not form.categoria.data %}checked{% endif %}>
+            <div class="category-icon cat-laboratorio"><i class="bi bi-droplet-half"></i></div>
+            <div class="category-text">
+              <div class="title">Laboratorio</div>
+              <div class="subtitle">Sangre, Orina, Copro</div>
+            </div>
+          </label>
+
+          <!-- Ecografía -->
+          <label class="category-tab {% if form.categoria.data == 'ecografia' %}active{% endif %}" data-cat="ecografia">
+            <input type="radio" class="d-none" name="categoria" value="ecografia" {% if form.categoria.data == 'ecografia' %}checked{% endif %}>
+            <div class="category-icon cat-ecografia"><i class="bi bi-soundwave"></i></div>
+            <div class="category-text">
+              <div class="title">Ecografía</div>
+              <div class="subtitle">Ultrasonido general</div>
+            </div>
+          </label>
+
+          <!-- Cardiología -->
+          <label class="category-tab {% if form.categoria.data == 'cardiologia' %}active{% endif %}" data-cat="cardiologia">
+            <input type="radio" class="d-none" name="categoria" value="cardiologia" {% if form.categoria.data == 'cardiologia' %}checked{% endif %}>
+            <div class="category-icon cat-cardiologia"><i class="bi bi-heart-pulse"></i></div>
+            <div class="category-text">
+              <div class="title">Cardiología</div>
+              <div class="subtitle">ECG y Ecocardio</div>
+            </div>
+          </label>
+
+          <!-- Otra Ayuda -->
+          <label class="category-tab {% if form.categoria.data == 'otro' %}active{% endif %}" data-cat="otro">
+            <input type="radio" class="d-none" name="categoria" value="otro" {% if form.categoria.data == 'otro' %}checked{% endif %}>
+            <div class="category-icon cat-otro"><i class="bi bi-file-earmark-medical"></i></div>
+            <div class="category-text">
+              <div class="title">Otros</div>
+              <div class="subtitle">Biopsias, Informes</div>
+            </div>
+          </label>
+        </div>
+
+        {% if form.categoria.errors %}
+        <div class="text-danger small mt-2 d-flex align-items-center gap-1">
+          <i class="bi bi-exclamation-circle-fill"></i> {{ form.categoria.errors[0] }}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- 2. FORMULARIO EN DOS COLUMNAS -->
+      <div class="p-4">
+        <div class="row g-4">
+          
+          <!-- COLUMNA IZQUIERDA: DETALLES DEL ESTUDIO -->
+          <div class="col-12 col-lg-7">
+            <div class="form-section-box">
+              <h6 class="form-section-title">
+                <i class="bi bi-file-earmark-text text-primary"></i> Información del Estudio
+              </h6>
+
+              <!-- Nombre del Estudio -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold text-dark small mb-1" for="tipo_examen">
+                  Nombre del Estudio / Examen <span class="text-danger">*</span>
+                </label>
+                {{ form.tipo_examen(class_="form-control modern-input", id="tipo_examen", placeholder="Ej. Radiografía de Tórax Lateral y VD, Hemograma Completo...", required=true) }}
+                
+                <!-- Sugerencias limpias y discretas -->
+                <div class="mt-2">
+                  <div class="small text-muted mb-1 d-flex align-items-center gap-1 font-size-xs">
+                    <i class="bi bi-lightning-charge text-warning"></i> Opciones frecuentes:
+                  </div>
+                  <div class="d-flex flex-wrap gap-1.5" id="chips-sugerencias">
+                    <!-- Se renderizan dinámicamente con JS -->
+                  </div>
+                </div>
+
+                {% if form.tipo_examen.errors %}
+                <div class="text-danger small mt-1 d-flex align-items-center gap-1">
+                  <i class="bi bi-exclamation-circle-fill"></i> {{ form.tipo_examen.errors[0] }}
+                </div>
+                {% endif %}
+              </div>
+
+              <!-- Fila: Fecha y Centro externo -->
+              <div class="row g-3 mb-3">
+                <div class="col-12 col-sm-6">
+                  <label class="form-label fw-semibold text-dark small mb-1" for="fecha_toma">
+                    <i class="bi bi-calendar3 text-secondary me-1"></i>Fecha de Realización <span class="text-danger">*</span>
+                  </label>
+                  {{ form.fecha_toma(class_="form-control modern-input", type="date", required=true) }}
+                  {% if form.fecha_toma.errors %}
+                  <div class="text-danger small mt-1 d-flex align-items-center gap-1">
+                    <i class="bi bi-exclamation-circle-fill"></i> {{ form.fecha_toma.errors[0] }}
+                  </div>
+                  {% endif %}
+                </div>
+
+                <div class="col-12 col-sm-6">
+                  <label class="form-label fw-semibold text-dark small mb-1" for="laboratorio_externo">
+                    <i class="bi bi-building text-secondary me-1"></i>Centro o Laboratorio <span class="text-muted fw-normal">(opcional)</span>
+                  </label>
+                  {{ form.laboratorio_externo(class_="form-control modern-input", placeholder="Ej. Laboratorio Sandía, CardioVet...") }}
+                  {% if form.laboratorio_externo.errors %}
+                  <div class="text-danger small mt-1 d-flex align-items-center gap-1">
+                    <i class="bi bi-exclamation-circle-fill"></i> {{ form.laboratorio_externo.errors[0] }}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Comentarios e Interpretación Clínica -->
+              <div class="mb-0">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <label class="form-label fw-semibold text-dark small mb-0" for="interpretacion">
+                    <i class="bi bi-chat-left-text text-secondary me-1"></i>Comentarios, Hallazgos & Reporte Clínico
+                  </label>
+                  <span class="text-muted font-size-xs">Opcional</span>
+                </div>
+
+                <!-- Plantillas de texto rápido limpias -->
+                <div class="d-flex flex-wrap gap-1 mb-2">
+                  <button type="button" class="btn-snippet" data-frase="Estudio sin hallazgos patológicos relevantes. Estructuras conservadas.">+ Sin hallazgos patológicos</button>
+                  <button type="button" class="btn-snippet" data-frase="Silueta cardíaca y campos pulmonares dentro de límites radiológicos normales.">+ Silueta y campos normales</button>
+                  <button type="button" class="btn-snippet" data-frase="Parámetros hematológicos y bioquímicos dentro de rangos de referencia.">+ Parámetros normales</button>
+                  <button type="button" class="btn-snippet" data-frase="Se adjunta archivo digital con informe oficial completo.">+ Ver reporte adjunto</button>
+                </div>
+
+                {{ form.interpretacion(class_="form-control modern-textarea", id="interpretacion", rows=5, placeholder="Observaciones clínicas, valores anormales, mediciones VHS, diagnóstico o recomendaciones médicas...") }}
+                {% if form.interpretacion.errors %}
+                <div class="text-danger small mt-1 d-flex align-items-center gap-1">
+                  <i class="bi bi-exclamation-circle-fill"></i> {{ form.interpretacion.errors[0] }}
+                </div>
+                {% endif %}
+              </div>
+
+            </div>
+          </div>
+
+          <!-- COLUMNA DERECHA: ADJUNTO DIGITAL & ESTADO -->
+          <div class="col-12 col-lg-5">
+            <div class="form-section-box d-flex flex-column h-100">
+              <h6 class="form-section-title">
+                <i class="bi bi-paperclip text-primary"></i> Archivo Digital & Estado
+              </h6>
+
+              <!-- Zona Dropzone de Carga -->
+              <div class="mb-3">
+                <input type="file" name="archivo_resultado" id="archivo_resultado" class="d-none" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.dcm,.dicom">
+                
+                <div class="modern-dropzone" id="dropzone-container" onclick="document.getElementById('archivo_resultado').click();">
+                  
+                  <div id="dropzone-idle" class="p-3 text-center">
+                    <div class="dropzone-icon-wrapper mb-2">
+                      <i class="bi bi-cloud-arrow-up"></i>
+                    </div>
+                    <div class="fw-semibold text-dark mb-1" style="font-size: 0.92rem;">Adjuntar resultado o imagen</div>
+                    <div class="text-muted small mb-2">Arrastra tu archivo aquí o haz clic para examinar</div>
+                    <span class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 font-size-xs fw-semibold">
+                      Examinar archivos
+                    </span>
+                    <div class="mt-2 text-muted font-size-xs">
+                      PDF, JPG, PNG, WEBP, DICOM (hasta 25MB)
+                    </div>
+                  </div>
+
+                  <!-- Preview del archivo seleccionado -->
+                  <div id="dropzone-preview" class="d-none p-3">
+                    <div class="file-preview-card p-2.5 rounded-3 d-flex align-items-center gap-3">
+                      <div id="file-icon-preview" class="fs-2 text-primary">
+                        <i class="bi bi-file-earmark-check-fill"></i>
+                      </div>
+                      <div class="text-start min-w-0 flex-grow-1">
+                        <div class="fw-bold text-dark text-truncate small" id="file-name-preview">documento.pdf</div>
+                        <div class="text-muted font-size-xs" id="file-size-preview">1.2 MB</div>
+                      </div>
+                      <button type="button" class="btn btn-sm btn-ghost-danger rounded-circle p-1" onclick="event.stopPropagation(); quitarArchivoSeleccionado();" title="Quitar archivo">
+                        <i class="bi bi-trash3"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+                {% if form.archivo_resultado.errors %}
+                <div class="text-danger small mt-1 d-flex align-items-center gap-1">
+                  <i class="bi bi-exclamation-circle-fill"></i> {{ form.archivo_resultado.errors[0] }}
+                </div>
+                {% endif %}
+              </div>
+
+              <!-- Estado del Estudio -->
+              <div class="mb-4">
+                <label class="form-label fw-semibold text-dark small mb-1" for="estado">
+                  <i class="bi bi-activity text-secondary me-1"></i>Estado del Estudio
+                </label>
+                {{ form.estado(class_="form-select modern-input", id="estado") }}
+                <div class="form-text text-muted font-size-xs mt-1">
+                  <i class="bi bi-info-circle me-1"></i>Si adjuntas archivo o notas, se guardará como <strong>Con resultado</strong>.
+                </div>
+              </div>
+
+              <!-- Botones de Acción integrados -->
+              <div class="mt-auto pt-3 border-top">
+                <button type="submit" class="btn btn-primary w-100 rounded-3 py-2.5 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 mb-2" id="btn-submit-examen">
+                  <i class="bi bi-check2-circle fs-5"></i>
+                  <span>Guardar Ayuda Diagnóstica</span>
+                </button>
+                <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="btn btn-outline-secondary w-100 rounded-3 py-2 text-muted fw-semibold">
+                  Cancelar
+                </a>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<!-- ===================================================================
+     ESTILOS CSS MODERNOS & LIMPIOS
+     =================================================================== -->
+<style>
+/* Mini Header Paciente */
+.patient-header-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+}
+.patient-avatar-circle {
+  width: 48px;
+  height: 48px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+/* Tarjeta Principal */
+.exam-main-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  border-color: #E2E8F0 !important;
+}
+
+/* Category Grid / Tabs */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+}
+@media (max-width: 991px) {
+  .category-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 575px) {
+  .category-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.category-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  background: #F8FAFC;
+  border: 1.5px solid #E2E8F0;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+.category-tab:hover {
+  background: #FFFFFF;
+  border-color: #CBD5E1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+.category-tab.active {
+  background: #FFFFFF;
+  border-color: #E53935;
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.12), 0 4px 12px rgba(0,0,0,0.04);
+}
+
+.category-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+/* Colores temáticos por categoría — ícono siempre visible */
+.category-tab[data-cat="radiografia"] .category-icon { background: #FEF3C7; border: 1px solid #FCD34D; color: #D97706; }
+.category-tab[data-cat="laboratorio"] .category-icon { background: #D1FAE5; border: 1px solid #6EE7B7; color: #059669; }
+.category-tab[data-cat="ecografia"]   .category-icon { background: #E0F2FE; border: 1px solid #7DD3FC; color: #0284C7; }
+.category-tab[data-cat="cardiologia"] .category-icon { background: #FEE2E2; border: 1px solid #FCA5A5; color: #DC2626; }
+.category-tab[data-cat="otro"]        .category-icon { background: #F1F5F9; border: 1px solid #CBD5E1; color: #475569; }
+
+/* Estados activos con borde y fondo temáticos */
+.category-tab[data-cat="radiografia"].active { border-color: #F59E0B; background: #FFFBEB; box-shadow: 0 0 0 3px rgba(245,158,11,0.15), 0 4px 12px rgba(0,0,0,0.04); }
+.category-tab[data-cat="laboratorio"].active { border-color: #10B981; background: #ECFDF5; box-shadow: 0 0 0 3px rgba(16,185,129,0.15), 0 4px 12px rgba(0,0,0,0.04); }
+.category-tab[data-cat="ecografia"].active   { border-color: #0EA5E9; background: #F0F9FF; box-shadow: 0 0 0 3px rgba(14,165,233,0.15), 0 4px 12px rgba(0,0,0,0.04); }
+.category-tab[data-cat="cardiologia"].active { border-color: #EF4444; background: #FFF5F5; box-shadow: 0 0 0 3px rgba(239,68,68,0.15), 0 4px 12px rgba(0,0,0,0.04); }
+.category-tab[data-cat="otro"].active        { border-color: #64748B; background: #F8FAFC; box-shadow: 0 0 0 3px rgba(100,116,139,0.15), 0 4px 12px rgba(0,0,0,0.04); }
+
+/* Ícono más saturado al estar activo */
+.category-tab[data-cat="radiografia"].active .category-icon { background: #FEF3C7; border-color: #F59E0B; color: #B45309; }
+.category-tab[data-cat="laboratorio"].active .category-icon { background: #A7F3D0; border-color: #10B981; color: #065F46; }
+.category-tab[data-cat="ecografia"].active   .category-icon { background: #BAE6FD; border-color: #0EA5E9; color: #075985; }
+.category-tab[data-cat="cardiologia"].active .category-icon { background: #FCA5A5; border-color: #EF4444; color: #991B1B; }
+.category-tab[data-cat="otro"].active        .category-icon { background: #CBD5E1; border-color: #64748B; color: #1E293B; }
+
+/* Texto del tab activo con color temático */
+.category-tab[data-cat="radiografia"].active .category-text .title { color: #92400E; }
+.category-tab[data-cat="laboratorio"].active .category-text .title { color: #065F46; }
+.category-tab[data-cat="ecografia"].active   .category-text .title { color: #0C4A6E; }
+.category-tab[data-cat="cardiologia"].active .category-text .title { color: #7F1D1D; }
+.category-tab[data-cat="otro"].active        .category-text .title { color: #1E293B; }
+
+.category-text .title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1E293B;
+  line-height: 1.2;
+}
+.category-text .subtitle {
+  font-size: 0.72rem;
+  color: #64748B;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+
+/* Sección interna */
+.form-section-box {
+  background: #FFFFFF;
+}
+.form-section-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #1E293B;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #F1F5F9;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Controles de Formulario */
+.modern-input, .modern-textarea {
+  border-radius: 10px;
+  border: 1px solid #CBD5E1;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.92rem;
+  color: #1E293B;
+  background-color: #FFFFFF;
+  transition: all 0.15s ease-in-out;
+}
+.modern-input:focus, .modern-textarea:focus {
+  border-color: #E53935;
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.15);
+  outline: none;
+}
+.modern-textarea {
+  font-family: inherit !important;
+  line-height: 1.5;
+}
+
+/* Chips de Sugerencias */
+.chip-item {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.3;
+}
+.chip-item:hover {
+  background: #0F172A;
+  color: #FFFFFF;
+  border-color: #0F172A;
+  transform: translateY(-1px);
+}
+
+/* Snippets / Frases rápidas */
+.btn-snippet {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  color: #475569;
+  font-size: 0.73rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-snippet:hover {
+  background: #F1F5F9;
+  border-color: #94A3B8;
+  color: #0F172A;
+}
+
+/* Dropzone */
+.modern-dropzone {
+  border: 2px dashed #CBD5E1;
+  border-radius: 12px;
+  background: #F8FAFC;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.modern-dropzone:hover, .modern-dropzone.dragover {
+  border-color: #E53935;
+  background: #FFF1F2;
+}
+.dropzone-icon-wrapper {
+  font-size: 2rem;
+  color: #64748B;
+  line-height: 1;
+}
+.modern-dropzone:hover .dropzone-icon-wrapper {
+  color: #E53935;
+}
+
+.file-preview-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+}
+.btn-ghost-danger {
+  color: #EF4444;
+  background: transparent;
+  border: none;
+}
+.btn-ghost-danger:hover {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.font-size-xs {
+  font-size: 0.74rem;
+}
+.gap-1\.5 {
+  gap: 0.375rem;
+}
+.hover-link:hover {
+  color: #1E293B !important;
+}
+</style>
+
+<!-- ===================================================================
+     JAVASCRIPT INTERACTIVO
+     =================================================================== -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const sugerenciasPorCategoria = {
+    laboratorio: [
+      "Hemograma Completo",
+      "Perfil Bioquímico (ALT, AST, BUN, Creatinina)",
+      "Urianálisis / Parcial de Orina",
+      "Coprológico / Coproscópico",
+      "Test Rápido 4Dx (Vectoriales)",
+      "Test Triple Felino (VIF / FeLV)",
+      "Citología de Piel / Oído",
+      "Perfil Tiroideo (T4 / TSH)"
+    ],
+    radiografia: [
+      "Rx Tórax (Lateral y VD)",
+      "Rx Abdomen (Lateral y VD)",
+      "Rx Miembros Posteriores / Anteriores",
+      "Rx Cadera (Descarte Displasia)",
+      "Rx Columna Vertebral",
+      "Rx Cráneo / Mandíbula",
+      "Rx con Contraste Gastrointestinal"
+    ],
+    ecografia: [
+      "Ecografía Abdominal Completa",
+      "Ecografía Gestacional / Reproductiva",
+      "Ecografía de Cuello / Tiroides",
+      "Ecografía Ocular",
+      "AFAST / TFAST de Urgencias"
+    ],
+    cardiologia: [
+      "Electrocardiograma (ECG)",
+      "Ecocardiograma Doppler Color",
+      "Presión Arterial Sistólica (Doppler)",
+      "Evaluación Cardiorrespiratoria"
+    ],
+    otro: [
+      "Informe de Biopsia / Histopatología",
+      "Informe de Endoscopia",
+      "Interconsulta Especializada",
+      "Prueba de Alergia / Dermatología"
+    ]
+  };
+
+  const inputTipo = document.getElementById("tipo_examen");
+  const chipsContenedor = document.getElementById("chips-sugerencias");
+  const categoryTabs = document.querySelectorAll(".category-tab");
+  const inputInterpretacion = document.getElementById("interpretacion");
+
+  // Renderizar chips sugerencias
+  function cargarSugerencias(cat) {
+    if (!chipsContenedor) return;
+    chipsContenedor.innerHTML = "";
+    const items = sugerenciasPorCategoria[cat] || sugerenciasPorCategoria.laboratorio;
+    items.forEach(function(texto) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip-item";
+      chip.textContent = texto;
+      chip.addEventListener("click", function() {
+        inputTipo.value = texto;
+        inputTipo.focus();
+      });
+      chipsContenedor.appendChild(chip);
+    });
+  }
+
+  // Manejador de selección de categoría
+  categoryTabs.forEach(function(tab) {
+    tab.addEventListener("click", function() {
+      categoryTabs.forEach(t => t.classList.remove("active"));
+      this.classList.add("active");
+      const radio = this.querySelector('input[type="radio"]');
+      if (radio) radio.checked = true;
+      const cat = this.getAttribute("data-cat");
+      cargarSugerencias(cat);
+    });
+  });
+
+  // Frases rápidas en comentarios
+  document.querySelectorAll(".btn-snippet").forEach(btn => {
+    btn.addEventListener("click", function() {
+      const frase = this.getAttribute("data-frase");
+      if (!inputInterpretacion.value.trim()) {
+        inputInterpretacion.value = frase;
+      } else {
+        inputInterpretacion.value += "\n" + frase;
+      }
+      inputInterpretacion.focus();
+    });
+  });
+
+  // Manejo de archivo adjunto y dropzone preview
+  const fileInput = document.getElementById("archivo_resultado");
+  const dropzoneIdle = document.getElementById("dropzone-idle");
+  const dropzonePreview = document.getElementById("dropzone-preview");
+  const fileNamePreview = document.getElementById("file-name-preview");
+  const fileSizePreview = document.getElementById("file-size-preview");
+  const fileIconPreview = document.getElementById("file-icon-preview");
+  const dropzoneContainer = document.getElementById("dropzone-container");
+
+  window.quitarArchivoSeleccionado = function() {
+    fileInput.value = "";
+    dropzonePreview.classList.add("d-none");
+    dropzoneIdle.classList.remove("d-none");
+  };
+
+  fileInput.addEventListener("change", function() {
+    if (this.files && this.files[0]) {
+      const file = this.files[0];
+      fileNamePreview.textContent = file.name;
+      fileSizePreview.textContent = (file.size / (1024 * 1024)).toFixed(2) + " MB";
+
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+        fileIconPreview.innerHTML = '<i class="bi bi-file-earmark-image-fill text-warning"></i>';
+      } else if (ext === 'pdf') {
+        fileIconPreview.innerHTML = '<i class="bi bi-file-earmark-pdf-fill text-danger"></i>';
+      } else {
+        fileIconPreview.innerHTML = '<i class="bi bi-file-earmark-text-fill text-primary"></i>';
+      }
+
+      dropzoneIdle.classList.add("d-none");
+      dropzonePreview.classList.remove("d-none");
+    }
+  });
+
+  // Drag & Drop
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropzoneContainer.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzoneContainer.classList.add('dragover');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropzoneContainer.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzoneContainer.classList.remove('dragover');
+    }, false);
+  });
+
+  dropzoneContainer.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files.length) {
+      fileInput.files = files;
+      const event = new Event('change');
+      fileInput.dispatchEvent(event);
+    }
+  });
+
+  // Inicializar categoría inicial
+  const catInicial = document.querySelector('input[name="categoria"]:checked');
+  cargarSugerencias(catInicial ? catInicial.value : "laboratorio");
+});
+</script>
 {% endblock %}

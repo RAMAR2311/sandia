@@ -1,39 +1,115 @@
-"""Registro de gastos diarios y costos indirectos."""
-
-from datetime import date
+import calendar
+from datetime import date, datetime, time, timedelta
+from decimal import Decimal
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from decorators import admin_required
 from forms import GastoForm
 from models import CATEGORIAS_GASTO, Gasto, TIPOS_GASTO, db
-from utils import eliminar_documento, guardar_documento, hoy_bogota
+from utils import ZONA_BOGOTA, eliminar_documento, guardar_documento, hoy_bogota
 
 bp = Blueprint("gastos", __name__, url_prefix="/gastos")
+
+
+def _obtener_rango_gastos(periodo: str, desde_str: str = None, hasta_str: str = None):
+    hoy = hoy_bogota()
+    ultimo_dia_mes = calendar.monthrange(hoy.year, hoy.month)[1]
+
+    if periodo == "hoy":
+        inicio_date = hoy
+        fin_date = hoy
+    elif periodo == "ayer":
+        inicio_date = hoy - timedelta(days=1)
+        fin_date = hoy - timedelta(days=1)
+    elif periodo == "semana":
+        inicio_date = hoy - timedelta(days=hoy.weekday())
+        fin_date = hoy
+    elif periodo == "quincena":
+        if hoy.day <= 15:
+            inicio_date = hoy.replace(day=1)
+            fin_date = hoy.replace(day=15)
+        else:
+            inicio_date = hoy.replace(day=16)
+            fin_date = hoy.replace(day=ultimo_dia_mes)
+    elif periodo == "primera_quincena":
+        inicio_date = hoy.replace(day=1)
+        fin_date = hoy.replace(day=15)
+    elif periodo == "segunda_quincena":
+        inicio_date = hoy.replace(day=16)
+        fin_date = hoy.replace(day=ultimo_dia_mes)
+    elif periodo == "mes":
+        inicio_date = hoy.replace(day=1)
+        fin_date = hoy.replace(day=ultimo_dia_mes)
+    elif periodo == "mes_anterior":
+        primer_dia_mes_actual = hoy.replace(day=1)
+        ultimo_dia_mes_anterior = primer_dia_mes_actual - timedelta(days=1)
+        inicio_date = ultimo_dia_mes_anterior.replace(day=1)
+        fin_date = ultimo_dia_mes_anterior
+    elif periodo == "personalizado" and desde_str and hasta_str:
+        try:
+            inicio_date = datetime.strptime(desde_str, "%Y-%m-%d").date()
+            fin_date = datetime.strptime(hasta_str, "%Y-%m-%d").date()
+        except ValueError:
+            inicio_date = hoy.replace(day=1)
+            fin_date = hoy
+    else:
+        # Si vienen parametros 'desde' y 'hasta' explicitos sin 'periodo'
+        if desde_str and hasta_str:
+            try:
+                inicio_date = datetime.strptime(desde_str, "%Y-%m-%d").date()
+                fin_date = datetime.strptime(hasta_str, "%Y-%m-%d").date()
+                return "personalizado", inicio_date, fin_date
+            except ValueError:
+                pass
+        inicio_date = hoy
+        fin_date = hoy
+
+    return periodo or "hoy", inicio_date, fin_date
 
 
 @bp.route("/", methods=["GET"])
 @login_required
 @admin_required
 def lista():
-    desde_str = request.args.get("desde") or hoy_bogota().replace(day=1).isoformat()
-    hasta_str = request.args.get("hasta") or hoy_bogota().isoformat()
-    try:
-        desde = date.fromisoformat(desde_str)
-        hasta = date.fromisoformat(hasta_str)
-    except ValueError:
-        desde, hasta = hoy_bogota().replace(day=1), hoy_bogota()
-        desde_str, hasta_str = desde.isoformat(), hasta.isoformat()
+    periodo_req = request.args.get("periodo")
+    desde_str = request.args.get("desde")
+    hasta_str = request.args.get("hasta")
 
-    consulta = select(Gasto).where(Gasto.fecha_gasto >= desde, Gasto.fecha_gasto <= hasta).order_by(Gasto.fecha_gasto.desc())
+    if not periodo_req and (desde_str or hasta_str):
+        periodo = "personalizado"
+    else:
+        periodo = periodo_req or "hoy"
+
+    periodo, desde, hasta = _obtener_rango_gastos(periodo, desde_str, hasta_str)
+
+    consulta = (
+        select(Gasto)
+        .where(Gasto.fecha_gasto >= desde, Gasto.fecha_gasto <= hasta)
+        .options(selectinload(Gasto.usuario))
+        .order_by(Gasto.fecha_gasto.desc(), Gasto.id.desc())
+    )
     gastos = db.session.execute(consulta).scalars().all()
-    total = db.session.execute(
-        select(func.coalesce(func.sum(Gasto.monto), 0)).where(Gasto.fecha_gasto >= desde, Gasto.fecha_gasto <= hasta)
-    ).scalar_one()
 
-    return render_template("gastos/lista.html", gastos=gastos, total=total, desde=desde_str, hasta=hasta_str)
+    total = sum((g.monto for g in gastos), Decimal("0.00"))
+    total_diarios = sum((g.monto for g in gastos if g.tipo_gasto == "diario"), Decimal("0.00"))
+    total_indirectos = sum((g.monto for g in gastos if g.tipo_gasto == "indirecto"), Decimal("0.00"))
+
+    return render_template(
+        "gastos/lista.html",
+        gastos=gastos,
+        total=total,
+        total_diarios=total_diarios,
+        total_indirectos=total_indirectos,
+        desde=desde,
+        hasta=hasta,
+        periodo=periodo,
+        categorias=CATEGORIAS_GASTO,
+        tipos=TIPOS_GASTO,
+    )
 
 
 @bp.route("/nuevo", methods=["GET", "POST"])

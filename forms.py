@@ -21,6 +21,7 @@ from wtforms import (
 from wtforms.validators import DataRequired, Email, EqualTo, InputRequired, Length, NumberRange, Optional, Regexp, ValidationError
 
 from models import (
+    CATEGORIAS_EXAMEN,
     CATEGORIAS_GASTO,
     CATEGORIAS_PRODUCTO,
     ESPECIES,
@@ -439,6 +440,7 @@ class CitaSpaForm(FlaskForm):
     hora = TimeField("Hora del servicio", validators=[DataRequired("Selecciona la hora.")])
     duracion_minutos = IntegerField("Duración en minutos", validators=[DataRequired(), NumberRange(min=15, max=480)], default=60)
     notas_ingreso = TextAreaField("Notas de ingreso / Estado inicial (opcional)", validators=[Optional(), Length(max=1000)])
+    foto_ingreso = FileField("Foto de ingreso / Antes (opcional)", validators=[Optional()])
     enviar = SubmitField("Agendar cita de grooming")
 
 
@@ -455,7 +457,17 @@ class CambioEstadoSpaForm(FlaskForm):
         validators=[DataRequired()],
     )
     notas_salida = TextAreaField("Observaciones de salida / entrega (opcional)", validators=[Optional(), Length(max=1000)])
+    foto_ingreso = FileField("Foto de ingreso / Antes (opcional)", validators=[Optional()])
+    foto_salida = FileField("Foto de salida / Después (opcional)", validators=[Optional()])
     enviar = SubmitField("Actualizar estado")
+
+
+class FotoSpaModalForm(FlaskForm):
+    """Formulario rápido para subir o tomar foto de ingreso o salida desde el detalle de la cita."""
+
+    tipo = HiddenField("Tipo de foto", validators=[DataRequired()])
+    foto = FileField("Foto", validators=[DataRequired("Selecciona o toma una foto.")])
+    enviar = SubmitField("Guardar foto")
 
 
 class VincularVentaSpaForm(FlaskForm):
@@ -557,6 +569,10 @@ class CitaForm(FlaskForm):
     notas = TextAreaField("Notas (opcional)", validators=[Optional(), Length(max=1000)])
     enviar = SubmitField("Agendar cita")
 
+    def validate_fecha(self, field):
+        if field.data and field.data < hoy_bogota():
+            raise ValidationError("No se pueden agendar citas en fechas pasadas.")
+
 
 class CambiarEstadoCitaForm(FlaskForm):
     estado = SelectField("Nuevo estado", choices=list(ESTADOS_CITA.items()), validators=[DataRequired()])
@@ -623,17 +639,29 @@ class NotasPostquirurgicasForm(FlaskForm):
 
 class ExamenLaboratorioForm(FlaskForm):
     mascota_id = HiddenField(validators=[DataRequired("Selecciona la mascota.")])
-    tipo_examen = StringField("Tipo de examen", validators=[DataRequired("Indica el examen."), Length(max=150)])
-    fecha_toma = DateField("Fecha de toma", validators=[DataRequired("Selecciona la fecha.")])
-    laboratorio_externo = StringField("Laboratorio externo (opcional)", validators=[Optional(), Length(max=150)])
-    enviar = SubmitField("Solicitar examen")
+    categoria = SelectField(
+        "Categoría de ayuda diagnóstica",
+        choices=list(CATEGORIAS_EXAMEN.items()),
+        default="laboratorio",
+        validators=[DataRequired("Selecciona una categoría.")],
+    )
+    tipo_examen = StringField("Nombre o tipo de examen / estudio", validators=[DataRequired("Indica el nombre del examen."), Length(max=150)])
+    fecha_toma = DateField("Fecha de realización / toma", default=hoy_bogota, validators=[DataRequired("Selecciona la fecha.")])
+    laboratorio_externo = StringField("Centro diagnóstico / Laboratorio externo (opcional)", validators=[Optional(), Length(max=150)])
+    archivo_resultado = FileField("Adjuntar archivo / reporte (PDF, JPG, PNG, WEBP, DOCX, DICOM)", validators=[Optional()])
+    interpretacion = TextAreaField("Comentarios / Hallazgos / Interpretación clínica", validators=[Optional(), Length(max=3000)])
+    estado = SelectField("Estado del examen", choices=list(ESTADOS_EXAMEN.items()), default="con_resultado", validators=[DataRequired()])
+    enviar = SubmitField("Guardar examen")
 
 
 class ResultadoExamenForm(FlaskForm):
-    archivo_resultado = FileField("Archivo del resultado (opcional)", validators=[Optional()])
-    interpretacion = TextAreaField("Interpretación", validators=[Optional(), Length(max=2000)])
+    categoria = SelectField("Categoría", choices=list(CATEGORIAS_EXAMEN.items()), validators=[Optional()])
+    tipo_examen = StringField("Nombre del examen", validators=[Optional(), Length(max=150)])
+    laboratorio_externo = StringField("Centro diagnóstico / Laboratorio externo", validators=[Optional(), Length(max=150)])
+    archivo_resultado = FileField("Adjuntar o reemplazar archivo (PDF, JPG, PNG, WEBP)", validators=[Optional()])
+    interpretacion = TextAreaField("Comentarios / Hallazgos / Interpretación clínica", validators=[Optional(), Length(max=3000)])
     estado = SelectField("Estado", choices=list(ESTADOS_EXAMEN.items()), validators=[DataRequired()])
-    enviar = SubmitField("Guardar resultado")
+    enviar = SubmitField("Guardar cambios y resultado")
 
 
 # ---------------------------------------------------------------------------

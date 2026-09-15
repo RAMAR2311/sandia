@@ -1,8 +1,10 @@
 """Rutas y controladores para Historias Clínicas, Consultas SOAP, Vacunas y Desparasitaciones."""
 
+import json
 from datetime import datetime
-from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, send_file, url_for
 from decorators import clinico_required
+from pdf_generator import generar_pdf_consulta, generar_pdf_receta
 from flask_login import current_user, login_required
 from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
@@ -51,17 +53,27 @@ bp = Blueprint("historias", __name__, url_prefix="/historias")
 # ---------------------------------------------------------------------------
 
 
+POR_PAGINA = 9
+
+
 @bp.route("/", methods=["GET"])
 @login_required
 @clinico_required
 def lista():
+    pagina = request.args.get("page", 1, type=int)
     q = (request.args.get("q") or "").strip()
     normalizado = normalizar_texto(q)
 
     consulta = (
         select(Mascota)
         .filter(Mascota.activo.is_(True))
-        .options(selectinload(Mascota.tutor), selectinload(Mascota.raza))
+        .options(
+            selectinload(Mascota.tutor),
+            selectinload(Mascota.raza),
+            selectinload(Mascota.consultas),
+            selectinload(Mascota.vacunas),
+            selectinload(Mascota.registros_peso),
+        )
         .order_by(Mascota.nombre.asc())
     )
 
@@ -75,8 +87,9 @@ def lista():
             )
         )
 
-    mascotas = db.session.execute(consulta.limit(50)).scalars().all()
-    return render_template("historias/lista.html", mascotas=mascotas, q=q)
+    paginacion = db.paginate(consulta, page=pagina, per_page=POR_PAGINA, error_out=False)
+    mascotas = paginacion.items
+    return render_template("historias/lista.html", mascotas=mascotas, pagina=paginacion, q=q)
 
 
 @bp.route("/mascota/<int:mascota_id>", methods=["GET"])
@@ -110,18 +123,98 @@ def ficha_medica(mascota_id: int):
         select(ExamenLaboratorio).filter_by(mascota_id=mascota.id).order_by(ExamenLaboratorio.fecha_toma.desc())
     ).scalars().all()
 
+    datos_peso = [
+        {
+            "fecha": r.fecha.strftime("%Y-%m-%d") if hasattr(r.fecha, "strftime") else str(r.fecha),
+            "peso_kg": float(r.peso_kg),
+        }
+        for r in mascota.registros_peso
+    ]
+
     return render_template(
         "historias/ficha_medica.html",
         mascota=mascota,
         hospitalizaciones=hospitalizaciones,
         cirugias=cirugias,
         examenes=examenes,
+        datos_peso=datos_peso,
     )
 
 
-# ---------------------------------------------------------------------------
-# Consultas Médicas (SOAP)
-# ---------------------------------------------------------------------------
+SISTEMAS_MEDICOS_CATALOGO = [
+    {
+        "id": "musculo_esqueletico",
+        "nombre": "Músculo esquelético",
+        "icono": "bi-activity",
+        "badge_color": "primary",
+        "descripcion": "Huesos, articulaciones, tono muscular, marcha y simetría",
+        "sugerencias": ["Sin dolor a la palpación", "Tono muscular adecuado", "Claudicación en extremidad", "Dolor articular leve", "Crepitación articular"],
+    },
+    {
+        "id": "gastrointestinal",
+        "nombre": "Gastrointestinal",
+        "icono": "bi-egg-fried",
+        "badge_color": "warning",
+        "descripcion": "Boca, dientes, deglución, palpación abdominal y evacuación",
+        "sugerencias": ["Palpación abdominal no dolorosa", "Abdomen blando y depresible", "Sensibilidad epigástrica", "Gases / Timpanismo", "Tártaro dental moderado"],
+    },
+    {
+        "id": "ganglio_linfatico",
+        "nombre": "Ganglios linfáticos",
+        "icono": "bi-shield-check",
+        "badge_color": "info",
+        "descripcion": "Mandibulares, preescapulares, axilares, inguinales y poplíteos",
+        "sugerencias": ["De tamaño, forma y consistencia normal", "No reactivos a la palpación", "Linfadenomegalia submandibular", "Linfadenomegalia poplítea", "Sensibles a la palpación"],
+    },
+    {
+        "id": "organos_sentidos",
+        "nombre": "Órganos de los sentidos",
+        "icono": "bi-eye",
+        "badge_color": "purple",
+        "descripcion": "Ojos (córnea, reflejos), oídos (conductos, pabellón) y olfato",
+        "sugerencias": ["Ojos claros, reflejos pupilares normales", "Conductos auditivos limpios sin secreción", "Eritema en pabellón auricular", "Secreción ocular serosa", "Epífora / Blefarospasmo"],
+    },
+    {
+        "id": "respiratorio",
+        "nombre": "Sistema Respiratorio",
+        "icono": "bi-lungs",
+        "badge_color": "cyan",
+        "descripcion": "Auscultación pulmonar, tráquea, patrón respiratorio y ritmo",
+        "sugerencias": ["Campos pulmonares limpios sin ruidos agregados", "Patrón costo-abdominal normal", "Estertores / Roncus bilaterales", "Reflejo traqueal positivo / Tos", "Sibilancias espiratorias"],
+    },
+    {
+        "id": "cardiaco",
+        "nombre": "Cardiovascular / Cardíaco",
+        "icono": "bi-heart-pulse",
+        "badge_color": "danger",
+        "descripcion": "Auscultación cardíaca, soplos, arritmias, pulso femoral y sincronía",
+        "sugerencias": ["Tonos cardíacos rítmicos sin soplos", "Pulsos femorales fuertes y simétricos", "Soplo sistólico grado II/VI", "Arritmia sinusal respiratoria", "Pulso débil / Irregular"],
+    },
+    {
+        "id": "nervioso",
+        "nombre": "Sistema Nervioso",
+        "icono": "bi-lightning-charge",
+        "badge_color": "amber",
+        "descripcion": "Estado mental, marcha, propiocepción, reflejos espinales y pares craneales",
+        "sugerencias": ["Alerta y responsivo al entorno", "Propiocepción y reflejos espinales normales", "Ataxia / Descoordinación leve", "Reflejo de amenaza disminuido", "Letárgico / Deprimido"],
+    },
+    {
+        "id": "urinario",
+        "nombre": "Urinario / Renal",
+        "icono": "bi-droplet-half",
+        "badge_color": "blue",
+        "descripcion": "Palpación de riñones y vejiga, micción y aspecto de la orina",
+        "sugerencias": ["Vejiga normodistendida no dolorosa", "Riñones simétricos y sin dolor", "Dolor a la palpación renal", "Vejiga pletórica / Tensa", "Hematuria / Disuria referida"],
+    },
+    {
+        "id": "reproductivo",
+        "nombre": "Reproductivo",
+        "icono": "bi-gender-ambiguous",
+        "badge_color": "pink",
+        "descripcion": "Genitales externos, mamas, testículos, secreciones y estado reproductivo",
+        "sugerencias": ["Genitales externos sin alteraciones ni secreciones", "Glándulas mamarias sin nódulos", "Testículos descendidos simétricos", "Castrado / Esterilizada previamente", "Secreción prepucial / vulvar leve"],
+    },
+]
 
 
 @bp.route("/mascota/<int:mascota_id>/consulta/nueva", methods=["GET", "POST"])
@@ -140,6 +233,31 @@ def consulta_nueva(mascota_id: int):
             form.peso_kg.data = mascota.peso_actual.peso_kg
 
     if form.validate_on_submit():
+        # Validar si el examen de sistemas viene en formato JSON estructurado
+        examen_raw = form.examen_sistemas.data.strip() if form.examen_sistemas.data else ""
+        if examen_raw.startswith("{"):
+            try:
+                s_data = json.loads(examen_raw)
+                s_dict = s_data.get("sistemas", {}) if isinstance(s_data, dict) else {}
+                faltantes = []
+                for sist in SISTEMAS_MEDICOS_CATALOGO:
+                    item = s_dict.get(sist["id"])
+                    if not item or item.get("estado") not in ("normal", "anormal"):
+                        faltantes.append(sist["nombre"])
+                if faltantes:
+                    flash(
+                        f"Debes completar la evaluación de todos los sistemas. Faltan {len(faltantes)}: {', '.join(faltantes)}.",
+                        "danger",
+                    )
+                    return render_template(
+                        "historias/form_consulta.html",
+                        form=form,
+                        mascota=mascota,
+                        catalogo_sistemas=SISTEMAS_MEDICOS_CATALOGO,
+                    )
+            except json.JSONDecodeError:
+                pass
+
         try:
             consulta = ConsultaMedica(
                 mascota_id=mascota.id,
@@ -176,7 +294,12 @@ def consulta_nueva(mascota_id: int):
             current_app.logger.exception("Error al guardar consulta médica")
             flash("Ocurrió un error al guardar la consulta.", "danger")
 
-    return render_template("historias/form_consulta.html", form=form, mascota=mascota)
+    return render_template(
+        "historias/form_consulta.html",
+        form=form,
+        mascota=mascota,
+        catalogo_sistemas=SISTEMAS_MEDICOS_CATALOGO,
+    )
 
 
 @bp.route("/consulta/<int:id>", methods=["GET"])
@@ -194,11 +317,76 @@ def consulta_detalle(id: int):
         )
     ).scalar_one_or_none()
 
+    return render_template("historias/consulta_detalle.html", consulta=consulta, form_enmienda=EnmiendaConsultaForm())
+
+
+@bp.route("/consulta/<int:id>/pdf", methods=["GET"])
+def consulta_pdf(id: int):
+    consulta = db.session.execute(
+        select(ConsultaMedica)
+        .filter_by(id=id)
+        .options(
+            selectinload(ConsultaMedica.mascota).selectinload(Mascota.raza),
+            selectinload(ConsultaMedica.tutor),
+            selectinload(ConsultaMedica.veterinario),
+        )
+    ).scalar_one_or_none()
     if not consulta:
         flash("La consulta médica no existe.", "danger")
         return redirect(url_for("historias.lista"))
 
-    return render_template("historias/consulta_detalle.html", consulta=consulta, form_enmienda=EnmiendaConsultaForm())
+    pdf_buffer = generar_pdf_consulta(consulta, db.session)
+    nombre_archivo = f"Consulta_{consulta.mascota.nombre if consulta.mascota else 'Paciente'}_{consulta.id:04d}.pdf"
+    return send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=nombre_archivo,
+    )
+
+
+@bp.route("/consulta/<int:id>/receta/pdf", methods=["GET"])
+def receta_pdf(id: int):
+    consulta = db.session.execute(
+        select(ConsultaMedica)
+        .filter_by(id=id)
+        .options(
+            selectinload(ConsultaMedica.mascota).selectinload(Mascota.raza),
+            selectinload(ConsultaMedica.tutor),
+            selectinload(ConsultaMedica.veterinario),
+        )
+    ).scalar_one_or_none()
+    if not consulta:
+        flash("La consulta médica no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    pdf_buffer = generar_pdf_receta(consulta, db.session)
+    nombre_archivo = f"Formula_Medica_{consulta.mascota.nombre if consulta.mascota else 'Paciente'}_{consulta.id:04d}.pdf"
+    return send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=nombre_archivo,
+    )
+
+
+@bp.route("/consulta/<int:id>/documento", methods=["GET"])
+def consulta_documento_publico(id: int):
+    """Vista web oficial del documento para compartir con el tutor por WhatsApp o imprimir."""
+    consulta = db.session.execute(
+        select(ConsultaMedica)
+        .filter_by(id=id)
+        .options(
+            selectinload(ConsultaMedica.mascota).selectinload(Mascota.raza),
+            selectinload(ConsultaMedica.tutor),
+            selectinload(ConsultaMedica.veterinario),
+        )
+    ).scalar_one_or_none()
+    if not consulta:
+        flash("El documento solicitado no está disponible.", "danger")
+        return redirect(url_for("auth.login"))
+
+    return render_template("historias/documento_consulta.html", consulta=consulta)
 
 
 # ---------------------------------------------------------------------------
@@ -525,6 +713,8 @@ def cirugia_notas(id: int):
 # ---------------------------------------------------------------------------
 # Exámenes de laboratorio
 # ---------------------------------------------------------------------------
+# Exámenes, Radiografías, Ecografías y Ayudas Diagnósticas
+# ---------------------------------------------------------------------------
 
 
 @bp.route("/mascota/<int:mascota_id>/examen/nuevo", methods=["GET", "POST"])
@@ -537,24 +727,48 @@ def examen_nuevo(mascota_id: int):
         return redirect(url_for("historias.lista"))
 
     form = ExamenLaboratorioForm(mascota_id=str(mascota_id))
+    
+    # Preseleccionar categoría si viene por URL (ej: ?categoria=radiografia)
+    cat_param = request.args.get("categoria", "")
+    if request.method == "GET" and cat_param in ("radiografia", "laboratorio", "ecografia", "cardiologia", "otro"):
+        form.categoria.data = cat_param
+
     if form.validate_on_submit():
-        examen = ExamenLaboratorio(
-            mascota_id=mascota.id,
-            solicitado_por_id=current_user.id,
-            tipo_examen=form.tipo_examen.data,
-            fecha_toma=datetime.combine(form.fecha_toma.data, datetime.min.time(), tzinfo=ZONA_BOGOTA),
-            laboratorio_externo=form.laboratorio_externo.data,
-        )
-        try:
-            db.session.add(examen)
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            current_app.logger.exception("Error al solicitar examen")
-            flash("No se pudo registrar el examen.", "danger")
-        else:
-            flash("Examen solicitado.", "success")
-            return redirect(url_for("historias.examen_detalle", id=examen.id))
+        nombre_archivo = None
+        if form.archivo_resultado.data and getattr(form.archivo_resultado.data, "filename", ""):
+            try:
+                nombre_archivo = guardar_documento(form.archivo_resultado.data, "examenes")
+            except ValueError as exc:
+                form.archivo_resultado.errors.append(str(exc))
+
+        if not form.archivo_resultado.errors:
+            estado_final = form.estado.data
+            # Si se adjuntó archivo o comentarios y estaba en solicitado, marcar como con resultado
+            if (nombre_archivo or (form.interpretacion.data and form.interpretacion.data.strip())) and estado_final == "solicitado":
+                estado_final = "con_resultado"
+
+            examen = ExamenLaboratorio(
+                mascota_id=mascota.id,
+                solicitado_por_id=current_user.id,
+                categoria=form.categoria.data or "laboratorio",
+                tipo_examen=form.tipo_examen.data,
+                fecha_toma=datetime.combine(form.fecha_toma.data, datetime.min.time(), tzinfo=ZONA_BOGOTA),
+                laboratorio_externo=form.laboratorio_externo.data or None,
+                archivo_resultado=nombre_archivo,
+                interpretacion=form.interpretacion.data or None,
+                estado=estado_final,
+            )
+            try:
+                db.session.add(examen)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception("Error al registrar examen")
+                flash("No se pudo registrar el examen.", "danger")
+            else:
+                flash(f"{examen.categoria_etiqueta} guardada exitosamente.", "success")
+                return redirect(url_for("historias.ficha_medica", mascota_id=mascota.id))
+
     return render_template("historias/form_examen.html", form=form, mascota=mascota)
 
 
@@ -563,12 +777,26 @@ def examen_nuevo(mascota_id: int):
 @clinico_required
 def examen_detalle(id: int):
     examen = db.session.execute(
-        select(ExamenLaboratorio).filter_by(id=id).options(selectinload(ExamenLaboratorio.mascota))
+        select(ExamenLaboratorio)
+        .filter_by(id=id)
+        .options(
+            selectinload(ExamenLaboratorio.mascota).selectinload(Mascota.raza),
+            selectinload(ExamenLaboratorio.mascota).selectinload(Mascota.tutor),
+            selectinload(ExamenLaboratorio.solicitado_por),
+        )
     ).scalar_one_or_none()
     if not examen:
         flash("El examen no existe.", "danger")
         return redirect(url_for("historias.lista"))
-    return render_template("historias/examen_detalle.html", examen=examen, form_resultado=ResultadoExamenForm(estado=examen.estado, interpretacion=examen.interpretacion or ""))
+
+    form_resultado = ResultadoExamenForm(
+        categoria=examen.categoria,
+        tipo_examen=examen.tipo_examen,
+        laboratorio_externo=examen.laboratorio_externo or "",
+        estado=examen.estado,
+        interpretacion=examen.interpretacion or "",
+    )
+    return render_template("historias/examen_detalle.html", examen=examen, form_resultado=form_resultado)
 
 
 @bp.route("/examen/<int:id>/resultado", methods=["POST"])
@@ -579,6 +807,7 @@ def examen_resultado(id: int):
     if not examen:
         flash("El examen no existe.", "danger")
         return redirect(url_for("historias.lista"))
+
     form = ResultadoExamenForm()
     if form.validate_on_submit():
         nombre_archivo = examen.archivo_resultado
@@ -590,9 +819,16 @@ def examen_resultado(id: int):
 
         if not form.archivo_resultado.errors:
             anterior = examen.archivo_resultado
-            examen.interpretacion = form.interpretacion.data
+            if form.categoria.data:
+                examen.categoria = form.categoria.data
+            if form.tipo_examen.data:
+                examen.tipo_examen = form.tipo_examen.data
+            if form.laboratorio_externo.data is not None:
+                examen.laboratorio_externo = form.laboratorio_externo.data or None
+            examen.interpretacion = form.interpretacion.data or None
             examen.estado = form.estado.data
             examen.archivo_resultado = nombre_archivo
+
             try:
                 db.session.commit()
             except Exception:
@@ -602,5 +838,52 @@ def examen_resultado(id: int):
             else:
                 if nombre_archivo != anterior and anterior:
                     eliminar_documento("examenes", anterior)
-                flash("Resultado guardado.", "success")
+                flash("Resultado y comentarios actualizados exitosamente.", "success")
+
     return redirect(url_for("historias.examen_detalle", id=id))
+
+
+@bp.route("/examen/<int:id>/eliminar-archivo", methods=["POST"])
+@login_required
+@clinico_required
+def examen_eliminar_archivo(id: int):
+    examen = db.session.get(ExamenLaboratorio, id)
+    if not examen:
+        flash("El examen no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    if examen.archivo_resultado:
+        eliminar_documento("examenes", examen.archivo_resultado)
+        examen.archivo_resultado = None
+        try:
+            db.session.commit()
+            flash("Archivo adjunto eliminado.", "info")
+        except Exception:
+            db.session.rollback()
+            flash("Error al actualizar el examen.", "danger")
+
+    return redirect(url_for("historias.examen_detalle", id=id))
+
+
+@bp.route("/examen/<int:id>/eliminar", methods=["POST"])
+@login_required
+@clinico_required
+def examen_eliminar(id: int):
+    examen = db.session.get(ExamenLaboratorio, id)
+    if not examen:
+        flash("El examen no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    mascota_id = examen.mascota_id
+    if examen.archivo_resultado:
+        eliminar_documento("examenes", examen.archivo_resultado)
+
+    try:
+        db.session.delete(examen)
+        db.session.commit()
+        flash("Registro de examen eliminado.", "info")
+    except Exception:
+        db.session.rollback()
+        flash("No se pudo eliminar el examen.", "danger")
+
+    return redirect(url_for("historias.ficha_medica", mascota_id=mascota_id))

@@ -152,16 +152,6 @@ MODULOS = [
         "esencial": False,
     },
     {
-        "clave": "aprobaciones_precio",
-        "nombre": "Aprobaciones de precio",
-        "descripcion": "Solicitudes de cajeros para vender bajo el precio mínimo",
-        "icono": "bi-shield-exclamation",
-        "endpoint": "pos.aprobaciones_lista",
-        "roles": ("admin",),
-        "en_barra": False,
-        "esencial": False,
-    },
-    {
         "clave": "usuarios",
         "nombre": "Usuarios",
         "descripcion": "Cuentas y roles del personal",
@@ -213,87 +203,95 @@ def vacunas_por_vencer(limite_dias: int = 15, tope: int = 20):
     """Última aplicación de cada mascota activa cuya próxima dosis está vencida
     o vence dentro de ``limite_dias`` días (regla de negocio: recordatorios de
     vacunación con enlace directo de WhatsApp)."""
-    ultima_por_mascota = (
-        select(VacunaMascota.mascota_id, func.max(VacunaMascota.fecha_aplicacion).label("ultima_fecha"))
-        .group_by(VacunaMascota.mascota_id)
-        .subquery()
-    )
-    limite = hoy_bogota() + timedelta(days=limite_dias)
-    consulta = (
-        select(VacunaMascota)
-        .join(
-            ultima_por_mascota,
-            (VacunaMascota.mascota_id == ultima_por_mascota.c.mascota_id)
-            & (VacunaMascota.fecha_aplicacion == ultima_por_mascota.c.ultima_fecha),
+    try:
+        ultima_por_mascota = (
+            select(VacunaMascota.mascota_id, func.max(VacunaMascota.fecha_aplicacion).label("ultima_fecha"))
+            .group_by(VacunaMascota.mascota_id)
+            .subquery()
         )
-        .join(Mascota, VacunaMascota.mascota_id == Mascota.id)
-        .options(selectinload(VacunaMascota.mascota), selectinload(VacunaMascota.tutor))
-        .where(Mascota.activo.is_(True), Mascota.fallecido.is_(False), VacunaMascota.fecha_proxima <= limite)
-        .order_by(VacunaMascota.fecha_proxima.asc())
-        .limit(tope)
-    )
-    return db.session.execute(consulta).scalars().all()
+        limite = hoy_bogota() + timedelta(days=limite_dias)
+        consulta = (
+            select(VacunaMascota)
+            .join(
+                ultima_por_mascota,
+                (VacunaMascota.mascota_id == ultima_por_mascota.c.mascota_id)
+                & (VacunaMascota.fecha_aplicacion == ultima_por_mascota.c.ultima_fecha),
+            )
+            .join(Mascota, VacunaMascota.mascota_id == Mascota.id)
+            .options(selectinload(VacunaMascota.mascota), selectinload(VacunaMascota.tutor))
+            .where(Mascota.activo.is_(True), Mascota.fallecido.is_(False), VacunaMascota.fecha_proxima <= limite)
+            .order_by(VacunaMascota.fecha_proxima.asc())
+            .limit(tope)
+        )
+        return db.session.execute(consulta).scalars().all()
+    except Exception:
+        db.session.rollback()
+        return []
 
 
 def obtener_mascotas_pendientes_recogida():
     """Obtiene citas de spa listas para entrega y calcula tiempo transcurrido y nivel de urgencia."""
-    ahora = obtener_hora_bogota()
-    citas = db.session.execute(
-        select(CitaSpa)
-        .filter_by(estado="listo_recogida")
-        .options(
-            selectinload(CitaSpa.mascota),
-            selectinload(CitaSpa.tutor),
-            selectinload(CitaSpa.servicio_spa),
-            selectinload(CitaSpa.venta),
-            selectinload(CitaSpa.groomer),
-        )
-        .order_by(CitaSpa.fecha_hora.asc())
-    ).scalars().all()
+    try:
+        ahora = obtener_hora_bogota()
+        citas = db.session.execute(
+            select(CitaSpa)
+            .filter_by(estado="listo_recogida")
+            .options(
+                selectinload(CitaSpa.mascota),
+                selectinload(CitaSpa.tutor),
+                selectinload(CitaSpa.servicio_spa),
+                selectinload(CitaSpa.venta),
+                selectinload(CitaSpa.groomer),
+            )
+            .order_by(CitaSpa.fecha_hora.asc())
+        ).scalars().all()
 
-    resultado = []
-    for c in citas:
-        momento_listo = c.fecha_listo or (c.fecha_hora + timedelta(minutes=c.duracion_minutos))
-        if momento_listo.tzinfo is None:
-            momento_listo = momento_listo.replace(tzinfo=ZONA_BOGOTA)
+        resultado = []
+        for c in citas:
+            momento_listo = c.fecha_listo or (c.fecha_hora + timedelta(minutes=c.duracion_minutos))
+            if momento_listo.tzinfo is None:
+                momento_listo = momento_listo.replace(tzinfo=ZONA_BOGOTA)
 
-        diff = ahora - momento_listo
-        minutos = max(0, int(diff.total_seconds() // 60))
+            diff = ahora - momento_listo
+            minutos = max(0, int(diff.total_seconds() // 60))
 
-        if minutos >= 90:
-            nivel = "critico"
-            etiqueta = f"Hace {minutos // 60}h {minutos % 60}m"
-        elif minutos >= 45:
-            nivel = "alerta"
-            etiqueta = f"Hace {minutos} min"
-        else:
-            nivel = "normal"
-            etiqueta = f"Hace {minutos} min" if minutos > 0 else "Hace instantes"
+            if minutos >= 90:
+                nivel = "critico"
+                etiqueta = f"Hace {minutos // 60}h {minutos % 60}m"
+            elif minutos >= 45:
+                nivel = "alerta"
+                etiqueta = f"Hace {minutos} min"
+            else:
+                nivel = "normal"
+                etiqueta = f"Hace {minutos} min" if minutos > 0 else "Hace instantes"
 
-        nombre_tutor = c.tutor.nombre_completo if c.tutor else "Estimado/a cliente"
-        nombre_mascota = c.mascota.nombre if c.mascota else "su mascota"
-        tel = c.tutor.whatsapp or c.tutor.telefono if c.tutor else ""
-        
-        msg_wa = (
-            f"¡Hola {nombre_tutor}! 👋🍉 Te saludamos desde *Sandía Medicina & Spa Veterinario*.\n\n"
-            f"Te recordamos con mucho cariño que *{nombre_mascota}* ya finalizó su servicio de *{c.servicio_spa.nombre if c.servicio_spa else 'Grooming'}* "
-            f"y se encuentra listo/a y esperándote en la sede para su recogida 🐾✨.\n\n"
-            f"¡Te esperamos!"
-        )
-        wa_url = enlace_whatsapp(tel, msg_wa) if tel else ""
+            nombre_tutor = c.tutor.nombre_completo if c.tutor else "Estimado/a cliente"
+            nombre_mascota = c.mascota.nombre if c.mascota else "su mascota"
+            tel = c.tutor.whatsapp or c.tutor.telefono if c.tutor else ""
+            
+            msg_wa = (
+                f"¡Hola {nombre_tutor}! 👋🍉 Te saludamos desde *Sandía Medicina & Spa Veterinario*.\n\n"
+                f"Te recordamos con mucho cariño que *{nombre_mascota}* ya finalizó su servicio de *{c.servicio_spa.nombre if c.servicio_spa else 'Grooming'}* "
+                f"y se encuentra listo/a y esperándote en la sede para su recogida 🐾✨.\n\n"
+                f"¡Te esperamos!"
+            )
+            wa_url = enlace_whatsapp(tel, msg_wa) if tel else ""
 
-        resultado.append({
-            "cita": c,
-            "minutos_espera": minutos,
-            "etiqueta_tiempo": etiqueta,
-            "nivel_alerta": nivel,
-            "momento_listo": momento_listo,
-            "wa_url": wa_url,
-            "pagado": bool(c.venta_id),
-        })
+            resultado.append({
+                "cita": c,
+                "minutos_espera": minutos,
+                "etiqueta_tiempo": etiqueta,
+                "nivel_alerta": nivel,
+                "momento_listo": momento_listo,
+                "wa_url": wa_url,
+                "pagado": bool(c.venta_id),
+            })
 
-    resultado.sort(key=lambda x: x["minutos_espera"], reverse=True)
-    return resultado
+        resultado.sort(key=lambda x: x["minutos_espera"], reverse=True)
+        return resultado
+    except Exception:
+        db.session.rollback()
+        return []
 
 
 @bp.route("/")

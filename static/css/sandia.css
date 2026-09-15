@@ -8,6 +8,11 @@
   --sandia-rojo: #E53935;
   --sandia-rojo-claro: #EF4444;
   --sandia-rojo-oscuro: #C62828;
+  --sandia-rosa-suave: #FFF1F2;
+  --sandia-rosa-claro: #FFE4E6;
+  --sandia-rosa-borde: #FECDD3;
+  --sandia-rosa: #FDA4AF;
+  --sandia-coral: #FB7185;
   --sandia-verde: #4CAF50;
   --sandia-verde-oscuro: #2E7D32;
   --sandia-crema: #FDF6EE;
@@ -185,16 +190,93 @@
   --bs-btn-active-border-color: #B9B2A8;
 }
 
-/* Tamaño de toque: todo botón y campo alcanza 44 px de alto. */
+/* Tamaño de toque: botones y campos con alineación perfecta e inmunes a estiramientos */
 .btn {
-  min-height: var(--alto-toque);
-  font-weight: 700;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  min-height: 38px;
+  font-weight: 600;
+  line-height: 1.2 !important;
   border-radius: var(--bs-border-radius);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none !important;
+  gap: 0.35rem;
+  flex-shrink: 0;
 }
-.btn-sm { min-height: 36px; font-weight: 600; }
-.btn-lg { min-height: 52px; font-size: 1.1rem; }
-.form-control, .form-select { min-height: var(--alto-toque); border-radius: var(--bs-border-radius); }
-.form-control-sm, .form-select-sm { min-height: 36px; }
+.btn-xs, a.btn-xs, button.btn-xs {
+  min-height: 26px !important;
+  height: 26px !important;
+  padding: 0 0.65rem !important;
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
+.btn-sm, a.btn-sm, button.btn-sm, input[type="submit"].btn-sm {
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 0 0.85rem !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
+.btn-lg, a.btn-lg, button.btn-lg {
+  min-height: 48px !important;
+  font-size: 1.05rem !important;
+  padding: 0.6rem 1.5rem !important;
+}
+
+/* Botones con estilo Rosa y Coral Sandía (Detalles de marca) */
+.btn-sandia-rosa {
+  background-color: #FFF1F2 !important;
+  color: #BE123C !important;
+  border: 1.5px solid #FECDD3 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(225, 29, 72, 0.08);
+}
+.btn-sandia-rosa:hover {
+  background-color: #FFE4E6 !important;
+  color: #9F1239 !important;
+  border-color: #FDA4AF !important;
+  transform: translateY(-1px);
+}
+.btn-sandia-coral {
+  background: linear-gradient(135deg, #E53935 0%, #FB7185 100%) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(229, 57, 53, 0.28) !important;
+}
+.btn-sandia-coral:hover {
+  background: linear-gradient(135deg, #D32F2F 0%, #F43F5E 100%) !important;
+  color: #FFFFFF !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(229, 57, 53, 0.35) !important;
+}
+
+/* Clases de apoyo con detalles rosados del logo de Sandía */
+.bg-sandia-rosa-suave { background-color: #FFF1F2 !important; }
+.bg-sandia-rosa-claro { background-color: #FFE4E6 !important; }
+.bg-sandia-rosa-gradiente { background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%) !important; }
+.bg-sandia-card-hero { background: linear-gradient(135deg, #FFFFFF 0%, #FFF5F6 50%, #FFF0F3 100%) !important; }
+.border-sandia-rosa { border-color: #FECDD3 !important; }
+.border-sandia-rosa-fuerte { border-color: #FDA4AF !important; }
+.text-sandia-rosa { color: #BE123C !important; }
+.badge-sandia-rosa {
+  background-color: #FFE4E6 !important;
+  color: #BE123C !important;
+  border: 1px solid #FECDD3 !important;
+  font-weight: 700 !important;
+}
+.card-header-sandia {
+  background: linear-gradient(135deg, #FFF1F2 0%, #FFF8F8 100%) !important;
+  border-bottom: 1.5px solid #FECDD3 !important;
+}
+
+.form-control, .form-select { min-height: 40px; border-radius: var(--bs-border-radius); }
+.form-control-sm, .form-select-sm { min-height: 32px; }
 .form-control:focus, .form-select:focus {
   border-color: var(--sandia-rojo-claro);
   box-shadow: 0 0 0 0.25rem rgba(229, 57, 53, 0.2);
@@ -670,6 +752,58 @@ body.pagina-login { background: var(--sandia-crema) radial-gradient(circle at 20
 .estado--info { background: var(--bs-info-bg-subtle); color: var(--bs-info-text-emphasis); }
 .estado--neutro { background: #EFEBE5; color: #4B5563; }
 
+
+/* --- Avatares de usuario con gradientes de color (6 paletas rotativas) ----- */
+.usuario-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 1rem; flex-shrink: 0;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.usuario-avatar--sm { width: 36px; height: 36px; font-size: 0.88rem; }
+.usuario-avatar--inactivo { background: #E8E4DE !important; color: #9CA3AF !important; filter: grayscale(1); box-shadow: none !important; }
+.usuario-avatar--0 { background: linear-gradient(135deg, #E53935, #FB7185); color: #fff; box-shadow: 0 2px 8px rgba(229,57,53,0.3); }
+.usuario-avatar--1 { background: linear-gradient(135deg, #26A69A, #4DB6AC); color: #fff; box-shadow: 0 2px 8px rgba(38,166,154,0.3); }
+.usuario-avatar--2 { background: linear-gradient(135deg, #7C3AED, #A78BFA); color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,0.3); }
+.usuario-avatar--3 { background: linear-gradient(135deg, #D97706, #FCD34D); color: #92400E; box-shadow: 0 2px 8px rgba(217,119,6,0.3); }
+.usuario-avatar--4 { background: linear-gradient(135deg, #0284C7, #38BDF8); color: #fff; box-shadow: 0 2px 8px rgba(2,132,199,0.3); }
+.usuario-avatar--5 { background: linear-gradient(135deg, #16A34A, #4ADE80); color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,0.3); }
+
+/* --- Badges de rol con color unico por tipo --------------------------------- */
+.rol-badge {
+  display: inline-flex; align-items: center;
+  font-size: 0.78rem; font-weight: 700;
+  padding: 0.28em 0.75em; border-radius: 999px;
+  white-space: nowrap; letter-spacing: 0.01em;
+}
+.rol-badge--admin { background: #FDECEB; color: #C62828; border: 1px solid #F5B4B2; }
+.rol-badge--veterinario   { background: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
+.rol-badge--groomer       { background: #E0F2F1; color: #00695C; border: 1px solid #80CBC4; }
+.rol-badge--cajero        { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+.rol-badge--recepcion     { background: #EDE9FE; color: #5B21B6; border: 1px solid #C4B5FD; }
+.rol-badge--inventario    { background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; }
+.rol-badge--auxiliar      { background: #FCE7F3; color: #9D174D; border: 1px solid #FBCFE8; }
+
+/* --- Tarjeta de usuario (mobile) ------------------------------------------- */
+.usuario-card {
+  background: var(--sandia-blanco);
+  border: 1.5px solid var(--sandia-gris-claro);
+  border-radius: var(--radio-card);
+  border-left: 4px solid var(--sandia-rojo);
+  padding: 1rem;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+.usuario-card:hover {
+  box-shadow: 0 6px 20px rgba(229, 57, 53, 0.1);
+  transform: translateY(-2px);
+}
+
+/* --- Tabla de usuarios (desktop) ------------------------------------------- */
+.usuarios-tabla tbody tr.usuario-fila { transition: background 0.15s ease; }
+.usuarios-tabla tbody tr.usuario-fila:hover .usuario-avatar { transform: scale(1.1); }
+.usuarios-tabla tbody tr.usuario-fila--inactivo { opacity: 0.65; }
+.usuarios-tabla tbody tr.usuario-fila--inactivo td:first-child { border-left: 3px solid #9CA3AF; }
+
 .texto-marca { font-family: var(--fuente-marca); }
 .fila-lista { background: var(--sandia-blanco); border: 1px solid var(--sandia-gris-claro); border-radius: var(--radio-card); padding: 0.9rem 1rem; }
 .acciones-fijas { position: sticky; bottom: calc(var(--alto-barra-inferior) + env(safe-area-inset-bottom)); background: var(--sandia-crema); padding: 0.75rem 0; z-index: 5; }
@@ -712,3 +846,1174 @@ body.pagina-login { background: var(--sandia-crema) radial-gradient(circle at 20
 }
 .linea-tiempo__contenido { flex: 1 1 auto; min-width: 0; padding-top: 0.45rem; }
 .cabecera-mascota .titulo-pagina { overflow-wrap: anywhere; }
+
+/* ==========================================================================
+   Rediseño Historias Clínicas (Directorio & Ficha Médica)
+   ========================================================================== */
+
+/* Hero Banner Historias */
+.hero-historias {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 1.25rem;
+  color: #ffffff;
+  padding: 1.75rem;
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.25);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+.hero-historias::before {
+  content: "";
+  position: absolute;
+  top: -30%;
+  right: -10%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(229, 57, 53, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-historias__kpis {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.hero-historias__kpi {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.85rem;
+  padding: 0.6rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.hero-historias__kpi-icono {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+.hero-historias__kpi-valor {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.hero-historias__kpi-label {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Barra de Filtro y Búsqueda Interactiva */
+.caja-busqueda-historias {
+  background: #ffffff;
+  border-radius: 1.15rem;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.filtro-especie-pills {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.filtro-especie-btn {
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  border-radius: 9999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.83rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.filtro-especie-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+.filtro-especie-btn.activo {
+  background: var(--sandia-rojo);
+  border-color: var(--sandia-rojo);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(229, 57, 53, 0.3);
+}
+
+/* Tarjeta de Paciente Rediseñada v2 */
+.tarjeta-paciente-v2 {
+  background: #ffffff;
+  border-radius: 1.15rem;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.tarjeta-paciente-v2:hover {
+  transform: translateY(-4px);
+  border-color: #fecdd3;
+  box-shadow: 0 12px 28px -4px rgba(225, 29, 72, 0.15);
+}
+.tarjeta-paciente-v2__header {
+  padding: 1.1rem 1.1rem 0.75rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  border-bottom: 1px dashed #e2e8f0;
+  position: relative;
+}
+.tarjeta-paciente-v2__header[data-especie="canino"] {
+  background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+}
+.tarjeta-paciente-v2__header[data-especie="felino"] {
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+}
+.tarjeta-paciente-v2__tutor-box {
+  background: #f8fafc;
+  border-radius: 0.75rem;
+  border: 1px solid #f1f5f9;
+  padding: 0.7rem 0.85rem;
+  margin: 0.75rem 1.1rem;
+}
+.tarjeta-paciente-v2__footer {
+  margin-top: auto;
+  padding: 0.85rem 1.1rem 1.1rem;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Botón de WhatsApp pequeño */
+.btn-whatsapp-sm {
+  background: #dcfce7;
+  color: #15803d !important;
+  border: 1px solid #bbf7d0;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.15s ease;
+}
+.btn-whatsapp-sm:hover {
+  background: #22c55e;
+  color: #ffffff !important;
+  border-color: #22c55e;
+  box-shadow: 0 3px 10px rgba(34, 197, 94, 0.3);
+}
+
+/* Ficha Médica Unificada - Hero & Timeline */
+.ficha-hero-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fdf6ee 100%);
+  border-radius: 1.25rem;
+  border: 1.5px solid #f7d6b5;
+  box-shadow: 0 6px 24px rgba(33, 33, 33, 0.05);
+  overflow: hidden;
+}
+.ficha-hero-header {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #ffffff;
+  padding: 1.5rem;
+}
+.ficha-acciones-bar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Timeline SOAP */
+.timeline-soap-item {
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: 1.5rem;
+}
+.timeline-soap-item::before {
+  content: "";
+  position: absolute;
+  left: 0.6rem;
+  top: 1.75rem;
+  bottom: -1.5rem;
+  width: 2px;
+  background: #e2e8f0;
+}
+.timeline-soap-item:last-child::before {
+  display: none;
+}
+.timeline-soap-badge {
+  position: absolute;
+  left: 0;
+  top: 0.2rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--sandia-rojo);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  box-shadow: 0 0 0 4px #ffffff;
+}
+
+/* Vitales Strip */
+.vitales-strip {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.6rem 0;
+}
+.vital-pill {
+  background: #f1f5f9;
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.vital-pill i {
+  color: var(--sandia-rojo);
+}
+
+.soap-seccion {
+  border-left: 3px solid #cbd5e1;
+  padding-left: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.soap-seccion--s { border-color: #3b82f6; }
+.soap-seccion--o { border-color: #10b981; }
+.soap-seccion--a { border-color: #f59e0b; }
+.soap-seccion--p { border-color: #ef4444; }
+
+/* ==========================================================================
+   AGENDA MÉDICA V2 - TARJETAS Y CRONOGRAMA
+   ========================================================================== */
+.tarjeta-cita-v2 {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  position: relative;
+  overflow: hidden;
+}
+.tarjeta-cita-v2::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 4.5px;
+  background: #cbd5e1;
+}
+.tarjeta-cita-v2[data-estado="programada"]::before { background: #3b82f6; }
+.tarjeta-cita-v2[data-estado="confirmada"]::before { background: #06b6d4; }
+.tarjeta-cita-v2[data-estado="en_atencion"]::before { background: #e53935; }
+.tarjeta-cita-v2[data-estado="cumplida"]::before { background: #10b981; }
+.tarjeta-cita-v2[data-estado="cancelada"]::before { background: #94a3b8; }
+.tarjeta-cita-v2[data-estado="no_asistio"]::before { background: #f59e0b; }
+
+.tarjeta-cita-v2:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(0,0,0,0.08);
+  border-color: #cbd5e1;
+}
+
+@keyframes pulsoAtencion {
+  0% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(229, 57, 53, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+}
+.badge-en-atencion {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #f87171;
+  animation: pulsoAtencion 2s infinite;
+  font-weight: 800;
+}
+
+.kpi-agenda-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 0.9rem;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+}
+
+/* --- Utilidades de Interacción y Tarjetas Sandía --- */
+.transition-all {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-shadow:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+  border-color: #FCD98B !important;
+}
+}
+.tarjeta-paciente-v2__header[data-especie="felino"] {
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+}
+.tarjeta-paciente-v2__tutor-box {
+  background: #f8fafc;
+  border-radius: 0.75rem;
+  border: 1px solid #f1f5f9;
+  padding: 0.7rem 0.85rem;
+  margin: 0.75rem 1.1rem;
+}
+.tarjeta-paciente-v2__footer {
+  margin-top: auto;
+  padding: 0.85rem 1.1rem 1.1rem;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Botón de WhatsApp pequeño */
+.btn-whatsapp-sm {
+  background: #dcfce7;
+  color: #15803d !important;
+  border: 1px solid #bbf7d0;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.15s ease;
+}
+.btn-whatsapp-sm:hover {
+  background: #22c55e;
+  color: #ffffff !important;
+  border-color: #22c55e;
+  box-shadow: 0 3px 10px rgba(34, 197, 94, 0.3);
+}
+
+/* Ficha Médica Unificada - Hero & Timeline */
+.ficha-hero-card {
+  background: linear-gradient(135deg, #ffffff 0%, #fdf6ee 100%);
+  border-radius: 1.25rem;
+  border: 1.5px solid #f7d6b5;
+  box-shadow: 0 6px 24px rgba(33, 33, 33, 0.05);
+  overflow: hidden;
+}
+.ficha-hero-header {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #ffffff;
+  padding: 1.5rem;
+}
+.ficha-acciones-bar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Timeline SOAP */
+.timeline-soap-item {
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: 1.5rem;
+}
+.timeline-soap-item::before {
+  content: "";
+  position: absolute;
+  left: 0.6rem;
+  top: 1.75rem;
+  bottom: -1.5rem;
+  width: 2px;
+  background: #e2e8f0;
+}
+.timeline-soap-item:last-child::before {
+  display: none;
+}
+.timeline-soap-badge {
+  position: absolute;
+  left: 0;
+  top: 0.2rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--sandia-rojo);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  box-shadow: 0 0 0 4px #ffffff;
+}
+
+/* Vitales Strip */
+.vitales-strip {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.6rem 0;
+}
+.vital-pill {
+  background: #f1f5f9;
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.vital-pill i {
+  color: var(--sandia-rojo);
+}
+
+.soap-seccion {
+  border-left: 3px solid #cbd5e1;
+  padding-left: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.soap-seccion--s { border-color: #3b82f6; }
+.soap-seccion--o { border-color: #10b981; }
+.soap-seccion--a { border-color: #f59e0b; }
+.soap-seccion--p { border-color: #ef4444; }
+
+/* ==========================================================================
+   AGENDA MÉDICA V2 - TARJETAS Y CRONOGRAMA
+   ========================================================================== */
+.tarjeta-cita-v2 {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  position: relative;
+  overflow: hidden;
+}
+.tarjeta-cita-v2::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 4.5px;
+  background: #cbd5e1;
+}
+.tarjeta-cita-v2[data-estado="programada"]::before { background: #3b82f6; }
+.tarjeta-cita-v2[data-estado="confirmada"]::before { background: #06b6d4; }
+.tarjeta-cita-v2[data-estado="en_atencion"]::before { background: #e53935; }
+.tarjeta-cita-v2[data-estado="cumplida"]::before { background: #10b981; }
+.tarjeta-cita-v2[data-estado="cancelada"]::before { background: #94a3b8; }
+.tarjeta-cita-v2[data-estado="no_asistio"]::before { background: #f59e0b; }
+
+.tarjeta-cita-v2:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(0,0,0,0.08);
+  border-color: #cbd5e1;
+}
+
+@keyframes pulsoAtencion {
+  0% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(229, 57, 53, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+}
+.badge-en-atencion {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #f87171;
+  animation: pulsoAtencion 2s infinite;
+  font-weight: 800;
+}
+
+.kpi-agenda-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 0.9rem;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+}
+
+/* --- Utilidades de Interacción y Tarjetas Sandía --- */
+.transition-all {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-shadow:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+  border-color: #FCD98B !important;
+}
+
+.hover-primary:hover {
+  color: var(--sandia-rojo) !important;
+}
+
+.shadow-xs {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* --- Fondos y Bordes Temáticos Sandía (Detalles Rosados y Crema) --- */
+.card-sandia-hero {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFF5F5 40%, #FDF6EE 100%) !important;
+  border: 1px solid var(--sandia-rosa-borde) !important;
+}
+
+.card-sandia-rosa {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFF8F8 100%) !important;
+  border: 1px solid var(--sandia-rosa-borde) !important;
+}
+
+.badge-sandia-rosa {
+  background-color: var(--sandia-rosa-suave) !important;
+  color: #BE123C !important;
+  border: 1px solid var(--sandia-rosa-borde) !important;
+}
+
+.btn-xs {
+  min-height: 28px !important;
+  height: 28px !important;
+  padding: 0.2rem 0.65rem !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+
+/* ==========================================================================
+   Config cards (pagina de Configuracion del sistema)
+   ========================================================================== */
+.config-card {
+  background: var(--sandia-blanco);
+  border: 1.5px solid var(--sandia-gris-claro);
+  border-radius: var(--radio-card);
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(33,33,33,0.04), 0 8px 24px rgba(33,33,33,0.04);
+  transition: box-shadow 0.2s ease;
+}
+.config-card:hover {
+  box-shadow: 0 4px 20px rgba(33,33,33,0.07), 0 12px 32px rgba(33,33,33,0.05);
+}
+.config-card__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.4rem;
+  border-bottom: 1.5px solid var(--sandia-gris-claro);
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFF8F8 100%);
+}
+.config-card__icono {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.config-card__titulo {
+  font-weight: 800; font-size: 1rem; line-height: 1.2;
+  color: var(--sandia-tinta);
+}
+.config-card__subtitulo {
+  font-size: 0.76rem; font-weight: 600;
+  color: var(--sandia-gris); margin-top: 1px;
+}
+.config-card__body {
+  padding: 1.25rem 1.4rem;
+}
+.config-campo {
+  padding-bottom: 0.1rem;
+}
+.config-campo + .config-campo {
+  padding-top: 0.1rem;
+  border-top: 1px dashed var(--sandia-gris-claro);
+  margin-top: 0.25rem;
+}
+.config-campo .form-label {
+  color: var(--sandia-tinta);
+  font-size: 0.88rem;
+}
+.config-campo .form-control,
+.config-campo .form-select {
+  background: var(--sandia-crema);
+  border-color: var(--sandia-gris-claro);
+  font-size: 0.92rem;
+}
+.config-campo .form-control:focus,
+.config-campo .form-select:focus {
+  background: #ffffff;
+}
+/* Switch dentro de config se ve limpio */
+.config-campo .form-switch {
+  padding-left: 0;
+  display: flex; align-items: center; gap: 0.75rem;
+  background: var(--sandia-crema);
+  border-radius: var(--bs-border-radius);
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--sandia-gris-claro);
+}
+.config-campo .form-switch .form-check-input {
+  margin: 0; flex-shrink: 0; order: -1;
+}
+.config-campo .form-switch .form-check-label {
+  font-weight: 700; font-size: 0.9rem; cursor: pointer;
+}
+.config-campo .form-switch .form-text {
+  margin-left: auto; font-size: 0.75rem;
+}
+
+/* Razas - Catalogo moderno */
+.raza-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  border: 1px solid var(--sandia-gris-claro) !important;
+}
+.raza-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(229, 57, 53, 0.3) !important;
+}
+.raza-avatar {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--sandia-crema);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--sandia-gris-claro);
+}
+.indicador-dot {
+  width: 7px; height: 7px; border-radius: 50%; display: inline-block;
+}
+.fs-7 { font-size: 0.76rem !important; }
+
+/* Seguridad & Cambiar Contraseña */
+.password-toggle-btn {
+  background: transparent;
+  border-left: none;
+  color: var(--sandia-gris);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.password-toggle-btn:hover {
+  color: var(--sandia-rojo);
+}
+.seguridad-tip-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.85rem;
+  color: var(--sandia-tinta);
+  margin-bottom: 0.6rem;
+}
+.seguridad-tip-item:last-child {
+  margin-bottom: 0;
+}
+.seguridad-tip-icono {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  margin-top: 1px;
+}
+.requisito-check {
+  font-size: 0.8rem;
+  transition: color 0.15s ease;
+}
+.requisito-check.cumplido {
+  color: var(--sandia-verde-oscuro) !important;
+  font-weight: 700;
+}
+.requisito-check.cumplido i {
+  color: var(--sandia-verde) !important;
+}
+
+/* --- Menú lateral moderno (offcanvas) -------------------------------- */
+.menu-lateral {
+  width: 320px !important;
+  max-width: 88vw !important;
+  background: #FFFFFF !important;
+  border-right: 1.5px solid var(--sandia-gris-claro) !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12) !important;
+}
+.menu-lateral .offcanvas-header {
+  padding: 1.1rem 1.3rem;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFF5F5 100%);
+  border-bottom: 1.5px solid #FECDD3 !important;
+}
+.menu-perfil-card {
+  background: linear-gradient(135deg, #FFF8F8 0%, #FDF2F2 100%);
+  border: 1px solid #FECDD3;
+  border-radius: 16px;
+  padding: 0.9rem 1rem;
+  margin: 0.8rem 0.9rem 0.5rem 0.9rem;
+}
+.menu-lateral__seccion-titulo {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9CA3AF;
+  padding: 0.75rem 1.1rem 0.25rem 1.1rem;
+  margin-top: 0.35rem;
+}
+.menu-lateral__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+}
+.menu-lateral__enlace {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  margin: 0.18rem 0;
+  border-radius: 12px;
+  color: var(--sandia-tinta);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.92rem;
+  transition: all 0.18s ease;
+  position: relative;
+}
+.menu-lateral__enlace:hover {
+  background: #FDF2F2;
+  color: var(--sandia-rojo);
+  transform: translateX(3px);
+}
+.menu-lateral__enlace.active {
+  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%) !important;
+  color: #BE123C !important;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(229, 57, 53, 0.15);
+}
+.menu-lateral__enlace.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 15%;
+  bottom: 15%;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--sandia-rojo);
+}
+.menu-lateral__icono {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.05rem;
+  transition: transform 0.18s ease;
+}
+.menu-lateral__enlace:hover .menu-lateral__icono {
+  transform: scale(1.1);
+}
+.menu-lateral__flecha {
+  font-size: 0.75rem;
+  color: #D1D5DB;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+.menu-lateral__enlace:hover .menu-lateral__flecha {
+  color: var(--sandia-rojo);
+  transform: translateX(2px);
+}
+.menu-lateral__enlace.active .menu-lateral__flecha {
+  color: #BE123C;
+}
+
+/* Iconos temáticos por módulo */
+.menu-lateral__icono--inicio { background: #FEE2E2; color: #DC2626; }
+.menu-lateral__icono--historias { background: #E0F2FE; color: #0284C7; }
+.menu-lateral__icono--mascotas { background: #FCE7F3; color: #DB2777; }
+.menu-lateral__icono--tutores { background: #E0E7FF; color: #4F46E5; }
+.menu-lateral__icono--agenda { background: #FEE2E2; color: #DC2626; }
+.menu-lateral__icono--spa { background: #E0F2F1; color: #00897B; }
+.menu-lateral__icono--pos { background: #FEF3C7; color: #D97706; }
+.menu-lateral__icono--caja { background: #DCFCE7; color: #16A34A; }
+.menu-lateral__icono--inventario { background: #EDE9FE; color: #7C3AED; }
+.menu-lateral__icono--reportes { background: #CCFBF1; color: #0D9488; }
+.menu-lateral__icono--gastos { background: #FFEDD5; color: #EA580C; }
+.menu-lateral__icono--cuentas_por_pagar { background: #F1F5F9; color: #475569; }
+.menu-lateral__icono--proveedores { background: #E0F2FE; color: #0284C7; }
+.menu-lateral__icono--usuarios { background: #F3E8FF; color: #9333EA; }
+.menu-lateral__icono--configuracion { background: #F4F4F5; color: #52525B; }
+.menu-lateral__icono--razas { background: #FFE4E6; color: #E11D48; }
+.menu-lateral__icono--mi_cuenta { background: #FEF3C7; color: #B45309; }
+
+/* --- Spa & Grooming: Galería Antes & Después e Historial Visual --- */
+.foto-spa-card {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--sandia-gris-claro);
+  background: var(--sandia-blanco);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.foto-spa-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.foto-spa-img-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #F8FAFC;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.foto-spa-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s ease;
+  cursor: pointer;
+}
+.foto-spa-img-wrapper:hover .foto-spa-img {
+  transform: scale(1.04);
+}
+.foto-spa-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  color: var(--sandia-gris);
+  text-align: center;
+  background: #FAFAFA;
+  width: 100%;
+  height: 100%;
+}
+.foto-badge-antes {
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  color: #92400E;
+  font-weight: 800;
+  border: 1px solid #FCD34D;
+}
+.foto-badge-despues {
+  background: linear-gradient(135deg, #DCFCE7 0%, #BBF7D0 100%);
+  color: #166534;
+  font-weight: 800;
+  border: 1px solid #86EFAC;
+}
+.historial-spa-item {
+  border: 1px solid var(--sandia-gris-claro);
+  border-radius: 14px;
+  padding: 0.9rem;
+  background: #FFFFFF;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.historial-spa-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  border-color: rgba(229, 57, 53, 0.25);
+}
+.historial-spa-mini {
+  width: 68px;
+  height: 68px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1.5px solid var(--sandia-gris-claro);
+  cursor: pointer;
+  transition: transform 0.18s ease;
+}
+.historial-spa-mini:hover {
+  transform: scale(1.06);
+}
+
+/* ==========================================================================
+   CONSULTA MÉDICA SOAP & EXAMEN POR SISTEMAS
+   ========================================================================== */
+.soap-section-card {
+  border: 1px solid var(--sandia-gris-claro);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  margin-bottom: 1.5rem;
+  transition: box-shadow 0.2s ease;
+}
+.soap-section-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+}
+.soap-section-header {
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--sandia-gris-claro);
+}
+.soap-badge-s {
+  background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+  color: #1E40AF;
+  border: 1px solid #BFDBFE;
+}
+.soap-badge-o {
+  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+.soap-badge-a {
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  color: #92400E;
+  border: 1px solid #FCD34D;
+}
+.soap-badge-p {
+  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+  color: #991B1B;
+  border: 1px solid #FCA5A5;
+}
+
+.vital-metric-card {
+  background: #F8FAFC;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 0.85rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+.vital-metric-card:focus-within {
+  background: #FFFFFF;
+  border-color: var(--sandia-primario);
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.15);
+}
+.vital-metric-label {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+.vital-metric-input {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0F172A;
+  background: transparent;
+  border: none;
+  width: 100%;
+  padding: 0;
+}
+.vital-metric-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+.vital-metric-unit {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #94A3B8;
+  position: absolute;
+  right: 0.85rem;
+  bottom: 0.85rem;
+}
+
+/* SISTEMAS DE EVALUACIÓN */
+.sistemas-progress-container {
+  background: #F1F5F9;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+  position: relative;
+}
+.sistemas-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #F59E0B 0%, #10B981 100%);
+  transition: width 0.35s ease;
+}
+
+.sistema-card-item {
+  border: 1.5px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 0.9rem;
+  background: #FFFFFF;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  user-select: none;
+}
+.sistema-card-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  border-color: #CBD5E1;
+}
+.sistema-card-item.is-active {
+  border-color: var(--sandia-primario) !important;
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.2) !important;
+  background: #FFFBFB;
+}
+.sistema-card-item.is-pending {
+  border-style: dashed;
+  border-color: #CBD5E1;
+  background: #FAFAFA;
+}
+.sistema-card-item.is-pending.shake-error {
+  border-color: #EF4444 !important;
+  background: #FEF2F2 !important;
+  animation: shakeAnimation 0.4s ease-in-out;
+}
+.sistema-card-item.is-normal {
+  border-color: #86EFAC;
+  background: #F0FDF4;
+}
+.sistema-card-item.is-anormal {
+  border-color: #FCA5A5;
+  background: #FEF2F2;
+}
+
+.sistema-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.sistema-inspector-panel {
+  background: #F8FAFC;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.chip-sugerencia {
+  font-size: 0.78rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 20px;
+  background: #E2E8F0;
+  color: #334155;
+  border: 1px solid #CBD5E1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.chip-sugerencia:hover {
+  background: #0284C7;
+  color: #FFFFFF;
+  border-color: #0284C7;
+  transform: translateY(-1px);
+}
+
+@keyframes shakeAnimation {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.prescription-paper {
+  background: #FFFFFF;
+  border: 2px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 1.25rem;
+  background-image: radial-gradient(#E2E8F0 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ==========================================================================
+   DESGLOSE EN VIVO / BUSCADOR UNIVERSAL AUTOCOMPLETE
+   ========================================================================== */
+.desglose-busqueda-flotante {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 1060;
+  background: #FFFFFF;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.14);
+  animation: desgloseSlideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes desgloseSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.desglose-header {
+  padding: 0.65rem 0.95rem;
+  background: #F8FAFC;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.desglose-list {
+  max-height: 380px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.desglose-item {
+  transition: background 0.15s ease, transform 0.1s ease;
+  cursor: pointer;
+}
+
+.desglose-item:hover {
+  background: #FFF1F2;
+}
+
+.desglose-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #F1F5F9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  border: 1px solid #E2E8F0;
+}
+
+.desglose-highlight {
+  background: #FEF08A;
+  color: #854D0E;
+  font-weight: 800;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+
+.desglose-footer {
+  padding: 0.5rem 0.95rem;
+  background: #F8FAFC;
+  border-top: 1px solid #E2E8F0;
+}

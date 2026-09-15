@@ -1,23 +1,141 @@
 {% extends "base.html" %}
-{% from "_macros.html" import campo, campo_textarea, campo_archivo, encabezado %}
-{% block titulo %}Nueva factura{% endblock %}
+{% block titulo %}Nueva Factura de Proveedor · Sandía{% endblock %}
+
 {% block contenido %}
-{{ encabezado("Nueva factura de proveedor", proveedor.nombre) }}
+{# 1. Cabecera Principal #}
+<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge badge-sandia-rosa rounded-pill px-3 py-1">
+        <i class="bi bi-receipt me-1"></i> Compras & Crédito Comercial
+      </span>
+    </div>
+    <h1 class="h3 fw-bold text-dark mb-1" style="font-family: var(--fuente-marca); color: #BE123C;">
+      Nueva Factura a Crédito
+    </h1>
+    <p class="text-secondary small mb-0">
+      Proveedor: <strong>{{ proveedor.nombre }}</strong> · NIT: {{ proveedor.nit or 'Sin NIT' }}
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('inventario.facturas_proveedor', proveedor_id=proveedor.id) }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 py-2 shadow-xs d-flex align-items-center gap-1.5">
+      <i class="bi bi-arrow-left"></i>
+      <span>Volver a Facturas</span>
+    </a>
+  </div>
+</div>
+
+{# 2. Formulario de Factura #}
 <form method="post" enctype="multipart/form-data" novalidate>
   {{ form.hidden_tag() }}
-  <div class="card"><div class="card-body">
-    {{ campo(form.numero_factura) }}
-    <div class="row g-2">
-      <div class="col-6">{{ campo(form.fecha_factura, type="date") }}</div>
-      <div class="col-6">{{ campo(form.fecha_vencimiento, type="date") }}</div>
+
+  <div class="row g-4 mb-4">
+    {# Bloque 1: Datos de la Factura #}
+    <div class="col-12 col-lg-7">
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="card-header card-header-sandia py-3 px-4 d-flex align-items-center gap-2">
+          <span class="fs-5">📄</span>
+          <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Información de la Factura de Compra</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label small fw-bold text-secondary mb-1">
+                <i class="bi bi-hash me-1 text-danger"></i>Número de Factura <span class="text-danger">*</span>
+              </label>
+              {{ form.numero_factura(class_="form-control form-control-lg bg-light rounded-3 font-monospace fw-bold", placeholder="Ej: FE-ZOE-9941 o 004523") }}
+              {% if form.numero_factura.errors %}
+                <div class="text-danger small mt-1">{{ form.numero_factura.errors[0] }}</div>
+              {% endif %}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1">
+                <i class="bi bi-calendar-check me-1 text-danger"></i>Fecha de Emisión <span class="text-danger">*</span>
+              </label>
+              {{ form.fecha_factura(class_="form-control bg-light rounded-3 py-2", type="date") }}
+              {% if form.fecha_factura.errors %}
+                <div class="text-danger small mt-1">{{ form.fecha_factura.errors[0] }}</div>
+              {% endif %}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1">
+                <i class="bi bi-calendar-x me-1 text-danger"></i>Fecha de Vencimiento
+              </label>
+              {{ form.fecha_vencimiento(class_="form-control bg-light rounded-3 py-2", type="date") }}
+              {% if form.fecha_vencimiento.errors %}
+                <div class="text-danger small mt-1">{{ form.fecha_vencimiento.errors[0] }}</div>
+              {% endif %}
+              <div class="form-text small text-muted">Fecha límite para pagar el crédito.</div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold text-secondary mb-1">
+                <i class="bi bi-chat-left-text me-1 text-danger"></i>Notas / Detalle de Insumos (Opcional)
+              </label>
+              {{ form.notas(class_="form-control bg-light rounded-3", rows="3", placeholder="Ej: Pedido de vacunas Vanguard, Apoquel 16mg y antibióticos...") }}
+              {% if form.notas.errors %}
+                <div class="text-danger small mt-1">{{ form.notas.errors[0] }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    {{ campo(form.monto_total, type="number", step="100") }}
-    {{ campo_textarea(form.notas, filas=2) }}
-    {{ campo_archivo(form.archivo, ayuda="PDF, JPG, PNG o WEBP.") }}
-  </div></div>
-  <div class="acciones-fijas"><div class="d-flex gap-2">
-    {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
-    <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('inventario.facturas_proveedor', proveedor_id=proveedor.id) }}">Cancelar</a>
-  </div></div>
+
+    {# Bloque 2: Importe Total y Adjunto #}
+    <div class="col-12 col-lg-5">
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="card-header card-header-sandia py-3 px-4 d-flex align-items-center gap-2">
+          <span class="fs-5">💵</span>
+          <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Importe Total & Archivo Digital</span>
+        </div>
+        <div class="card-body p-4">
+          {# Importe Total #}
+          <div class="mb-4">
+            <label class="form-label small fw-bold text-secondary mb-1">
+              <i class="bi bi-currency-dollar me-1 text-danger"></i>Monto Total de la Factura (COP) <span class="text-danger">*</span>
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-light fw-bold text-danger fs-5 px-3">$</span>
+              {{ form.monto_total(class_="form-control form-control-lg bg-light font-monospace fw-bold fs-4", placeholder="0", type="number", step="100", min="100") }}
+            </div>
+            {% if form.monto_total.errors %}
+              <div class="text-danger small mt-1">{{ form.monto_total.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          {# Archivo Adjunto #}
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-secondary mb-1">
+              <i class="bi bi-paperclip me-1 text-danger"></i>Factura Digital / Soporte PDF
+            </label>
+            <div class="p-3 rounded-4 bg-light border text-center" style="border: 1.5px dashed #FDA4AF !important;">
+              <i class="bi bi-file-earmark-pdf fs-2 text-danger d-block mb-1 opacity-75"></i>
+              <div class="small fw-semibold text-dark mb-1">Cargar documento o foto de factura</div>
+              <div class="text-muted small mb-2" style="font-size: 0.75rem;">Formatos: PDF, JPG, PNG o WEBP (máx. 5MB)</div>
+              {{ form.archivo(class_="form-control form-control-sm bg-white") }}
+            </div>
+            {% if form.archivo.errors %}
+              <div class="text-danger small mt-1">{{ form.archivo.errors[0] }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# 3. Botones de Acción #}
+  <div class="card border-0 shadow-sm rounded-4 bg-white p-3 p-md-4 mb-4" style="border: 1.5px solid #FECDD3 !important;">
+    <div class="d-flex flex-column flex-sm-row justify-content-end gap-2">
+      <a href="{{ url_for('inventario.facturas_proveedor', proveedor_id=proveedor.id) }}" class="btn btn-sandia-rosa rounded-pill px-4 py-2">
+        <i class="bi bi-x-circle me-1"></i>Cancelar
+      </a>
+      <button type="submit" class="btn btn-sandia-coral rounded-pill px-5 py-2 fw-bold shadow-sm">
+        <i class="bi bi-check-circle-fill me-1"></i>Registrar Factura
+      </button>
+    </div>
+  </div>
 </form>
 {% endblock %}

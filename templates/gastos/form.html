@@ -1,25 +1,142 @@
 {% extends "base.html" %}
-{% from "_macros.html" import campo, campo_select, campo_archivo, encabezado %}
-{% block titulo %}Nuevo gasto{% endblock %}
+{% from "_macros.html" import campo, campo_select, campo_archivo %}
+{% block titulo %}Registrar Nuevo Gasto · Sandía{% endblock %}
+
 {% block contenido %}
-{{ encabezado("Nuevo gasto") }}
+{# 1. Cabecera Principal #}
+<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge badge-sandia-rosa rounded-pill px-3 py-1">
+        <i class="bi bi-wallet2 me-1"></i> Contabilidad & Egresos
+      </span>
+    </div>
+    <h1 class="h3 fw-bold text-dark mb-1" style="font-family: var(--fuente-marca); color: #BE123C;">
+      Registrar Nuevo Gasto
+    </h1>
+    <p class="text-secondary small mb-0">
+      Ingresa los detalles del desembolso, clasificación presupuestal y soporte digital
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('gastos.lista') }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 py-2 shadow-xs d-flex align-items-center gap-1.5">
+      <i class="bi bi-arrow-left"></i>
+      <span>Volver a Gastos</span>
+    </a>
+  </div>
+</div>
+
+{# 2. Formulario de Registro #}
 <form method="post" enctype="multipart/form-data" novalidate>
   {{ form.hidden_tag() }}
-  <div class="card"><div class="card-body">
-    <div class="row g-2">
-      <div class="col-6">{{ campo_select(form.tipo_gasto) }}</div>
-      <div class="col-6">{{ campo_select(form.categoria) }}</div>
+
+  <div class="row g-4 mb-4">
+    {# Columna 1: Clasificación y Concepto #}
+    <div class="col-12 col-lg-7">
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="card-header card-header-sandia py-3 px-4 d-flex align-items-center gap-2">
+          <span class="fs-5">📝</span>
+          <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Clasificación & Concepto del Gasto</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1">
+                <i class="bi bi-tag-fill me-1 text-danger"></i>Tipo de Gasto <span class="text-danger">*</span>
+              </label>
+              {{ form.tipo_gasto(class_="form-select bg-light rounded-3 py-2") }}
+              {% if form.tipo_gasto.errors %}
+                <div class="text-danger small mt-1">{{ form.tipo_gasto.errors[0] }}</div>
+              {% endif %}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1">
+                <i class="bi bi-grid-fill me-1 text-danger"></i>Categoría Contable <span class="text-danger">*</span>
+              </label>
+              {{ form.categoria(class_="form-select bg-light rounded-3 py-2") }}
+              {% if form.categoria.errors %}
+                <div class="text-danger small mt-1">{{ form.categoria.errors[0] }}</div>
+              {% endif %}
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold text-secondary mb-1">
+                <i class="bi bi-card-text me-1 text-danger"></i>Descripción / Justificación <span class="text-danger">*</span>
+              </label>
+              {{ form.descripcion(class_="form-control bg-light rounded-3 py-2", placeholder="Ej: Compra de gasas, jeringas 3ml, catéteres y alcohol antiséptico") }}
+              {% if form.descripcion.errors %}
+                <div class="text-danger small mt-1">{{ form.descripcion.errors[0] }}</div>
+              {% endif %}
+              <div class="form-text small text-muted">Indica claramente el motivo del gasto o a qué área de la clínica corresponde.</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1">
+                <i class="bi bi-calendar-event me-1 text-danger"></i>Fecha del Gasto <span class="text-danger">*</span>
+              </label>
+              {{ form.fecha_gasto(class_="form-control bg-light rounded-3 py-2", type="date") }}
+              {% if form.fecha_gasto.errors %}
+                <div class="text-danger small mt-1">{{ form.fecha_gasto.errors[0] }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    {{ campo(form.descripcion) }}
-    <div class="row g-2">
-      <div class="col-6">{{ campo(form.monto, type="number", step="100") }}</div>
-      <div class="col-6">{{ campo(form.fecha_gasto, type="date") }}</div>
+
+    {# Columna 2: Monto y Comprobante #}
+    <div class="col-12 col-lg-5">
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="card-header card-header-sandia py-3 px-4 d-flex align-items-center gap-2">
+          <span class="fs-5">💵</span>
+          <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Importe & Soporte Digital</span>
+        </div>
+        <div class="card-body p-4">
+          {# Campo Monto #}
+          <div class="mb-4">
+            <label class="form-label small fw-bold text-secondary mb-1">
+              <i class="bi bi-currency-dollar me-1 text-danger"></i>Monto del Gasto (COP) <span class="text-danger">*</span>
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-light fw-bold text-danger fs-5 px-3">$</span>
+              {{ form.monto(class_="form-control form-control-lg bg-light font-monospace fw-bold fs-4", placeholder="0", type="number", step="100", min="100") }}
+            </div>
+            {% if form.monto.errors %}
+              <div class="text-danger small mt-1">{{ form.monto.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          {# Campo Comprobante #}
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-secondary mb-1">
+              <i class="bi bi-paperclip me-1 text-danger"></i>Comprobante / Factura Digital (Opcional)
+            </label>
+            <div class="p-3 rounded-4 bg-light border text-center" style="border: 1.5px dashed #FDA4AF !important;">
+              <i class="bi bi-cloud-arrow-up fs-2 text-danger d-block mb-1 opacity-75"></i>
+              <div class="small fw-semibold text-dark mb-1">Cargar recibo o soporte de pago</div>
+              <div class="text-muted small mb-2" style="font-size: 0.75rem;">Formatos aceptados: PDF, JPG, PNG o WEBP (máx. 5MB)</div>
+              {{ form.comprobante(class_="form-control form-control-sm bg-white") }}
+            </div>
+            {% if form.comprobante.errors %}
+              <div class="text-danger small mt-1">{{ form.comprobante.errors[0] }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
     </div>
-    {{ campo_archivo(form.comprobante, ayuda="PDF, JPG, PNG o WEBP (opcional).") }}
-  </div></div>
-  <div class="acciones-fijas"><div class="d-flex gap-2">
-    {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
-    <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('gastos.lista') }}">Cancelar</a>
-  </div></div>
+  </div>
+
+  {# 3. Barra de Acciones #}
+  <div class="card border-0 shadow-sm rounded-4 bg-white p-3 p-md-4 mb-4" style="border: 1.5px solid #FECDD3 !important;">
+    <div class="d-flex flex-column flex-sm-row justify-content-end gap-2">
+      <a href="{{ url_for('gastos.lista') }}" class="btn btn-sandia-rosa rounded-pill px-4 py-2">
+        <i class="bi bi-x-circle me-1"></i>Cancelar
+      </a>
+      <button type="submit" class="btn btn-sandia-coral rounded-pill px-5 py-2 fw-bold shadow-sm">
+        <i class="bi bi-check-circle-fill me-1"></i>Registrar Gasto
+      </button>
+    </div>
+  </div>
 </form>
 {% endblock %}

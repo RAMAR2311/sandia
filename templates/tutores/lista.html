@@ -1,68 +1,192 @@
 {% extends "base.html" %}
-{% from "_macros.html" import encabezado, paginacion, avatar_mascota %}
-{% block titulo %}Tutores{% endblock %}
+{% from "_macros.html" import paginacion, avatar_mascota, boton_whatsapp %}
+{% block titulo %}Tutores · Sandia - Medicina & Spa Veterinario{% endblock %}
 
 {% block contenido %}
-{% call encabezado("Tutores", "Directorio de dueños de mascotas") %}
+{# Cabecera Principal #}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2">
+      <span class="fs-4">👥</span>
+      <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca);">Directorio de Tutores</h1>
+    </div>
+    <p class="text-secondary small mb-0 mt-1">Gestión de propietarios, datos de contacto, historial de compras y mascotas asociadas</p>
+  </div>
   {% if current_user.rol in ('admin', 'recepcion', 'auxiliar', 'veterinario') %}
-  <a class="btn btn-primary" href="{{ url_for('tutores.nuevo') }}"><i class="bi bi-person-plus-fill me-1"></i>Nuevo tutor</a>
+  <div>
+    <a class="btn btn-primary rounded-pill px-4 shadow-sm fw-semibold" href="{{ url_for('tutores.nuevo') }}">
+      <i class="bi bi-person-plus-fill me-2"></i>Nuevo Tutor
+    </a>
+  </div>
   {% endif %}
-{% endcall %}
+</div>
 
-<form method="get" class="card mb-3" role="search">
-  <div class="card-body py-3">
-    <div class="row g-2 align-items-end">
+{# Tarjeta de Búsqueda y Filtros #}
+<div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+  <div class="card-body p-3 p-md-4">
+    <form method="get" class="row g-3 align-items-end" role="search">
       <div class="col-12 col-md-7">
-        <label class="form-label mb-1" for="q">Buscar</label>
-        <input class="form-control" type="search" id="q" name="q" value="{{ filtro_texto }}" placeholder="Nombre, teléfono o documento" autofocus>
+        <label class="form-label small fw-semibold text-secondary mb-1" for="q">
+          <i class="bi bi-search me-1 text-primary"></i>Buscar por Nombre, Teléfono o Documento
+        </label>
+        <div class="input-group">
+          <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+          <input class="form-control border-start-0 ps-0 bg-light" type="search" id="q" name="q" value="{{ filtro_texto }}" placeholder="Ej: Andrés, 310555..., 1098..." autofocus>
+        </div>
       </div>
       <div class="col-7 col-md-3">
-        <label class="form-label mb-1" for="estado">Estado</label>
-        <select class="form-select" id="estado" name="estado">
+        <label class="form-label small fw-semibold text-secondary mb-1" for="estado">
+          <i class="bi bi-toggle2-on me-1 text-primary"></i>Estado
+        </label>
+        <select class="form-select bg-light" id="estado" name="estado">
           <option value="activos" {% if filtro_estado == 'activos' %}selected{% endif %}>Activos</option>
           <option value="inactivos" {% if filtro_estado == 'inactivos' %}selected{% endif %}>Inactivos</option>
-          <option value="todos" {% if filtro_estado == 'todos' %}selected{% endif %}>Todos</option>
+          <option value="todos" {% if filtro_estado == 'todos' %}selected{% endif %}>Todos los tutores</option>
         </select>
       </div>
       <div class="col-5 col-md-2 d-grid">
-        <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search me-1"></i>Buscar</button>
+        <button class="btn btn-outline-danger rounded-pill fw-semibold shadow-xs" type="submit">
+          <i class="bi bi-filter me-1"></i>Filtrar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Resultados de Tutores #}
+{% if not pagina.items %}
+<div class="card border-0 shadow-sm rounded-4 bg-white">
+  <div class="card-body text-center text-secondary py-5">
+    <div class="display-4 mb-3">👥</div>
+    <h5 class="fw-bold text-dark" style="font-family: var(--fuente-marca);">No se encontraron tutores</h5>
+    <p class="text-muted small mb-3">
+      {% if filtro_texto %}
+      No hay ningún tutor que coincida con "<strong>{{ filtro_texto }}</strong>".
+      {% else %}
+      Todavía no hay tutores registrados en el sistema.
+      {% endif %}
+    </p>
+    {% if filtro_texto or filtro_estado != 'activos' %}
+    <a href="{{ url_for('tutores.lista') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+      <i class="bi bi-x-circle me-1"></i>Limpiar Filtros
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="d-flex align-items-center justify-content-between mb-3 px-1">
+  <span class="small text-muted fw-semibold">
+    Mostrando <strong>{{ pagina.items|length }}</strong> de <strong>{{ pagina.total }}</strong> tutores registrados
+  </span>
+  <span class="small text-muted">
+    Página {{ pagina.page }} de {{ pagina.pages }}
+  </span>
+</div>
+
+<div class="row g-3">
+  {% for tutor in pagina.items %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white hover-shadow transition-all overflow-hidden position-relative">
+      <div class="p-3 p-xl-4">
+        {# Cabecera de la tarjeta: Avatar e Información del Tutor #}
+        <div class="d-flex align-items-start gap-3">
+          <a href="{{ url_for('tutores.detalle', tutor_id=tutor.id) }}" class="text-decoration-none">
+            <div class="rounded-circle {% if tutor.activo %}bg-danger-subtle text-danger{% else %}bg-secondary-subtle text-secondary{% endif %} fw-bold d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+                 style="width: 54px; height: 54px; font-size: 1.3rem;">
+              {{ tutor.nombre_completo[:1]|upper }}
+            </div>
+          </a>
+
+          <div class="flex-grow-1 min-w-0">
+            <div class="d-flex align-items-center justify-content-between gap-1 mb-1">
+              <a href="{{ url_for('tutores.detalle', tutor_id=tutor.id) }}" class="text-decoration-none text-dark">
+                <h2 class="h6 fw-bold text-dark text-truncate mb-0 hover-primary" style="font-family: var(--fuente-marca); font-size: 1.05rem;">
+                  {{ tutor.nombre_completo }}
+                </h2>
+              </a>
+              {% if not tutor.activo %}
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 small">Inactivo</span>
+              {% else %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 small">Activo</span>
+              {% endif %}
+            </div>
+
+            {# Datos de contacto #}
+            <div class="small text-secondary mb-1">
+              {% if tutor.telefono %}
+                <a href="tel:{{ tutor.telefono }}" class="text-decoration-none text-secondary me-2">
+                  <i class="bi bi-telephone text-success me-1"></i>{{ tutor.telefono }}
+                </a>
+              {% endif %}
+              {% if tutor.documento_texto %}
+                <span class="text-muted"><i class="bi bi-card-text text-primary me-1"></i>{{ tutor.documento_texto }}</span>
+              {% endif %}
+            </div>
+
+            {# Mascotas asociadas #}
+            <div class="mt-2 pt-2 border-top">
+              <div class="small text-muted mb-1" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">
+                Mascotas ({{ tutor.mascotas|length }})
+              </div>
+              <div class="d-flex flex-wrap gap-1 align-items-center">
+                {% if tutor.mascotas_activas %}
+                  {% for mascota in tutor.mascotas_activas[:3] %}
+                    <a href="{{ url_for('mascotas.detalle', mascota_id=mascota.id) }}" 
+                       class="badge bg-light text-dark border text-decoration-none rounded-pill px-2 py-1 small hover-shadow d-inline-flex align-items-center gap-1">
+                      <span>{{ mascota.especie_emoji }}</span>
+                      <span class="text-truncate" style="max-width: 90px;">{{ mascota.nombre }}</span>
+                    </a>
+                  {% endfor %}
+                  {% if tutor.mascotas_activas|length > 3 %}
+                    <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-1 small">
+                      +{{ tutor.mascotas_activas|length - 3 }} más
+                    </span>
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted small fst-italic">Sin mascotas activas</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# Barra inferior de acciones rápidas unificada #}
+        <div class="d-flex align-items-center justify-content-between pt-3 mt-3 border-top gap-2 flex-wrap">
+          <div class="d-flex align-items-center gap-1">
+            {% if tutor.telefono %}
+              <a class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1 text-dark d-inline-flex align-items-center gap-1 shadow-xs" 
+                 href="tel:{{ tutor.telefono }}" title="Llamar a {{ tutor.nombre_completo }}" style="font-size: 0.8rem; height: 32px;">
+                <i class="bi bi-telephone text-success"></i>
+                <span class="fw-semibold">Llamar</span>
+              </a>
+            {% endif %}
+
+            {% set enlace_wa = tutor.enlace_whatsapp("Hola " ~ tutor.nombre_completo.split(' ')[0] ~ ", te escribimos de Sandía Medicina & Spa Veterinario.") %}
+            {% if enlace_wa %}
+              <a class="btn btn-sm btn-outline-success rounded-pill px-2 py-1 d-inline-flex align-items-center gap-1 shadow-xs" 
+                 href="{{ enlace_wa }}" target="_blank" rel="noopener" title="Enviar WhatsApp" style="font-size: 0.8rem; height: 32px;">
+                <i class="bi bi-whatsapp"></i>
+                <span class="fw-semibold">WhatsApp</span>
+              </a>
+            {% endif %}
+          </div>
+
+          <a href="{{ url_for('tutores.detalle', tutor_id=tutor.id) }}" 
+             class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-semibold text-white shadow-xs d-inline-flex align-items-center gap-1"
+             style="font-size: 0.8rem; height: 32px;">
+            <span>Ver Ficha</span>
+            <i class="bi bi-chevron-right" style="font-size: 0.75rem;"></i>
+          </a>
+        </div>
       </div>
     </div>
   </div>
-</form>
-
-{% if not pagina.items %}
-<div class="card"><div class="card-body text-center text-secondary py-5">
-  <i class="bi bi-person-vcard fs-1 d-block mb-2"></i>
-  {% if filtro_texto %}Ningún tutor coincide con "{{ filtro_texto }}".{% else %}Todavía no hay tutores registrados.{% endif %}
-</div></div>
-{% else %}
-<div class="row g-2 g-md-3">
-  {% for tutor in pagina.items %}
-  <div class="col-12 col-md-6 col-xl-4">
-    <a class="fila-lista d-block text-decoration-none text-body h-100" href="{{ url_for('tutores.detalle', tutor_id=tutor.id) }}">
-      <div class="d-flex align-items-start gap-3">
-        <span class="avatar-usuario flex-shrink-0" style="{% if not tutor.activo %}background:#9CA3AF{% endif %}">{{ tutor.nombre_completo[:1]|upper }}</span>
-        <div class="flex-grow-1 min-w-0">
-          <div class="fw-bold text-truncate">{{ tutor.nombre_completo }}</div>
-          <div class="small text-secondary">
-            {% if tutor.telefono %}<i class="bi bi-telephone me-1"></i>{{ tutor.telefono }}{% endif %}
-            {% if tutor.documento_texto %}<span class="ms-2"><i class="bi bi-card-text me-1"></i>{{ tutor.documento_texto }}</span>{% endif %}
-          </div>
-          <div class="mt-2 d-flex flex-wrap align-items-center gap-1">
-            {% for mascota in tutor.mascotas_activas[:4] %}
-              <span class="estado estado--neutro">{{ mascota.especie_emoji }} {{ mascota.nombre }}</span>
-            {% endfor %}
-            {% if tutor.mascotas_activas|length > 4 %}<span class="small text-secondary">+{{ tutor.mascotas_activas|length - 4 }}</span>{% endif %}
-            {% if not tutor.activo %}<span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>{% endif %}
-          </div>
-        </div>
-        <i class="bi bi-chevron-right text-secondary align-self-center"></i>
-      </div>
-    </a>
-  </div>
   {% endfor %}
 </div>
-{{ paginacion(pagina) }}
+
+{# Paginación #}
+<div class="mt-4">
+  {{ paginacion(pagina) }}
+</div>
 {% endif %}
 {% endblock %}

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Informe Clínico #{{ "%04d"|format(consulta.id) }} - {{ consulta.mascota.nombre }} | Sandía VetCare</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root {
+      --sandia-primario: #E53935;
+      --sandia-oscuro: #1E293B;
+      --sandia-gris-bg: #F8FAFC;
+      --sandia-borde: #E2E8F0;
+    }
+    body {
+      background-color: #F1F5F9;
+      color: #334155;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      padding-bottom: 3rem;
+    }
+    .documento-hoja {
+      max-width: 860px;
+      margin: 1.5rem auto;
+      background: #FFFFFF;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      border: 1px solid var(--sandia-borde);
+      overflow: hidden;
+    }
+    .documento-toolbar {
+      max-width: 860px;
+      margin: 1.5rem auto 0;
+    }
+    .header-clinica {
+      padding: 1.5rem 2rem;
+      border-bottom: 2px solid var(--sandia-primario);
+      background: #FFFFFF;
+    }
+    .cuerpo-documento {
+      padding: 2rem;
+    }
+    .bloque-seccion {
+      border: 1px solid var(--sandia-borde);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+      background: #FFFFFF;
+    }
+    .bloque-seccion-header {
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .rx-box {
+      background: #FFF1F2;
+      border: 1.5px solid var(--sandia-primario);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    @media print {
+      body {
+        background: #FFFFFF;
+        padding: 0;
+      }
+      .documento-toolbar, .no-print {
+        display: none !important;
+      }
+      .documento-hoja {
+        box-shadow: none;
+        border: none;
+        margin: 0;
+        max-width: 100%;
+        border-radius: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de Herramientas Superior -->
+  <div class="documento-toolbar d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 no-print">
+    <div class="d-flex align-items-center gap-2">
+      <span class="fs-4">🍉</span>
+      <div>
+        <h6 class="fw-bold mb-0 text-dark">Sandía · Medicina & Spa Veterinario</h6>
+        <small class="text-muted">Documento Clínico Oficial</small>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('historias.consulta_pdf', id=consulta.id) }}" class="btn btn-danger rounded-pill fw-bold shadow-sm px-3">
+        <i class="bi bi-file-earmark-pdf-fill me-1"></i>Descargar PDF
+      </a>
+      {% if consulta.receta_medica %}
+      <a href="{{ url_for('historias.receta_pdf', id=consulta.id) }}" class="btn btn-outline-danger rounded-pill fw-bold px-3">
+        <i class="bi bi-prescription2 me-1"></i>Fórmula (Rx) PDF
+      </a>
+      {% endif %}
+      <button type="button" onclick="window.print()" class="btn btn-light rounded-pill border px-3">
+        <i class="bi bi-printer me-1"></i>Imprimir
+      </button>
+    </div>
+  </div>
+
+  <!-- Hoja Oficial del Documento -->
+  <div class="documento-hoja">
+    <!-- Encabezado con Identidad de Marca -->
+    <div class="header-clinica d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="bg-danger-subtle text-danger rounded-circle d-flex align-items-center justify-content-center shadow-xs" style="width: 52px; height: 52px; font-size: 1.7rem;">
+          🍉
+        </div>
+        <div>
+          <h4 class="fw-bold mb-0 text-dark" style="color: #E53935 !important; letter-spacing: -0.5px;">SANDÍA VETCARE</h4>
+          <div class="small fw-semibold text-secondary">Medicina & Spa Veterinario</div>
+          <div class="small text-muted" style="font-size: 0.75rem;">
+            NIT: 901.554.892-1 · Tel / WhatsApp: +57 312 456 7890<br>
+            Cra. 15 # 104-32, Usaquén · Bogotá D.C.
+          </div>
+        </div>
+      </div>
+      <div class="text-md-end">
+        <span class="badge bg-danger rounded-pill px-3 py-1.5 fs-6 mb-1">INFORME CLÍNICO OFICIAL</span>
+        <div class="fw-bold text-dark font-monospace fs-5">CONSULTA #{{ "%04d"|format(consulta.id) }}</div>
+        <div class="small text-muted"><i class="bi bi-calendar3 me-1"></i>{{ consulta.fecha_hora|fecha_hora }}</div>
+      </div>
+    </div>
+
+    <div class="cuerpo-documento">
+      <!-- Datos del Paciente y Tutor -->
+      <div class="p-3 bg-light rounded-3 border mb-4">
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="small text-muted">PACIENTE</div>
+            <div class="fw-bold text-dark fs-6">{{ consulta.mascota.nombre }}</div>
+            <div class="small text-secondary">{{ consulta.mascota.especie|capitalize }} · {{ consulta.mascota.raza.nombre if consulta.mascota.raza else 'Mestizo' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="small text-muted">TUTOR RESPONSABLE</div>
+            <div class="fw-bold text-dark fs-6">{{ consulta.mascota.tutor.nombre_completo if consulta.mascota.tutor else 'N/A' }}</div>
+            <div class="small text-secondary">Tel: {{ consulta.mascota.tutor.telefono if consulta.mascota.tutor else 'N/A' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="small text-muted">EDAD & SEXO</div>
+            <div class="fw-bold text-dark">{{ consulta.mascota.edad_formateada if consulta.mascota.edad_formateada else 'N/R' }}</div>
+            <div class="small text-secondary text-capitalize">{{ consulta.mascota.sexo or 'N/R' }}</div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="small text-muted">MÉDICO VETERINARIO</div>
+            <div class="fw-bold text-dark">Dr/a. {{ consulta.veterinario.nombre if consulta.veterinario else 'Veterinario' }}</div>
+            <div class="small text-success fw-semibold"><i class="bi bi-patch-check-fill me-1"></i>Profesional Certificado</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- S: Motivo & Anamnesis -->
+      <div class="bloque-seccion border-primary-subtle bg-primary-subtle bg-opacity-10">
+        <div class="bloque-seccion-header text-primary">
+          <i class="bi bi-chat-left-text-fill"></i>Motivo de Consulta & Anamnesis (S)
+        </div>
+        <div class="mb-2">
+          <strong>Motivo:</strong> {{ consulta.motivo_consulta }}
+        </div>
+        {% if consulta.anamnesis %}
+        <div class="small text-secondary">
+          <strong>Historia Previa:</strong> {{ consulta.anamnesis }}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- O: Constantes Vitales & Examen por Sistemas -->
+      <div class="bloque-seccion">
+        <div class="bloque-seccion-header text-dark">
+          <i class="bi bi-activity text-danger"></i>Constantes Vitales & Examen Físico (O)
+        </div>
+        <!-- Vitals Grid -->
+        <div class="row g-2 text-center my-2">
+          <div class="col-4 col-md-2 p-2 bg-light rounded border">
+            <div class="small text-muted">Peso</div>
+            <div class="fw-bold text-dark">{{ consulta.peso_kg or '—' }} kg</div>
+          </div>
+          <div class="col-4 col-md-2 p-2 bg-light rounded border">
+            <div class="small text-muted">Temp</div>
+            <div class="fw-bold text-dark">{{ consulta.temperatura_c or '—' }} °C</div>
+          </div>
+          <div class="col-4 col-md-2 p-2 bg-light rounded border">
+            <div class="small text-muted">FC</div>
+            <div class="fw-bold text-dark">{{ consulta.frecuencia_cardiaca or '—' }} lpm</div>
+          </div>
+          <div class="col-4 col-md-2 p-2 bg-light rounded border">
+            <div class="small text-muted">FR</div>
+            <div class="fw-bold text-dark">{{ consulta.frecuencia_respiratoria or '—' }} rpm</div>
+          </div>
+          <div class="col-4 col-md-2 p-2 bg-light rounded border">
+            <div class="small text-muted">Mucosas</div>
+            <div class="fw-bold text-dark text-capitalize">{{ consulta.mucosas or '—' }}</div>
+          </div>
+          <div class="col-4 col-md-2 p-2 bg-light rounded border">
+            <div class="small text-muted">Cond. Corp.</div>
+            <div class="fw-bold text-dark">{{ consulta.condicion_corporal or '—' }}</div>
+          </div>
+        </div>
+
+        <!-- 9 Sistemas -->
+        {% set sistemas = consulta.sistemas_evaluados %}
+        {% if sistemas %}
+        <div class="mt-3">
+          <div class="small fw-bold text-secondary mb-2">Evaluación Clínica de los 9 Sistemas:</div>
+          <div class="row g-2">
+            {% for skey, sdata in sistemas.items() %}
+            <div class="col-12 col-md-6">
+              <div class="p-2 rounded border small {% if sdata.estado == 'anormal' %}bg-danger-subtle border-danger-subtle{% else %}bg-light{% endif %}">
+                <div class="d-flex justify-content-between align-items-center">
+                  <strong>{{ sdata.nombre or skey }}</strong>
+                  {% if sdata.estado == 'anormal' %}
+                  <span class="badge bg-danger rounded-pill">ANORMAL</span>
+                  {% else %}
+                  <span class="badge bg-success rounded-pill">NORMAL</span>
+                  {% endif %}
+                </div>
+                {% if sdata.observacion %}
+                <div class="text-secondary mt-1" style="font-size: 0.78rem;">{{ sdata.observacion }}</div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% elif consulta.examen_sistemas %}
+        <div class="small text-secondary mt-2">{{ consulta.examen_sistemas }}</div>
+        {% endif %}
+      </div>
+
+      <!-- A: Diagnóstico -->
+      <div class="bloque-seccion border-warning-subtle bg-warning-subtle bg-opacity-25">
+        <div class="bloque-seccion-header text-warning-emphasis">
+          <i class="bi bi-check-circle-fill"></i>Diagnóstico Clínico (A)
+        </div>
+        <div class="fs-6 fw-bold text-dark">{{ consulta.diagnostico }}</div>
+      </div>
+
+      <!-- P: Plan de Tratamiento -->
+      <div class="bloque-seccion">
+        <div class="bloque-seccion-header text-dark">
+          <i class="bi bi-clipboard2-check-fill text-success"></i>Plan Terapéutico & Procedimientos (P)
+        </div>
+        <p class="mb-0 text-dark" style="white-space: pre-wrap;">{{ consulta.plan_tratamiento }}</p>
+      </div>
+
+      <!-- Receta Médica Rx -->
+      {% if consulta.receta_medica %}
+      <div class="rx-box shadow-xs">
+        <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom border-danger-subtle">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-3 fw-bold text-danger font-monospace">Rx</span>
+            <span class="fw-bold text-dark fs-6">FÓRMULA MÉDICA & PRESCRIPCIÓN</span>
+          </div>
+          <span class="badge bg-danger rounded-pill">Uso Veterinario</span>
+        </div>
+        <pre class="bg-white p-3 rounded-3 border border-danger-subtle font-monospace text-dark mb-0" style="white-space: pre-wrap; font-size: 0.92rem;">{{ consulta.receta_medica }}</pre>
+      </div>
+      {% endif %}
+
+      {% if consulta.observaciones %}
+      <div class="small text-muted mb-4">
+        <strong>Observaciones / Control:</strong> {{ consulta.observaciones }}
+      </div>
+      {% endif %}
+
+      <!-- Firma del Médico -->
+      <div class="row mt-5 pt-3 border-top align-items-center">
+        <div class="col-6 text-muted small">
+          Documento emitido electrónicamente por el sistema <strong>Sandía VetCare</strong>.<br>
+          Válido como informe clínico y constancia de atención.
+        </div>
+        <div class="col-6 text-end">
+          <div class="d-inline-block text-center">
+            <div style="width: 220px; border-top: 1.5px solid #334155; padding-top: 4px;">
+              <strong class="d-block text-dark">Dr/a. {{ consulta.veterinario.nombre if consulta.veterinario else 'Médico Veterinario' }}</strong>
+              <small class="text-secondary">Médico Veterinario Tratante</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

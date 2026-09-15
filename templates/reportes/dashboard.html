@@ -1,130 +1,251 @@
 {% extends "base.html" %}
-{% from "_macros.html" import encabezado %}
-{% block titulo %}Reportes & Métricas - VetCare{% endblock %}
+{% block titulo %}Reportes & Métricas Ejecutivas · Sandía{% endblock %}
 
 {% block contenido %}
-{% call encabezado("Reportes & Métricas Ejecutivas", "Análisis de ventas, volumen de servicios e inventario") %}
-  <a href="{{ url_for('reportes.ventas') }}" class="btn btn-outline-primary fw-bold">
-    <i class="bi bi-file-earmark-spreadsheet me-1"></i>Reporte Detallado de Ventas
-  </a>
-  <a href="{{ url_for('reportes.inventario') }}" class="btn btn-outline-info fw-bold">
-    <i class="bi bi-box-seam me-1"></i>Reporte de Inventario
-  </a>
-{% endcall %}
+{# 1. Cabecera Principal #}
+<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge badge-sandia-rosa rounded-pill px-3 py-1">
+        <i class="bi bi-graph-up-arrow me-1"></i> Inteligencia de Negocio & Control
+      </span>
+    </div>
+    <h1 class="h3 fw-bold text-dark mb-1" style="font-family: var(--fuente-marca); color: #BE123C;">
+      Reportes & Métricas Ejecutivas
+    </h1>
+    <p class="text-secondary small mb-0">
+      Análisis de rendimiento comercial, volumen de servicios clínicos y valoración de stock
+    </p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <a href="{{ url_for('reportes.ventas') }}" class="btn btn-sm btn-sandia-coral rounded-pill px-3 py-2 shadow-sm d-flex align-items-center gap-1.5">
+      <i class="bi bi-receipt-cutoff"></i>
+      <span>Reporte Detallado de Ventas</span>
+    </a>
+    <a href="{{ url_for('reportes.inventario') }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 py-2 shadow-xs d-flex align-items-center gap-1.5">
+      <i class="bi bi-box-seam"></i>
+      <span>Reporte de Inventario</span>
+    </a>
+  </div>
+</div>
 
-<!-- Filtro por Rango de Fechas -->
-<div class="card shadow-sm mb-4">
-  <div class="card-body">
+{# 2. Filtro por Rango de Fechas #}
+<div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+  <div class="card-body p-3 p-md-4">
     <form method="get" class="row g-3 align-items-end">
-      <div class="col-12 col-md-3">
-        <label class="form-label fw-bold small">Periodo</label>
-        <select name="periodo" class="form-select" onchange="this.form.submit()">
+      <div class="col-12 col-md-5 col-lg-4">
+        <label class="form-label small fw-bold text-secondary mb-1">
+          <i class="bi bi-calendar-range me-1 text-danger"></i>Periodo de Análisis
+        </label>
+        <select name="periodo" class="form-select bg-light fw-semibold" onchange="this.form.submit()">
           <option value="hoy" {% if periodo == 'hoy' %}selected{% endif %}>Hoy</option>
+          <option value="ayer" {% if periodo == 'ayer' %}selected{% endif %}>Ayer</option>
           <option value="semana" {% if periodo == 'semana' %}selected{% endif %}>Esta semana</option>
+          <option value="quincena" {% if periodo == 'quincena' %}selected{% endif %}>Esta quincena (en curso)</option>
+          <option value="primera_quincena" {% if periodo == 'primera_quincena' %}selected{% endif %}>1ª Quincena (1 al 15)</option>
+          <option value="segunda_quincena" {% if periodo == 'segunda_quincena' %}selected{% endif %}>2ª Quincena (16 al fin de mes)</option>
           <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Este mes</option>
-          <option value="personalizado" {% if periodo == 'personalizado' %}selected{% endif %}>Personalizado</option>
+          <option value="mes_anterior" {% if periodo == 'mes_anterior' %}selected{% endif %}>Mes anterior</option>
+          <option value="personalizado" {% if periodo == 'personalizado' %}selected{% endif %}>Rango personalizado...</option>
         </select>
       </div>
 
       {% if periodo == 'personalizado' %}
       <div class="col-6 col-md-3">
-        <label class="form-label fw-bold small">Desde</label>
-        <input type="date" name="fecha_inicio" value="{{ fecha_inicio.strftime('%Y-%m-%d') }}" class="form-control">
+        <label class="form-label small fw-bold text-secondary mb-1">Desde Fecha</label>
+        <input type="date" name="fecha_inicio" value="{{ fecha_inicio.strftime('%Y-%m-%d') }}" class="form-control bg-light">
       </div>
       <div class="col-6 col-md-3">
-        <label class="form-label fw-bold small">Hasta</label>
-        <input type="date" name="fecha_fin" value="{{ fecha_fin.strftime('%Y-%m-%d') }}" class="form-control">
+        <label class="form-label small fw-bold text-secondary mb-1">Hasta Fecha</label>
+        <input type="date" name="fecha_fin" value="{{ fecha_fin.strftime('%Y-%m-%d') }}" class="form-control bg-light">
       </div>
-      <div class="col-12 col-md-3">
-        <button type="submit" class="btn btn-primary w-100 fw-bold">Filtrar Fechas</button>
+      <div class="col-12 col-md-2">
+        <button type="submit" class="btn btn-sandia-coral w-100 py-2 rounded-pill fw-bold shadow-xs">
+          <i class="bi bi-funnel me-1"></i>Filtrar
+        </button>
       </div>
       {% endif %}
+
+      <div class="col text-md-end text-secondary small fw-semibold ms-auto align-self-center mt-2 mt-md-0">
+        <i class="bi bi-clock-history me-1 text-danger"></i>Rango: <strong>{{ fecha_inicio|fecha }}</strong> a <strong>{{ fecha_fin|fecha }}</strong>
+      </div>
     </form>
   </div>
 </div>
 
-<!-- Tarjetas de KPIs -->
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3 mb-4">
+{# 3. Tarjetas de Métricas Ejecutivas (Rediseño con tarjetas limpias, iconos grandes y suaves) #}
+<div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
+  {# KPI 1: Ventas Totales #}
   <div class="col">
-    <div class="card border-0 shadow-sm bg-primary text-white h-100">
-      <div class="card-body text-center py-4">
-        <i class="bi bi-currency-dollar fs-1 d-block mb-2"></i>
-        <h3 class="fw-bold mb-1">{{ total_ventas|cop }}</h3>
-        <div class="small text-white-50">Ventas Totales ({{ num_ventas }} ventas)</div>
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 p-xl-4 hover-shadow transition-all" style="border: 1.5px solid #FECDD3 !important; border-top: 4px solid #E53935 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 58px; height: 58px; background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%); color: #BE123C; border: 1.5px solid #FECDD3;">
+          <i class="bi bi-currency-dollar fs-2"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.74rem; letter-spacing: 0.5px;">Ventas Totales</div>
+          <div class="h3 fw-bold text-dark mb-0 font-monospace" style="color: #BE123C !important;">{{ total_ventas|cop }}</div>
+          <div class="text-muted small mt-0.5" style="font-size: 0.75rem;">
+            <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-0.2 fw-bold">{{ num_ventas }}</span> ventas facturadas
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  {# KPI 2: Servicios de Spa & Grooming #}
   <div class="col">
-    <div class="card border-0 shadow-sm bg-success text-white h-100">
-      <div class="card-body text-center py-4">
-        <i class="bi bi-scissors fs-1 d-block mb-2"></i>
-        <h3 class="fw-bold mb-1">{{ citas_spa_total }}</h3>
-        <div class="small text-white-50">Servicios Spa / Grooming</div>
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 p-xl-4 hover-shadow transition-all" style="border: 1.5px solid #A7F3D0 !important; border-top: 4px solid #10B981 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 58px; height: 58px; background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%); color: #047857; border: 1.5px solid #A7F3D0;">
+          <i class="bi bi-scissors fs-2"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.74rem; letter-spacing: 0.5px;">Spa & Grooming</div>
+          <div class="h3 fw-bold text-success mb-0 font-monospace">{{ citas_spa_total }}</div>
+          <div class="text-muted small mt-0.5" style="font-size: 0.75rem;">
+            <span class="badge bg-success-subtle text-success rounded-pill px-2 py-0.2 fw-bold">Turnos</span> atendidos en periodo
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  {# KPI 3: Consultas Médicas #}
   <div class="col">
-    <div class="card border-0 shadow-sm bg-info text-white h-100">
-      <div class="card-body text-center py-4">
-        <i class="bi bi-journal-medical fs-1 d-block mb-2"></i>
-        <h3 class="fw-bold mb-1">{{ consultas_total }}</h3>
-        <div class="small text-white-50">Consultas Médicas Atendidas</div>
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 p-xl-4 hover-shadow transition-all" style="border: 1.5px solid #99F6E4 !important; border-top: 4px solid #0D9488 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 58px; height: 58px; background: linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 100%); color: #0F766E; border: 1.5px solid #99F6E4;">
+          <i class="bi bi-journal-medical fs-2"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.74rem; letter-spacing: 0.5px;">Consultas Clínicas</div>
+          <div class="h3 fw-bold text-info-emphasis mb-0 font-monospace">{{ consultas_total }}</div>
+          <div class="text-muted small mt-0.5" style="font-size: 0.75rem;">
+            <span class="badge bg-info-subtle text-info-emphasis rounded-pill px-2 py-0.2 fw-bold">Pacientes</span> evaluados SOAP
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
+  {# KPI 4: Valoración de Stock #}
   <div class="col">
-    <div class="card border-0 shadow-sm bg-dark text-white h-100">
-      <div class="card-body text-center py-4">
-        <i class="bi bi-box-seam fs-1 d-block mb-2"></i>
-        <h3 class="fw-bold mb-1">{{ valoracion_inventario|cop }}</h3>
-        <div class="small text-white-50">Valoración Stock en Inventario</div>
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 p-xl-4 hover-shadow transition-all" style="border: 1.5px solid #FDE68A !important; border-top: 4px solid #D97706 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 58px; height: 58px; background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); color: #B45309; border: 1.5px solid #FDE68A;">
+          <i class="bi bi-box-seam fs-2"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.74rem; letter-spacing: 0.5px;">Valor del Stock</div>
+          <div class="h3 fw-bold text-dark mb-0 font-monospace">{{ valoracion_inventario|cop }}</div>
+          <div class="text-muted small mt-0.5" style="font-size: 0.75rem;">
+            Capital activo a costo
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Desglose de Métodos de Pago y Estado -->
+{# 4. Desglose de Métodos de Pago y Alertas Operativas #}
+{% set nombres_metodos = {
+  'efectivo': {'nombre': 'Efectivo', 'icono': 'bi-cash-stack', 'color': 'success'},
+  'nequi': {'nombre': 'Nequi', 'icono': 'bi-phone', 'color': 'primary'},
+  'daviplata': {'nombre': 'Daviplata', 'icono': 'bi-phone-fill', 'color': 'danger'},
+  'tarjeta_debito': {'nombre': 'Tarjeta Débito', 'icono': 'bi-credit-card', 'color': 'info'},
+  'tarjeta_credito': {'nombre': 'Tarjeta Crédito', 'icono': 'bi-credit-card-2-front', 'color': 'info'},
+  'transferencia': {'nombre': 'Transferencia Bancaria', 'icono': 'bi-bank', 'color': 'secondary'}
+} %}
+
 <div class="row g-4 mb-4">
-  <div class="col-12 col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-header bg-light fw-bold">
-        <i class="bi bi-wallet2 me-1"></i>Ingresos por Método de Pago
+  {# Columna Izquierda: Ingresos por Medio de Pago #}
+  <div class="col-12 col-lg-6">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-header card-header-sandia py-3 px-4 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">💳</span>
+          <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Ingresos por Medio de Pago</span>
+        </div>
+        <span class="badge badge-sandia-rosa rounded-pill px-2.5 py-1 small">Total Recaudado</span>
       </div>
       <div class="card-body p-0">
         <ul class="list-group list-group-flush">
           {% for metodo, monto in pagos_por_metodo.items() %}
-          <li class="list-group-item d-flex justify-content-between align-items-center py-3">
-            <span class="fw-bold text-capitalize"><i class="bi bi-credit-card me-2"></i>{{ metodo }}</span>
-            <span class="badge bg-success fs-6">{{ monto|cop }}</span>
+          {% set info = nombres_metodos.get(metodo, {'nombre': metodo|capitalize, 'icono': 'bi-wallet2', 'color': 'secondary'}) %}
+          <li class="list-group-item d-flex justify-content-between align-items-center py-3 px-4 bg-white">
+            <div class="d-flex align-items-center gap-2.5">
+              <span class="badge bg-{{ info.color }}-subtle text-{{ info.color }} rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                <i class="bi {{ info.icono }}"></i>
+              </span>
+              <span class="fw-bold text-dark small">{{ info.nombre }}</span>
+            </div>
+            <span class="fw-bold font-monospace text-dark fs-6">{{ monto|cop }}</span>
           </li>
           {% else %}
-          <li class="list-group-item text-center text-muted py-4">No hay pagos registrados en este periodo.</li>
+          <li class="list-group-item text-center text-muted py-5">
+            <i class="bi bi-wallet2 fs-2 d-block mb-2 opacity-50"></i>
+            No hay pagos registrados en este periodo.
+          </li>
           {% endfor %}
         </ul>
       </div>
     </div>
   </div>
 
-  <div class="col-12 col-md-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-header bg-light fw-bold">
-        <i class="bi bi-exclamation-triangle me-1"></i>Alertas de Operación & Stock
+  {# Columna Derecha: Alertas de Operación y Stock #}
+  <div class="col-12 col-lg-6">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-header card-header-sandia py-3 px-4 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">⚠️</span>
+          <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Alertas de Operación & Stock</span>
+        </div>
+        <span class="badge badge-sandia-rosa rounded-pill px-2.5 py-1 small">Monitoreo</span>
       </div>
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded mb-3 border">
-          <div>
-            <div class="fw-bold">Productos con Stock Bajo</div>
-            <div class="small text-muted">Stock actual en o por debajo del mínimo</div>
+      <div class="card-body p-4">
+        <div class="p-3 rounded-4 mb-3 d-flex align-items-center justify-content-between hover-shadow transition-all" 
+             style="background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%); border: 1.5px solid #FECDD3;">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle {% if productos_stock_bajo > 0 %}bg-danger text-white{% else %}bg-success text-white{% endif %} d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.3rem;">
+              <i class="bi bi-box-seam"></i>
+            </div>
+            <div>
+              <div class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Productos con Stock Bajo o Agotado</div>
+              <div class="small text-secondary">Existencias en o por debajo del mínimo de seguridad</div>
+            </div>
           </div>
-          <span class="badge {% if productos_stock_bajo > 0 %}bg-danger{% else %}bg-secondary{% endif %} fs-5">
-            {{ productos_stock_bajo }}
-          </span>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge {% if productos_stock_bajo > 0 %}bg-danger{% else %}bg-success{% endif %} rounded-pill px-3 py-1.5 fs-6 shadow-xs font-monospace">
+              {{ productos_stock_bajo }}
+            </span>
+            <a href="{{ url_for('inventario.alertas') }}" class="btn btn-xs btn-sandia-rosa rounded-pill px-3 shadow-xs">
+              Ver <i class="bi bi-arrow-right ms-0.5"></i>
+            </a>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-4 bg-light border d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.3rem;">
+              <i class="bi bi-receipt"></i>
+            </div>
+            <div>
+              <div class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Reporte Detallado de Facturas</div>
+              <div class="small text-secondary">Consulta ticket por ticket, cliente, mascotas y cajeros</div>
+            </div>
+          </div>
+          <a href="{{ url_for('reportes.ventas', periodo=periodo) }}" class="btn btn-xs btn-sandia-coral rounded-pill px-3 shadow-xs">
+            Abrir <i class="bi bi-arrow-right ms-0.5"></i>
+          </a>
         </div>
       </div>
     </div>
   </div>
 </div>
 {% endblock %}
+

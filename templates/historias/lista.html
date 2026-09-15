@@ -1,68 +1,229 @@
 {% extends "base.html" %}
-{% from "_macros.html" import encabezado %}
-{% block titulo %}Historias Clínicas - VetCare{% endblock %}
+{% from "_macros.html" import avatar_mascota, boton_whatsapp, paginacion %}
+{% block titulo %}Historias Clínicas · Sandía VetCare{% endblock %}
 
 {% block contenido %}
-{% call encabezado("Historias Clínicas", "Directorio y consulta de fichas médicas de pacientes") %}
-{% endcall %}
-
-<div class="card shadow-sm mb-4">
-  <div class="card-body">
-    <form method="get" class="row g-2 align-items-center">
-      <div class="col-12 col-md-9">
-        <div class="input-group">
-          <span class="input-group-text"><i class="bi bi-search"></i></span>
-          <input type="text" name="q" value="{{ q }}" class="form-control form-control-lg" placeholder="Buscar por paciente, tutor, documento o microchip...">
+<!-- Hero Banner Historias Clínicas -->
+<div class="hero-historias">
+  <div class="row align-items-center g-3">
+    <div class="col-12 col-lg-7">
+      <span class="badge bg-danger bg-opacity-25 text-white border border-danger border-opacity-50 mb-2 px-3 py-1 rounded-pill">
+        <i class="bi bi-heart-pulse-fill me-1"></i> Expedientes Clínicos
+      </span>
+      <h1 class="h2 fw-bold text-white mb-1">Historias Clínicas de Pacientes</h1>
+      <p class="text-slate-300 small mb-0" style="color: #cbd5e1;">
+        Directorio médico unificado, historial SOAP, carnets de vacunación y constante seguimiento.
+      </p>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="hero-historias__kpis justify-content-lg-end">
+        <div class="hero-historias__kpi">
+          <div class="hero-historias__kpi-icono bg-primary bg-opacity-25 text-white">
+            <i class="bi bi-journal-medical"></i>
+          </div>
+          <div>
+            <div class="hero-historias__kpi-valor text-white">{{ mascotas|length }}</div>
+            <div class="hero-historias__kpi-label">Pacientes</div>
+          </div>
+        </div>
+        <div class="hero-historias__kpi">
+          <div class="hero-historias__kpi-icono bg-success bg-opacity-25 text-white">
+            <i class="bi bi-shield-check"></i>
+          </div>
+          <div>
+            {% set total_consultas = namespace(val=0) %}
+            {% for m in mascotas %}
+              {% set total_consultas.val = total_consultas.val + (m.consultas|length) %}
+            {% endfor %}
+            <div class="hero-historias__kpi-valor text-white">{{ total_consultas.val }}</div>
+            <div class="hero-historias__kpi-label">Consultas</div>
+          </div>
         </div>
       </div>
-      <div class="col-12 col-md-3">
-        <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">Buscar Paciente</button>
-      </div>
-    </form>
+    </div>
   </div>
 </div>
 
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+<!-- Caja de Búsqueda Interactiva & Filtros de Especie -->
+<div class="caja-busqueda-historias">
+  <form method="get" id="formBusqueda" class="row g-3 align-items-center">
+    <div class="col-12 col-md-7">
+      <div class="input-group input-group-lg shadow-xs rounded-3 overflow-hidden">
+        <span class="input-group-text bg-light border-end-0 text-muted px-3"><i class="bi bi-search fs-5"></i></span>
+        <input type="text" name="q" id="inputBuscador" value="{{ q }}" class="form-control border-start-0 bg-light fs-6 fw-semibold" placeholder="Buscar por paciente, tutor, documento o microchip..." autocomplete="off">
+        {% if q %}
+        <a href="{{ url_for('historias.lista') }}" class="input-group-text bg-light border-start-0 text-muted px-3 text-decoration-none" title="Limpiar búsqueda">
+          <i class="bi bi-x-circle-fill"></i>
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-12 col-md-5 d-flex justify-content-md-end align-items-center gap-2">
+      <button type="submit" class="btn btn-sandia btn-lg px-4 flex-grow-1 flex-md-grow-0 fw-bold">
+        <i class="bi bi-search me-1"></i> Buscar
+      </button>
+    </div>
+  </form>
+
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3 pt-3 border-top">
+    <div class="filtro-especie-pills" id="contenedorFiltrosEspecie">
+      <button type="button" class="filtro-especie-btn activo" data-especie="todos">
+        <i class="bi bi-grid-fill"></i> Todos <span class="badge bg-white text-dark rounded-pill ms-1">{{ mascotas|length }}</span>
+      </button>
+      <button type="button" class="filtro-especie-btn" data-especie="canino">
+        🐶 Caninos
+      </button>
+      <button type="button" class="filtro-especie-btn" data-especie="felino">
+        🐱 Felinos
+      </button>
+      <button type="button" class="filtro-especie-btn" data-especie="otro">
+        🐰 Otros
+      </button>
+    </div>
+    <div class="text-muted small fw-bold" id="contadorResultados">
+      Mostrando {{ mascotas|length }} pacientes
+    </div>
+  </div>
+</div>
+
+<!-- Grilla de Tarjetas de Pacientes Rediseñada -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="grillaPacientes">
   {% for m in mascotas %}
-  <div class="col">
-    <div class="card h-100 shadow-sm border-0 position-relative">
-      <div class="card-body">
-        <div class="d-flex align-items-center mb-3">
-          <div class="fs-1 me-3">{{ m.especie_emoji }}</div>
-          <div>
-            <h5 class="card-title mb-0 fw-bold text-primary">{{ m.nombre }}</h5>
-            <div class="text-muted small">
+  <div class="col item-paciente" data-nombre="{{ m.nombre|lower }}" data-tutor="{{ m.tutor.nombre_completo|lower }}" data-doc="{{ m.tutor.numero_documento or '' }}" data-microchip="{{ m.microchip or '' }}" data-especie="{{ m.especie }}">
+    <div class="tarjeta-paciente-v2">
+      <!-- Cabecera de Tarjeta -->
+      <div class="tarjeta-paciente-v2__header" data-especie="{{ m.especie }}">
+        <div class="d-flex align-items-start gap-3">
+          <div class="position-relative flex-shrink-0">
+            {{ avatar_mascota(m, tamano=58, clase_extra="shadow-sm border border-2 border-white") }}
+            <span class="position-absolute bottom-0 end-0 bg-white shadow-xs rounded-circle px-1" style="font-size: 0.85rem;" title="{{ m.especie_etiqueta }}">
+              {{ m.especie_emoji }}
+            </span>
+          </div>
+          <div class="flex-grow-1 min-w-0">
+            <div class="d-flex align-items-center justify-content-between gap-1">
+              <h5 class="fw-bold mb-0 text-truncate text-dark" title="{{ m.nombre }}">
+                <a href="{{ url_for('historias.ficha_medica', mascota_id=m.id) }}" class="text-dark text-decoration-none hover-primary">
+                  {{ m.nombre }}
+                </a>
+              </h5>
+              {% if m.esterilizado %}
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle small py-1" title="Esterilizado/a"><i class="bi bi-scissors"></i></span>
+              {% endif %}
+            </div>
+            <div class="text-secondary small fw-semibold text-truncate mb-1">
               {{ m.especie_etiqueta }} {% if m.raza %}• {{ m.raza.nombre }}{% endif %}
             </div>
-            <div class="badge bg-light text-dark border me-1">{{ m.sexo_etiqueta }}</div>
-            {% if m.edad %}<div class="badge bg-light text-dark border">{{ m.edad }}</div>{% endif %}
+            <div class="d-flex flex-wrap gap-1">
+              <span class="badge bg-light text-dark border">{{ m.sexo_etiqueta }}</span>
+              {% if m.edad %}<span class="badge bg-light text-dark border">{{ m.edad }}</span>{% endif %}
+              {% if m.peso_actual %}<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-speedometer2 me-1"></i>{{ m.peso_actual.peso_kg|kg }}</span>{% endif %}
+            </div>
           </div>
         </div>
-        
-        <div class="bg-light p-2 rounded small mb-3">
-          <div class="fw-bold"><i class="bi bi-person me-1"></i>Tutor: {{ m.tutor.nombre_completo }}</div>
-          {% if m.tutor.documento_texto %}<div class="text-muted">Doc: {{ m.tutor.documento_texto }}</div>{% endif %}
-          {% if m.tutor.telefono %}<div class="text-muted"><i class="bi bi-telephone me-1"></i>{{ m.tutor.telefono }}</div>{% endif %}
+      </div>
+      
+      <!-- Datos del Tutor y Contacto Directo -->
+      <div class="tarjeta-paciente-v2__tutor-box">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <div class="small fw-bold text-dark text-truncate">
+            <i class="bi bi-person-fill text-danger me-1"></i>{{ m.tutor.nombre_completo }}
+          </div>
+          {% if m.tutor.whatsapp_efectivo %}
+            {{ boton_whatsapp(m.tutor, mensaje='Hola ' ~ m.tutor.nombre_completo ~ ', te escribimos de VetCare sobre la salud de ' ~ m.nombre, texto='Chat', clase='btn-whatsapp-sm') }}
+          {% endif %}
         </div>
+        {% if m.tutor.documento_texto %}
+          <div class="text-muted small" style="font-size: 0.78rem;">
+            <i class="bi bi-card-heading me-1"></i>Doc: {{ m.tutor.documento_texto }}
+          </div>
+        {% endif %}
+        {% if m.tutor.telefono %}
+          <div class="text-muted small" style="font-size: 0.78rem;">
+            <a href="tel:{{ m.tutor.telefono }}" class="text-muted text-decoration-none">
+              <i class="bi bi-telephone-fill me-1 text-secondary"></i>{{ m.tutor.telefono }}
+            </a>
+          </div>
+        {% endif %}
+      </div>
 
-        <div class="d-flex justify-content-between align-items-center">
-          <span class="text-muted small">
+      <!-- Pie de Tarjeta y Acción Directa -->
+      <div class="tarjeta-paciente-v2__footer">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-danger-subtle text-danger fw-bold rounded-pill">
             <i class="bi bi-journal-medical me-1"></i>{{ m.consultas|length }} consulta(s)
           </span>
-          <a href="{{ url_for('historias.ficha_medica', mascota_id=m.id) }}" class="btn btn-sm btn-outline-primary fw-bold">
-            Ver Ficha Médica <i class="bi bi-arrow-right ms-1"></i>
-          </a>
+          {% set ult_vacuna = m.vacunas[-1] if m.vacunas else None %}
+          {% if ult_vacuna %}
+            {% if ult_vacuna.estado_vencimiento == 'al_dia' %}
+              <span class="badge bg-success-subtle text-success rounded-pill" title="Vacunas al día"><i class="bi bi-shield-check"></i></span>
+            {% elif ult_vacuna.estado_vencimiento == 'proxima_vencer' %}
+              <span class="badge bg-warning-subtle text-warning rounded-pill" title="Vacunas próximas a vencer"><i class="bi bi-exclamation-triangle"></i></span>
+            {% else %}
+              <span class="badge bg-danger-subtle text-danger rounded-pill" title="Vacunas vencidas"><i class="bi bi-x-circle"></i></span>
+            {% endif %}
+          {% endif %}
         </div>
+        <a href="{{ url_for('historias.ficha_medica', mascota_id=m.id) }}" class="btn-tarjeta-accion">
+          Ver Ficha <i class="bi bi-arrow-right"></i>
+        </a>
       </div>
     </div>
   </div>
   {% else %}
   <div class="col-12 w-100">
-    <div class="alert alert-info text-center py-4">
-      <i class="bi bi-info-circle fs-3 d-block mb-2"></i>
-      No se encontraron pacientes para el criterio de búsqueda.
+    <div class="card border-0 shadow-sm p-5 text-center bg-white rounded-4">
+      <div class="display-4 text-muted mb-3"><i class="bi bi-search-heart"></i></div>
+      <h4 class="fw-bold text-dark">No se encontraron pacientes</h4>
+      <p class="text-secondary small mb-3">No hay historias clínicas registradas que coincidan con la búsqueda actual.</p>
+      <div>
+        <a href="{{ url_for('historias.lista') }}" class="btn btn-outline-secondary rounded-pill px-4">
+          <i class="bi bi-arrow-counterclockwise me-1"></i> Restablecer Filtros
+        </a>
+      </div>
     </div>
   </div>
   {% endfor %}
 </div>
+
+{{ paginacion(pagina) }}
 {% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const itemsPaciente = document.querySelectorAll('.item-paciente');
+  const filtroBtns = document.querySelectorAll('.filtro-especie-btn');
+  const contadorResultados = document.getElementById('contadorResultados');
+  let especieActual = 'todos';
+
+  function aplicarFiltroEspecie() {
+    let visibles = 0;
+    itemsPaciente.forEach(item => {
+      const especie = item.dataset.especie || '';
+      const coincideEspecie = especieActual === 'todos' || especie === especieActual;
+      if (coincideEspecie) {
+        item.style.display = '';
+        visibles++;
+      } else {
+        item.style.display = 'none';
+      }
+    });
+
+    if (contadorResultados) {
+      contadorResultados.textContent = `Mostrando ${visibles} paciente(s) en esta página`;
+    }
+  }
+
+  filtroBtns.forEach(btn => {
+    btn.addEventListener('click', function () {
+      filtroBtns.forEach(b => b.classList.remove('activo'));
+      this.classList.add('activo');
+      especieActual = this.dataset.especie;
+      aplicarFiltroEspecie();
+    });
+  });
+});
+</script>
+{% endblock %}
+

@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#E53935">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>{% block titulo %}VetCare{% endblock %} · {{ clinica.nombre }}</title>
-  <link rel="icon" type="image/svg+xml" href="{{ static_url('img/favicon.svg') }}">
-  <link rel="apple-touch-icon" href="{{ static_url('img/logo.svg') }}">
+  <title>{% block titulo %}Sandía · Medicina y Spa Veterinario{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{{ static_url('img/icon-192.png') }}">
+  <link rel="apple-touch-icon" href="{{ static_url('img/apple-touch-icon.png') }}">
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
   <link rel="stylesheet" href="{{ static_url('vendor/bootstrap/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ static_url('vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
@@ -16,26 +16,27 @@
   {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% if current_user.is_authenticated %}con-barra-inferior{% endif %}{% endblock %}">
+<div style="height: 3.5px; background: linear-gradient(90deg, #E53935 0%, #FB7185 35%, #FDA4AF 70%, #4CAF50 100%); width: 100%; position: sticky; top: 0; z-index: 1035;"></div>
 {% block navegacion %}
 {% if current_user.is_authenticated %}
-<nav class="navbar barra-superior sticky-top py-1">
+<nav class="navbar barra-superior sticky-top py-1 bg-white shadow-xs" style="border-bottom: 1.5px solid #FECDD3 !important;">
   <div class="container-fluid px-3 barra-superior__grid">
     <!-- Lado Izquierdo: Botón Menú Lateral -->
     <div class="barra-superior__izq">
-      <button class="btn btn-icono-menu shadow-xs" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuLateral"
+      <button class="btn btn-icono-menu shadow-xs border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuLateral"
               aria-controls="menuLateral" aria-label="Abrir menú" title="Abrir menú de navegación">
-        <i class="bi bi-list"></i>
+        <i class="bi bi-list fs-4" style="color: #E53935;"></i>
       </button>
     </div>
 
     <!-- Centro: Marca Sandía Centrada y Destacada -->
-    <div class="barra-superior__centro">
-      <a class="marca marca--navbar navbar-brand m-0" href="{{ url_for('dashboard.index') }}" title="Ir al Inicio">
-        <img class="marca__logo" src="{{ static_url('img/logo.svg') }}" alt="Sandía">
-        <span class="marca__texto">
-          <span class="marca__nombre">{{ clinica.nombre|upper }}</span>
-          <span class="marca__subtitulo d-none d-sm-inline">{{ clinica.subtitulo }}</span>
-        </span>
+    <div class="barra-superior__centro text-center">
+      <a class="navbar-brand m-0 d-inline-flex align-items-center gap-2 text-decoration-none py-1" href="{{ url_for('dashboard.index') }}" title="Sandía · Medicina y Spa Veterinario">
+        <img src="{{ static_url('img/dog_icon.png') }}" alt="Sandía" style="height: 46px; width: auto;" class="d-inline-block align-middle">
+        <div class="d-inline-flex flex-column text-start justify-content-center">
+          <span class="fw-bold lh-1" style="font-family: 'Fredoka', 'Quicksand', sans-serif; font-size: 1.45rem; color: #E53935; letter-spacing: -0.01em;">SANDÍA</span>
+          <span class="fw-bold text-uppercase d-none d-sm-inline-block" style="font-family: 'Nunito', sans-serif; font-size: 0.68rem; color: #4CAF50; letter-spacing: 0.18em; line-height: 1.1;">MEDICINA Y SPA VETERINARIO</span>
+        </div>
       </a>
     </div>
 
@@ -43,10 +44,10 @@
     <div class="barra-superior__der">
       <div class="dropdown">
         <button class="btn btn-link text-decoration-none text-body d-flex align-items-center gap-2 p-1 dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-          <span class="avatar-usuario shadow-xs">{{ current_user.nombre[:1]|upper }}</span>
+          <span class="avatar-usuario shadow-xs" style="background-color: #E53935; color: #FFFFFF;">{{ current_user.nombre[:1]|upper }}</span>
           <span class="text-start d-none d-md-inline">
-            <span class="d-block fw-bold lh-1 small">{{ current_user.nombre }}</span>
-            <small class="text-secondary" style="font-size: 0.72rem;">{{ current_user.rol_etiqueta }}</small>
+            <span class="d-block fw-bold lh-1 small text-dark">{{ current_user.nombre }}</span>
+            <small class="text-success fw-bold" style="font-size: 0.72rem;">{{ current_user.rol_etiqueta }}</small>
           </span>
         </button>
         <ul class="dropdown-menu dropdown-menu-end shadow border-0">
@@ -66,37 +67,165 @@
 </nav>
 
 <div class="offcanvas offcanvas-start menu-lateral" tabindex="-1" id="menuLateral" aria-labelledby="menuLateralLabel">
-  <div class="offcanvas-header">
-    <span class="marca" id="menuLateralLabel">
-      <img class="marca__logo" src="{{ static_url('img/logo.svg') }}" alt="">
-      <span class="marca__texto">
-        <span class="marca__nombre">{{ clinica.nombre|upper }}</span>
-        <span class="marca__subtitulo">{{ clinica.subtitulo }}</span>
-      </span>
-    </span>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+  <div class="offcanvas-header py-3">
+    <div id="menuLateralLabel" class="w-100">
+      <a href="{{ url_for('dashboard.index') }}" class="d-inline-flex align-items-center gap-2 text-decoration-none">
+        <img src="{{ static_url('img/dog_icon.png') }}" alt="Sandía" style="height: 44px; width: auto;">
+        <div class="d-flex flex-column text-start">
+          <span class="fw-bold lh-1" style="font-family: 'Fredoka', 'Quicksand', sans-serif; font-size: 1.4rem; color: #E53935;">SANDÍA</span>
+          <span class="fw-bold text-uppercase" style="font-family: 'Nunito', sans-serif; font-size: 0.62rem; color: #4CAF50; letter-spacing: 0.16em;">MEDICINA Y SPA VETERINARIO</span>
+        </div>
+      </a>
+    </div>
+    <button type="button" class="btn-close shadow-none" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
   </div>
-  <div class="offcanvas-body p-0">
-    <ul class="menu-lateral__lista">
-      <li>
-        <a class="menu-lateral__enlace {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
-          <i class="bi bi-house-door-fill"></i>Inicio
-        </a>
-      </li>
-      {% for modulo in modulos_menu if modulo.clave != 'mi_cuenta' %}
-      <li>
-        <a class="menu-lateral__enlace {% if request.endpoint == modulo.endpoint %}active{% endif %}" href="{{ url_for(modulo.endpoint) }}">
-          <i class="bi {{ modulo.icono }}"></i>{{ modulo.nombre }}
-        </a>
-      </li>
+  <div class="offcanvas-body p-0 d-flex flex-column justify-content-between">
+    <div class="pb-3">
+      {# Mini Perfil del Usuario Activo #}
+      <div class="menu-perfil-card">
+        <div class="d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <div class="usuario-avatar usuario-avatar--0 shadow-xs flex-shrink-0" style="width: 38px; height: 38px; font-size: 1rem;">
+              {{ current_user.nombre[:1]|upper }}
+            </div>
+            <div class="min-w-0">
+              <div class="fw-bold text-dark text-truncate small lh-sm">{{ current_user.nombre }}</div>
+              <span class="rol-badge rol-badge--{{ current_user.rol }}" style="font-size: 0.68rem; padding: 0.1rem 0.55rem;">
+                {{ current_user.rol_etiqueta }}
+              </span>
+            </div>
+          </div>
+          <a href="{{ url_for('auth.cambiar_password') }}" class="btn btn-sm btn-light rounded-circle shadow-xs text-secondary p-1" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;" title="Cambiar contraseña">
+            <i class="bi bi-gear-fill"></i>
+          </a>
+        </div>
+      </div>
+
+      {# Navegación Agrupada #}
+      <div class="menu-lateral__seccion-titulo">PRINCIPAL</div>
+      <ul class="menu-lateral__lista">
+        <li>
+          <a class="menu-lateral__enlace {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
+            <span class="menu-lateral__icono menu-lateral__icono--inicio"><i class="bi bi-house-door-fill"></i></span>
+            <span class="menu-lateral__texto">Inicio</span>
+            <i class="bi bi-chevron-right menu-lateral__flecha ms-auto"></i>
+          </a>
+        </li>
+      </ul>
+
+      {# Grupos de Módulos #}
+      {% set grupo_clinica = ['historias', 'mascotas', 'tutores', 'agenda', 'spa'] %}
+      {% set grupo_ventas = ['pos', 'caja', 'inventario', 'reportes'] %}
+      {% set grupo_finanzas = ['gastos', 'cuentas_por_pagar', 'proveedores'] %}
+      {% set grupo_admin = ['usuarios', 'configuracion', 'razas'] %}
+
+      {% set modulos_dict = {} %}
+      {% for m in modulos_menu %}
+        {% set _ = modulos_dict.update({m.clave: m}) %}
       {% endfor %}
-      <li><hr class="my-2"></li>
-      <li>
-        <a class="menu-lateral__enlace" href="{{ url_for('auth.cambiar_password') }}">
-          <i class="bi bi-person-lock"></i>Mi cuenta
-        </a>
-      </li>
-    </ul>
+
+      {# 1. Clínica y Pacientes #}
+      {% set clinica_items = [] %}
+      {% for k in grupo_clinica %}
+        {% if k in modulos_dict %}
+          {% set _ = clinica_items.append(modulos_dict[k]) %}
+        {% endif %}
+      {% endfor %}
+      {% if clinica_items %}
+      <div class="menu-lateral__seccion-titulo">CLÍNICA & PACIENTES</div>
+      <ul class="menu-lateral__lista">
+        {% for modulo in clinica_items %}
+        <li>
+          <a class="menu-lateral__enlace {% if request.endpoint == modulo.endpoint %}active{% endif %}" href="{{ url_for(modulo.endpoint) }}">
+            <span class="menu-lateral__icono menu-lateral__icono--{{ modulo.clave }}"><i class="bi {{ modulo.icono }}"></i></span>
+            <span class="menu-lateral__texto">{{ modulo.nombre }}</span>
+            <i class="bi bi-chevron-right menu-lateral__flecha ms-auto"></i>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {# 2. Ventas y Stock #}
+      {% set ventas_items = [] %}
+      {% for k in grupo_ventas %}
+        {% if k in modulos_dict %}
+          {% set _ = ventas_items.append(modulos_dict[k]) %}
+        {% endif %}
+      {% endfor %}
+      {% if ventas_items %}
+      <div class="menu-lateral__seccion-titulo">VENTAS & INVENTARIO</div>
+      <ul class="menu-lateral__lista">
+        {% for modulo in ventas_items %}
+        <li>
+          <a class="menu-lateral__enlace {% if request.endpoint == modulo.endpoint %}active{% endif %}" href="{{ url_for(modulo.endpoint) }}">
+            <span class="menu-lateral__icono menu-lateral__icono--{{ modulo.clave }}"><i class="bi {{ modulo.icono }}"></i></span>
+            <span class="menu-lateral__texto">{{ modulo.nombre }}</span>
+            <i class="bi bi-chevron-right menu-lateral__flecha ms-auto"></i>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {# 3. Finanzas y Compras #}
+      {% set finanzas_items = [] %}
+      {% for k in grupo_finanzas %}
+        {% if k in modulos_dict %}
+          {% set _ = finanzas_items.append(modulos_dict[k]) %}
+        {% endif %}
+      {% endfor %}
+      {% if finanzas_items %}
+      <div class="menu-lateral__seccion-titulo">FINANZAS & PROVEEDORES</div>
+      <ul class="menu-lateral__lista">
+        {% for modulo in finanzas_items %}
+        <li>
+          <a class="menu-lateral__enlace {% if request.endpoint == modulo.endpoint %}active{% endif %}" href="{{ url_for(modulo.endpoint) }}">
+            <span class="menu-lateral__icono menu-lateral__icono--{{ modulo.clave }}"><i class="bi {{ modulo.icono }}"></i></span>
+            <span class="menu-lateral__texto">{{ modulo.nombre }}</span>
+            <i class="bi bi-chevron-right menu-lateral__flecha ms-auto"></i>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {# 4. Administración #}
+      {% set admin_items = [] %}
+      {% for k in grupo_admin %}
+        {% if k in modulos_dict %}
+          {% set _ = admin_items.append(modulos_dict[k]) %}
+        {% endif %}
+      {% endfor %}
+      {% if admin_items %}
+      <div class="menu-lateral__seccion-titulo">ADMINISTRACIÓN</div>
+      <ul class="menu-lateral__lista">
+        {% for modulo in admin_items %}
+        <li>
+          <a class="menu-lateral__enlace {% if request.endpoint == modulo.endpoint %}active{% endif %}" href="{{ url_for(modulo.endpoint) }}">
+            <span class="menu-lateral__icono menu-lateral__icono--{{ modulo.clave }}"><i class="bi {{ modulo.icono }}"></i></span>
+            <span class="menu-lateral__texto">{{ modulo.nombre }}</span>
+            <i class="bi bi-chevron-right menu-lateral__flecha ms-auto"></i>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+    </div>
+
+    {# Footer del Menú Lateral #}
+    <div class="p-3 border-top bg-light mt-auto">
+      <form method="post" action="{{ url_for('auth.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger w-100 rounded-pill d-flex align-items-center justify-content-center gap-2 py-2 fw-bold shadow-xs">
+          <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+        </button>
+      </form>
+      <div class="text-center text-secondary small mt-2" style="font-size: 0.72rem;">
+        Sandía · Medicina & Spa Veterinario
+      </div>
+    </div>
   </div>
 </div>
 {% endif %}
@@ -140,6 +269,7 @@
 
 <script src="{{ static_url('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ static_url('js/app.js') }}"></script>
+<script src="{{ static_url('js/live_search_desglose.js') }}"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {

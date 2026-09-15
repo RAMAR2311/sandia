@@ -1,29 +1,222 @@
 {% extends "base.html" %}
 {% from "_macros.html" import campo_textarea, campo_select, campo_archivo %}
-{% block titulo %}Examen de laboratorio{% endblock %}
+{% block titulo %}{{ examen.tipo_examen }} - {{ examen.mascota.nombre }}{% endblock %}
+
 {% block contenido %}
-<nav class="small mb-2"><a href="{{ url_for('historias.ficha_medica', mascota_id=examen.mascota_id) }}" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i>{{ examen.mascota.nombre }}</a></nav>
+<div class="container-fluid px-0" style="max-width: 1040px;">
+  <nav class="small mb-3">
+    <a href="{{ url_for('historias.ficha_medica', mascota_id=examen.mascota_id) }}" class="text-decoration-none text-muted">
+      <i class="bi bi-arrow-left me-1"></i> Volver a Historia Clínica de <strong>{{ examen.mascota.nombre }}</strong>
+    </a>
+  </nav>
 
-<div class="card mb-3"><div class="card-body">
-  <div class="d-flex justify-content-between align-items-start">
-    <div>
-      <h1 class="titulo-pagina">{{ examen.tipo_examen }}</h1>
-      <div class="text-secondary">{{ examen.mascota.nombre }} · {{ examen.fecha_toma|fecha }}{% if examen.laboratorio_externo %} · {{ examen.laboratorio_externo }}{% endif %}</div>
+  <!-- Encabezado de la Ayuda Diagnóstica -->
+  <div class="card shadow-sm border-0 rounded-3 mb-4">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge bg-{{ examen.color_categoria }} text-{{ 'dark' if examen.color_categoria in ('warning', 'info') else 'white' }} px-3 py-2 rounded-pill fs-6 fw-bold">
+              <i class="bi {{ examen.icono_categoria }} me-1"></i> {{ examen.categoria_etiqueta }}
+            </span>
+            <span class="estado estado--{{ 'ok' if examen.estado == 'con_resultado' else ('info' if examen.estado == 'en_proceso' else 'pendiente') }} fs-6">
+              {{ examen.estado_etiqueta }}
+            </span>
+          </div>
+          <h1 class="h2 fw-bold text-dark mb-1">{{ examen.tipo_examen }}</h1>
+          <div class="text-muted small">
+            <i class="bi bi-calendar-event me-1"></i><strong>Fecha de toma:</strong> {{ examen.fecha_toma|fecha }}
+            {% if examen.laboratorio_externo %}
+              <span class="mx-2">·</span><i class="bi bi-building me-1"></i><strong>Centro / Lab:</strong> {{ examen.laboratorio_externo }}
+            {% endif %}
+            {% if examen.solicitado_por %}
+              <span class="mx-2">·</span><i class="bi bi-person-badge me-1"></i><strong>Profesional:</strong> {{ examen.solicitado_por.nombre_completo }}
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+          {% if examen.archivo_resultado %}
+            <a class="btn btn-outline-primary btn-sm px-3 fw-bold" href="{{ url_for('static', filename='uploads/examenes/' ~ examen.archivo_resultado) }}" target="_blank" download>
+              <i class="bi bi-download me-1"></i> Descargar Archivo
+            </a>
+          {% endif %}
+          <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalEliminarExamen">
+            <i class="bi bi-trash me-1"></i> Eliminar
+          </button>
+        </div>
+      </div>
     </div>
-    <span class="estado estado--{{ 'ok' if examen.estado == 'con_resultado' else 'info' }}">{{ examen.estado_etiqueta }}</span>
   </div>
-  {% if examen.archivo_resultado %}
-  <a class="btn btn-outline-primary btn-sm mt-2" href="{{ url_for('static', filename='uploads/examenes/' ~ examen.archivo_resultado) }}" target="_blank"><i class="bi bi-file-earmark-text me-1"></i>Ver archivo de resultado</a>
-  {% endif %}
-</div></div>
 
-<div class="card"><div class="card-header">Resultado e interpretación</div><div class="card-body">
-  <form method="post" action="{{ url_for('historias.examen_resultado', id=examen.id) }}" enctype="multipart/form-data">
-    {{ form_resultado.hidden_tag() }}
-    {{ campo_archivo(form_resultado.archivo_resultado, ayuda="PDF, JPG, PNG o WEBP.") }}
-    {{ campo_textarea(form_resultado.interpretacion, filas=4) }}
-    {{ campo_select(form_resultado.estado) }}
-    {{ form_resultado.enviar(class_="btn btn-primary") }}
-  </form>
-</div></div>
+  <div class="row g-4">
+    <!-- Columna Izquierda: Visualizador del Documento / Imagen / Radiografía -->
+    <div class="col-12 col-lg-7">
+      <div class="card shadow-sm border-0 rounded-3 mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+          <h6 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-file-earmark-medical text-primary me-2"></i>Documento / Imagen Adjunta
+          </h6>
+          {% if examen.archivo_resultado %}
+            <span class="badge bg-light text-dark border">
+              {{ examen.archivo_resultado.rsplit('.', 1)[-1]|upper }}
+            </span>
+          {% endif %}
+        </div>
+        <div class="card-body p-3">
+          {% if examen.archivo_resultado %}
+            {% if examen.es_imagen %}
+              <!-- Visualizador de Imagen / Radiografía / Ecografía -->
+              <div class="text-center bg-dark p-2 rounded-3 mb-2" style="position: relative; min-height: 250px; overflow: hidden;">
+                <img src="{{ url_for('static', filename='uploads/examenes/' ~ examen.archivo_resultado) }}" 
+                     alt="{{ examen.tipo_examen }}" 
+                     class="img-fluid rounded shadow-sm" 
+                     style="max-height: 520px; object-fit: contain; cursor: zoom-in;"
+                     onclick="window.open(this.src, '_blank')">
+              </div>
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <small class="text-muted"><i class="bi bi-arrows-fullscreen me-1"></i>Haz clic en la imagen para abrir en tamaño completo</small>
+                <form method="post" action="{{ url_for('historias.examen_eliminar_archivo', id=examen.id) }}" class="d-inline" onsubmit="return confirm('¿Quitar este archivo adjunto?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-link btn-sm text-danger text-decoration-none p-0">
+                    <i class="bi bi-x-circle me-1"></i>Quitar imagen
+                  </button>
+                </form>
+              </div>
+            {% elif examen.es_pdf %}
+              <!-- Visualizador de PDF -->
+              <div class="ratio ratio-4x3 border rounded-3 mb-2 bg-light">
+                <iframe src="{{ url_for('static', filename='uploads/examenes/' ~ examen.archivo_resultado) }}" class="rounded-3"></iframe>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <a href="{{ url_for('static', filename='uploads/examenes/' ~ examen.archivo_resultado) }}" target="_blank" class="btn btn-primary btn-sm fw-bold">
+                  <i class="bi bi-box-arrow-up-right me-1"></i> Abrir PDF en pestaña nueva
+                </a>
+                <form method="post" action="{{ url_for('historias.examen_eliminar_archivo', id=examen.id) }}" class="d-inline" onsubmit="return confirm('¿Quitar este archivo adjunto?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-link btn-sm text-danger text-decoration-none p-0">
+                    <i class="bi bi-x-circle me-1"></i>Quitar PDF
+                  </button>
+                </form>
+              </div>
+            {% else %}
+              <!-- Otro tipo de documento (DOCX, etc.) -->
+              <div class="p-4 text-center bg-light rounded-3 border">
+                <i class="bi bi-file-earmark-text text-primary fs-1 mb-2 d-block"></i>
+                <h6 class="fw-bold text-dark">{{ examen.archivo_resultado }}</h6>
+                <p class="text-muted small mb-3">Archivo listo para descargar y consultar.</p>
+                <a href="{{ url_for('static', filename='uploads/examenes/' ~ examen.archivo_resultado) }}" target="_blank" download class="btn btn-primary btn-sm px-4 fw-bold">
+                  <i class="bi bi-download me-1"></i> Descargar Documento
+                </a>
+              </div>
+            {% endif %}
+          {% else %}
+            <!-- Sin archivo adjunto -->
+            <div class="p-5 text-center bg-light rounded-3 border border-2 border-dashed">
+              <i class="bi bi-cloud-arrow-up text-muted fs-1 mb-2 d-block"></i>
+              <h6 class="fw-bold text-dark mb-1">Aún no hay archivo digital adjunto</h6>
+              <p class="text-muted small mb-0">Puedes adjuntar el PDF, radiografía o informe en el formulario de la derecha.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Comentarios y Hallazgos Visuales -->
+      <div class="card shadow-sm border-0 rounded-3 mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-chat-left-text text-success me-2"></i>Comentarios e Interpretación Clínica
+          </h6>
+        </div>
+        <div class="card-body">
+          {% if examen.interpretacion %}
+            <div class="p-3 bg-light rounded-3 border border-start-4 border-success font-monospace text-dark" style="white-space: pre-wrap; line-height: 1.6;">{{ examen.interpretacion }}</div>
+          {% else %}
+            <div class="text-muted small fst-italic p-3 text-center bg-light rounded-3">
+              No se han registrado comentarios o interpretación para este examen todavía.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Columna Derecha: Formulario de Actualización / Carga de Resultado -->
+    <div class="col-12 col-lg-5">
+      <div class="card shadow-sm border-0 rounded-3 sticky-top" style="top: 20px;">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-pencil-square text-primary me-2"></i>Actualizar Estudio & Comentarios
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" action="{{ url_for('historias.examen_resultado', id=examen.id) }}" enctype="multipart/form-data">
+            {{ form_resultado.hidden_tag() }}
+
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-dark" for="categoria">Categoría</label>
+              {{ form_resultado.categoria(class_="form-select") }}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-dark" for="tipo_examen">Nombre / Tipo de Examen</label>
+              {{ form_resultado.tipo_examen(class_="form-control") }}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-dark" for="laboratorio_externo">Centro / Laboratorio Externo</label>
+              {{ form_resultado.laboratorio_externo(class_="form-control", placeholder="Opcional") }}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-dark" for="estado">Estado</label>
+              {{ form_resultado.estado(class_="form-select") }}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-dark" for="archivo_resultado">
+                {% if examen.archivo_resultado %}Reemplazar archivo adjunto{% else %}Adjuntar archivo (PDF, Imagen, etc.){% endif %}
+              </label>
+              {{ form_resultado.archivo_resultado(class_="form-control", accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.dcm,.dicom") }}
+              <div class="form-text small">Soporta PDF, JPG, PNG, WEBP, DOCX, DICOM.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold small text-dark" for="interpretacion">
+                Comentarios / Interpretación Médica
+              </label>
+              {{ form_resultado.interpretacion(class_="form-control font-monospace", rows=6, placeholder="Escribe aquí los comentarios, hallazgos o reporte médico...") }}
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">
+              <i class="bi bi-check-circle me-1"></i> Guardar Cambios
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Eliminar Examen -->
+<div class="modal fade" id="modalEliminarExamen" tabindex="-1" aria-labelledby="modalEliminarExamenLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="modalEliminarExamenLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Eliminar Ayuda Diagnóstica</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p>¿Estás seguro de que deseas eliminar este registro de <strong>{{ examen.tipo_examen }}</strong>?</p>
+        <p class="text-danger small mb-0"><i class="bi bi-info-circle me-1"></i>Se borrará el archivo adjunto y las notas médicas asociadas de la historia clínica.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form method="post" action="{{ url_for('historias.examen_eliminar', id=examen.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger fw-bold">Sí, eliminar examen</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

@@ -57,7 +57,7 @@ from utils import (
 
 bp = Blueprint("inventario", __name__, url_prefix="/inventario")
 
-POR_PAGINA = 30
+POR_PAGINA = 20
 CARPETA_IMAGENES = "productos"
 
 
@@ -902,7 +902,10 @@ def facturas_proveedor(proveedor_id):
     if not prov:
         abort(404)
     facturas = db.session.execute(
-        select(FacturaProveedor).filter_by(proveedor_id=proveedor_id).order_by(FacturaProveedor.fecha_factura.desc())
+        select(FacturaProveedor)
+        .filter_by(proveedor_id=proveedor_id)
+        .options(selectinload(FacturaProveedor.pagos).selectinload(PagoProveedor.usuario))
+        .order_by(FacturaProveedor.fecha_factura.desc())
     ).scalars().all()
     return render_template("inventario/facturas_proveedor.html", proveedor=prov, facturas=facturas, form_pago=PagoProveedorForm())
 

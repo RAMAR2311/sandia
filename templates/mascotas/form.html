@@ -1,95 +1,263 @@
 {% extends "base.html" %}
-{% from "_macros.html" import campo, campo_select, campo_switch, campo_textarea, campo_archivo, encabezado %}
-{% block titulo %}{{ 'Editar mascota' if mascota else 'Nueva mascota' }}{% endblock %}
+{% from "_macros.html" import campo, campo_select, campo_switch, campo_textarea, campo_archivo %}
+{% block titulo %}{{ 'Editar Mascota · ' ~ mascota.nombre if mascota else 'Nueva Mascota · Sandía' }}{% endblock %}
 
 {% block contenido %}
-{{ encabezado('Editar mascota' if mascota else 'Nueva mascota', mascota.nombre if mascota else 'Ficha básica del paciente') }}
+{# Cabecera de Página #}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('mascotas.detalle', mascota_id=mascota.id) if mascota else url_for('mascotas.lista') }}" class="btn btn-sm btn-outline-secondary rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca);">
+        {{ 'Editar Paciente: ' ~ mascota.nombre if mascota else 'Registro de Nueva Mascota' }}
+      </h1>
+    </div>
+    <p class="text-secondary small mb-0 mt-1 ms-4 ps-2">
+      {{ 'Actualiza la información médica, especie, tutor y características del paciente' if mascota else 'Ingresa los datos generales, tutor responsable y ficha de salud del paciente' }}
+    </p>
+  </div>
+</div>
+
 <form method="post" enctype="multipart/form-data" novalidate id="form-mascota"
       data-url-razas="{{ url_for('api.razas') }}" data-url-tutores="{{ url_for('api.buscar_tutores') }}"
       data-raza-actual="{{ form.raza_id.data or 0 }}">
   {{ form.hidden_tag() }}
-  <div class="row g-3">
+
+  <div class="row g-4">
+    {# Bloque 1: Tutor Responsable #}
     <div class="col-12 col-lg-6">
-      <div class="card h-100">
-        <div class="card-header">Tutor</div>
-        <div class="card-body">
-          <div id="tutor-seleccionado" class="fila-lista d-flex align-items-center gap-3 mb-2 {% if not tutor %}d-none{% endif %}">
-            <span class="avatar-usuario">{{ tutor.nombre_completo[:1]|upper if tutor else '' }}</span>
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+        <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">👤</span>
+            <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Tutor Responsable</span>
+          </div>
+          <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small">Requerido</span>
+        </div>
+        <div class="card-body p-4">
+          {# Tutor Seleccionado #}
+          <div id="tutor-seleccionado" class="p-3 bg-light rounded-4 border border-light-subtle d-flex align-items-center gap-3 mb-3 {% if not tutor %}d-none{% endif %}">
+            <div class="rounded-circle bg-danger-subtle text-danger fw-bold d-flex align-items-center justify-content-center flex-shrink-0 avatar-usuario fs-5" style="width: 48px; height: 48px;">
+              {{ tutor.nombre_completo[:1]|upper if tutor else '' }}
+            </div>
             <div class="flex-grow-1 min-w-0">
-              <div class="fw-bold text-truncate" data-campo="nombre">{{ tutor.nombre_completo if tutor else '' }}</div>
-              <div class="small text-secondary" data-campo="detalle">{% if tutor %}{{ tutor.telefono or '' }} {{ tutor.documento_texto }}{% endif %}</div>
+              <div class="fw-bold text-dark text-truncate" data-campo="nombre">{{ tutor.nombre_completo if tutor else '' }}</div>
+              <div class="small text-secondary text-truncate" data-campo="detalle">
+                {% if tutor %}<i class="bi bi-telephone text-success me-1"></i>{{ tutor.telefono or 'Sin teléfono' }} · <i class="bi bi-card-text me-1"></i>{{ tutor.documento_texto }}{% endif %}
+              </div>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="cambiar-tutor">Cambiar</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs" id="cambiar-tutor">
+              <i class="bi bi-arrow-repeat me-1"></i>Cambiar
+            </button>
           </div>
+
+          {# Buscador Reactivo de Tutor #}
           <div id="buscador-tutor" class="{% if tutor %}d-none{% endif %}">
-            <label class="form-label" for="buscar-tutor">Buscar tutor</label>
-            <input class="form-control" type="search" id="buscar-tutor" placeholder="Nombre, teléfono o documento" autocomplete="off">
-            <div class="list-group mt-2 d-none" id="resultados-tutor"></div>
-            <div class="form-text">¿No aparece? <a href="{{ url_for('tutores.nuevo', siguiente='mascota') }}">Registra un tutor nuevo</a> y vuelves aquí automáticamente.</div>
-          </div>
-          {% for error in form.tutor_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-lg-6">
-      <div class="card h-100">
-        <div class="card-header">Identificación</div>
-        <div class="card-body">
-          {{ campo(form.nombre, autocomplete="off", autocapitalize="words", autofocus=(not tutor)) }}
-          <div class="row g-2">
-            <div class="col-6">{{ campo_select(form.especie) }}</div>
-            <div class="col-6">{{ campo_select(form.raza_id) }}</div>
-          </div>
-          <div class="row g-2">
-            <div class="col-6">{{ campo_select(form.sexo) }}</div>
-            <div class="col-6">{{ campo_select(form.tamano, ayuda="Define el precio del spa.") }}</div>
-          </div>
-          {{ campo_archivo(form.foto, ayuda="JPG, PNG o WEBP. Se reduce automáticamente.") }}
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-lg-6">
-      <div class="card h-100">
-        <div class="card-header">Edad</div>
-        <div class="card-body">
-          {{ campo_switch(form.conoce_fecha) }}
-          <div id="bloque-fecha">
-            {{ campo(form.fecha_nacimiento, type="date") }}
-          </div>
-          <div id="bloque-edad" class="d-none">
-            <div class="form-text mb-2">Edad aproximada: se calculará una fecha de nacimiento estimada y la ficha mostrará "≈".</div>
-            <div class="row g-2">
-              <div class="col-6">{{ campo(form.edad_anios, type="number", inputmode="numeric", min="0", max="60") }}</div>
-              <div class="col-6">{{ campo(form.edad_meses, type="number", inputmode="numeric", min="0", max="11") }}</div>
+            <label class="form-label small fw-semibold text-secondary mb-1" for="buscar-tutor">
+              <i class="bi bi-search me-1 text-primary"></i>Buscar Tutor por Nombre, Teléfono o Documento
+            </label>
+            <div class="input-group mb-2">
+              <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+              <input class="form-control border-start-0 ps-0 bg-light" type="search" id="buscar-tutor" placeholder="Ej: Andrés, 315000..., 1098..." autocomplete="off">
+            </div>
+            <div class="list-group shadow-sm rounded-3 mb-2 d-none" id="resultados-tutor"></div>
+            <div class="form-text small">
+              <i class="bi bi-info-circle me-1 text-primary"></i>¿No encuentras al tutor? 
+              <a href="{{ url_for('tutores.nuevo', siguiente='mascota') }}" class="text-danger fw-semibold text-decoration-none">
+                Registra un tutor nuevo aquí
+              </a> y volverás a esta pantalla automáticamente.
             </div>
           </div>
-          <div class="row g-2">
-            <div class="col-6">{{ campo(form.color, autocomplete="off") }}</div>
-            <div class="col-6">{{ campo(form.microchip, autocomplete="off") }}</div>
-          </div>
-          {{ campo_switch(form.esterilizado) }}
+          {% for error in form.tutor_id.errors %}
+            <div class="invalid-feedback d-block">{{ error }}</div>
+          {% endfor %}
         </div>
       </div>
     </div>
 
+    {# Bloque 2: Identificación de la Mascota #}
     <div class="col-12 col-lg-6">
-      <div class="card h-100">
-        <div class="card-header">Salud y señas</div>
-        <div class="card-body">
-          {{ campo_textarea(form.senas_particulares, filas=2) }}
-          {{ campo_textarea(form.alergias, filas=2) }}
-          {{ campo_textarea(form.condiciones_preexistentes, filas=3) }}
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+        <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">🐾</span>
+            <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Identificación del Paciente</span>
+          </div>
+          <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small">Requerido</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.nombre.id }}">
+              Nombre de la Mascota *
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-light text-muted"><i class="bi bi-tag-fill text-danger"></i></span>
+              {{ form.nombre(class_="form-control bg-light" + (" is-invalid" if form.nombre.errors else ""), placeholder="Ej: Bella, Max, Milo...", autocomplete="off", autocapitalize="words", autofocus=(not tutor)) }}
+            </div>
+            {% for error in form.nombre.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.especie.id }}">Especie *</label>
+              {{ form.especie(class_="form-select bg-light" + (" is-invalid" if form.especie.errors else "")) }}
+              {% for error in form.especie.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.raza_id.id }}">Raza</label>
+              {{ form.raza_id(class_="form-select bg-light" + (" is-invalid" if form.raza_id.errors else "")) }}
+              {% for error in form.raza_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.sexo.id }}">Sexo</label>
+              {{ form.sexo(class_="form-select bg-light" + (" is-invalid" if form.sexo.errors else "")) }}
+              {% for error in form.sexo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.tamano.id }}">
+                Tamaño <span class="text-muted fw-normal small">(Spa & Dosis)</span>
+              </label>
+              {{ form.tamano(class_="form-select bg-light" + (" is-invalid" if form.tamano.errors else "")) }}
+              {% for error in form.tamano.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+
+          {# Subida de Foto Interactiva con Preview #}
+          <div class="p-3 bg-light rounded-3 border">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <label class="form-label small fw-semibold text-secondary mb-0" for="{{ form.foto.id }}">
+                <i class="bi bi-camera-fill me-1 text-primary"></i>Foto del Paciente
+              </label>
+              <span class="small text-muted" style="font-size: 0.75rem;">Cámara / Galería (JPG, PNG, WebP)</span>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+              <div id="form-foto-preview" class="flex-shrink-0 d-none">
+                <img id="img-preview" src="" class="rounded-circle shadow-xs border border-2 border-danger" width="56" height="56" style="object-fit: cover;" alt="Preview">
+              </div>
+              <div class="flex-grow-1">
+                {{ form.foto(class_="form-control form-control-sm bg-white", id="input-foto-form", accept="image/*", capture="environment") }}
+              </div>
+            </div>
+            {% for error in form.foto.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Bloque 3: Edad y Registro #}
+    <div class="col-12 col-lg-6">
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+        <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex align-items-center gap-2">
+          <span class="fs-5">🎂</span>
+          <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Edad y Ficha de Registro</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="mb-3 p-3 bg-light rounded-3 border">
+            <div class="form-check form-switch mb-2">
+              {{ form.conoce_fecha(class_="form-check-input", role="switch", id="conoce_fecha") }}
+              <label class="form-check-label fw-bold text-dark small" for="conoce_fecha">
+                Conozco la fecha exacta de nacimiento
+              </label>
+            </div>
+
+            <div id="bloque-fecha">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.fecha_nacimiento.id }}">
+                Fecha de Nacimiento
+              </label>
+              {{ form.fecha_nacimiento(class_="form-control bg-white" + (" is-invalid" if form.fecha_nacimiento.errors else ""), type="date") }}
+              {% for error in form.fecha_nacimiento.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+
+            <div id="bloque-edad" class="d-none">
+              <div class="form-text small mb-2 text-muted">
+                <i class="bi bi-info-circle me-1"></i>Indica la edad aproximada. El sistema calculará una fecha estimada (mostrará "≈").
+              </div>
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label small fw-semibold text-secondary mb-1">Años</label>
+                  {{ form.edad_anios(class_="form-control bg-white", type="number", inputmode="numeric", min="0", max="60", placeholder="0") }}
+                </div>
+                <div class="col-6">
+                  <label class="form-label small fw-semibold text-secondary mb-1">Meses</label>
+                  {{ form.edad_meses(class_="form-control bg-white", type="number", inputmode="numeric", min="0", max="11", placeholder="0") }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.color.id }}">Color / Capa</label>
+              {{ form.color(class_="form-control bg-light", placeholder="Ej: Dorado, Blanco y negro...", autocomplete="off") }}
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.microchip.id }}">Microchip (Opcional)</label>
+              {{ form.microchip(class_="form-control bg-light", placeholder="Ej: 9810981...", autocomplete="off") }}
+              {% for error in form.microchip.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="p-3 bg-light rounded-3 border">
+            <div class="form-check form-switch mb-0">
+              {{ form.esterilizado(class_="form-check-input", role="switch", id="esterilizado") }}
+              <label class="form-check-label fw-bold text-dark small" for="esterilizado">
+                <i class="bi bi-check2-circle text-success me-1"></i>Paciente Esterilizado / Castrado
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Bloque 4: Salud, Alergias y Señas Particulares #}
+    <div class="col-12 col-lg-6">
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+        <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex align-items-center gap-2">
+          <span class="fs-5">🩺</span>
+          <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Salud y Señas Particulares</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.senas_particulares.id }}">
+              <i class="bi bi-eye me-1 text-primary"></i>Señas Particulares o Cicatrices
+            </label>
+            {{ form.senas_particulares(class_="form-control bg-light", rows="2", placeholder="Ej: Mancha blanca en el pecho, oreja izquierda caída...") }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-danger mb-1" for="{{ form.alergias.id }}">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>Alergias Conocidas (Fármacos o Alimentos)
+            </label>
+            {{ form.alergias(class_="form-control bg-light border-danger-subtle", rows="2", placeholder="Ej: Alérgico a la penicilina, intolerancia al pollo...") }}
+          </div>
+
+          <div>
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.condiciones_preexistentes.id }}">
+              <i class="bi bi-heart-pulse me-1 text-danger"></i>Condiciones Preexistentes o Tratamientos Activos
+            </label>
+            {{ form.condiciones_preexistentes(class_="form-control bg-light", rows="2", placeholder="Ej: Cardiopatía leve, displasia de cadera, tratamiento dermatológico...") }}
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="acciones-fijas mt-3">
-    <div class="d-flex flex-column flex-sm-row gap-2">
-      {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
-      <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('mascotas.detalle', mascota_id=mascota.id) if mascota else (url_for('tutores.detalle', tutor_id=tutor.id) if tutor else url_for('mascotas.lista')) }}">Cancelar</a>
+  {# Botones de Guardado y Cancelación #}
+  <div class="card border-0 shadow-sm rounded-4 bg-white mt-4 p-3 p-md-4">
+    <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3">
+      <a class="btn btn-outline-secondary rounded-pill px-4 fw-semibold shadow-xs" 
+         href="{{ url_for('mascotas.detalle', mascota_id=mascota.id) if mascota else (url_for('tutores.detalle', tutor_id=tutor.id) if tutor else url_for('mascotas.lista')) }}">
+        <i class="bi bi-x-circle me-1"></i> Cancelar
+      </a>
+      <button type="submit" class="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow-sm d-flex align-items-center gap-2">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>{{ 'Guardar Cambios' if mascota else 'Registrar Mascota' }}</span>
+      </button>
     </div>
   </div>
 </form>
@@ -97,4 +265,23 @@
 
 {% block scripts %}
 <script src="{{ static_url('js/mascota_form.js') }}"></script>
+<script>
+  // Vista previa reactiva de foto en el formulario
+  const inputFotoForm = document.getElementById('input-foto-form');
+  const previewBox = document.getElementById('form-foto-preview');
+  const imgPreview = document.getElementById('img-preview');
+  if (inputFotoForm && previewBox && imgPreview) {
+    inputFotoForm.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          imgPreview.src = evt.target.result;
+          previewBox.classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+</script>
 {% endblock %}

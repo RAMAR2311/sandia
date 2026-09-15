@@ -8,13 +8,21 @@ generación de notificaciones de aviso por WhatsApp y cobro directo en POS.
 from datetime import datetime, time, timedelta
 from typing import Optional
 
-from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, send_file, url_for
 from decorators import agenda_spa_required, admin_required, spa_required
+from pdf_generator import generar_pdf_spa
 from flask_login import current_user, login_required
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
-from forms import CambioEstadoSpaForm, CitaSpaForm, ServicioSpaForm, SoloCsrfForm, VincularVentaSpaForm
+from forms import (
+    CambioEstadoSpaForm,
+    CitaSpaForm,
+    FotoSpaModalForm,
+    ServicioSpaForm,
+    SoloCsrfForm,
+    VincularVentaSpaForm,
+)
 from models import (
     ESTADOS_SPA,
     CitaSpa,
@@ -25,9 +33,19 @@ from models import (
     Venta,
     db,
 )
-from utils import ZONA_BOGOTA, hoy_bogota, obtener_hora_bogota
+from utils import ZONA_BOGOTA, eliminar_imagen, guardar_imagen, hoy_bogota, obtener_hora_bogota
 
 bp = Blueprint("spa", __name__, url_prefix="/spa")
+
+
+def _procesar_foto_spa(form_campo) -> str | None:
+    """Guarda una foto subida para spa si existe. Devuelve el nombre generado o None."""
+    if form_campo.data and hasattr(form_campo.data, "filename") and form_campo.data.filename:
+        try:
+            return guardar_imagen(form_campo.data, subcarpeta="spa")
+        except ValueError as exc:
+            form_campo.errors.append(str(exc))
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -148,10 +166,15 @@ def agenda():
     citas = db.session.execute(consulta).scalars().all()
     form_csrf = SoloCsrfForm()
 
+    fecha_anterior = fecha_sel - timedelta(days=1)
+    fecha_siguiente = fecha_sel + timedelta(days=1)
+
     return render_template(
         "spa/agenda.html",
         citas=citas,
         fecha_sel=fecha_sel,
+        fecha_anterior=fecha_anterior,
+        fecha_siguiente=fecha_siguiente,
         estado_filtro=estado_filtro,
         form_csrf=form_csrf,
     )
@@ -187,28 +210,33 @@ def cita_nueva():
         form.hora.data = obtener_hora_bogota().time().replace(second=0, microsecond=0)
 
     if form.validate_on_submit():
-        try:
-            fecha_combinada = datetime.combine(form.fecha.data, form.hora.data, tzinfo=ZONA_BOGOTA)
-            nueva_cita = CitaSpa(
-                tutor_id=form.tutor_id.data,
-                mascota_id=form.mascota_id.data,
-                servicio_spa_id=form.servicio_spa_id.data,
-                groomer_id=form.groomer_id.data if form.groomer_id.data and form.groomer_id.data > 0 else None,
-                fecha_hora=fecha_combinada,
-                duracion_minutos=form.duracion_minutos.data,
-                estado="programada",
-                notas_ingreso=form.notas_ingreso.data.strip() if form.notas_ingreso.data else None,
-                creado_por_id=current_user.id,
-                fecha_registro=obtener_hora_bogota(),
-            )
-            db.session.add(nueva_cita)
-            db.session.commit()
-            flash("Cita de grooming agendada correctamente.", "success")
-            return redirect(url_for("spa.agenda", fecha=form.fecha.data.strftime("%Y-%m-%d")))
-        except Exception:
-            db.session.rollback()
-            current_app.logger.exception("Error al agendar cita de spa")
-            flash("Error al agendar la cita. Verifica los campos e inténtalo de nuevo.", "danger")
+        nombre_foto_ingreso = _procesar_foto_spa(form.foto_ingreso)
+        if not form.foto_ingreso.errors:
+            try:
+                fecha_combinada = datetime.combine(form.fecha.data, form.hora.data, tzinfo=ZONA_BOGOTA)
+                nueva_cita = CitaSpa(
+                    tutor_id=form.tutor_id.data,
+                    mascota_id=form.mascota_id.data,
+                    servicio_spa_id=form.servicio_spa_id.data,
+                    groomer_id=form.groomer_id.data if form.groomer_id.data and form.groomer_id.data > 0 else None,
+                    fecha_hora=fecha_combinada,
+                    duracion_minutos=form.duracion_minutos.data,
+                    estado="programada",
+                    notas_ingreso=form.notas_ingreso.data.strip() if form.notas_ingreso.data else None,
+                    foto_ingreso=nombre_foto_ingreso,
+                    creado_por_id=current_user.id,
+                    fecha_registro=obtener_hora_bogota(),
+                )
+                db.session.add(nueva_cita)
+                db.session.commit()
+                flash("Cita de grooming agendada correctamente.", "success")
+                return redirect(url_for("spa.agenda", fecha=form.fecha.data.strftime("%Y-%m-%d")))
+            except Exception:
+                db.session.rollback()
+                if nombre_foto_ingreso:
+                    eliminar_imagen("spa", nombre_foto_ingreso)
+                current_app.logger.exception("Error al agendar cita de spa")
+                flash("Error al agendar la cita. Verifica los campos e inténtalo de nuevo.", "danger")
 
     return render_template("spa/form_cita.html", form=form)
 
@@ -234,9 +262,29 @@ def cita_detalle(id: int):
         flash("La cita de spa especificada no existe.", "danger")
         return redirect(url_for("spa.agenda"))
 
+    # Cargar citas previas de spa de la misma mascota para consultar looks / notas anteriores ("Como la última vez")
+    citas_previas = db.session.execute(
+        select(CitaSpa)
+        .filter(CitaSpa.mascota_id == cita.mascota_id, CitaSpa.id != cita.id)
+        .options(
+            selectinload(CitaSpa.servicio_spa),
+            selectinload(CitaSpa.groomer),
+        )
+        .order_by(CitaSpa.fecha_hora.desc())
+        .limit(6)
+    ).scalars().all()
+
     form_estado = CambioEstadoSpaForm(obj=cita)
     form_venta = VincularVentaSpaForm()
-    return render_template("spa/cita_detalle.html", cita=cita, form_estado=form_estado, form_venta=form_venta)
+    form_foto = FotoSpaModalForm()
+    return render_template(
+        "spa/cita_detalle.html",
+        cita=cita,
+        citas_previas=citas_previas,
+        form_estado=form_estado,
+        form_venta=form_venta,
+        form_foto=form_foto,
+    )
 
 
 @bp.route("/cita/<int:id>/vincular-venta", methods=["POST"])
@@ -282,6 +330,116 @@ def cita_vincular_venta(id: int):
     return redirect(url_for("spa.cita_detalle", id=id))
 
 
+@bp.route("/cita/<int:id>/foto", methods=["POST"])
+@login_required
+@spa_required
+def cita_subir_foto(id: int):
+    """Sube o actualiza la foto de ingreso o salida de una cita de spa."""
+    cita = db.session.get(CitaSpa, id)
+    if not cita:
+        flash("La cita de spa no existe.", "danger")
+        return redirect(url_for("spa.agenda"))
+
+    form = FotoSpaModalForm()
+    if form.validate_on_submit():
+        tipo = form.tipo.data  # 'ingreso' o 'salida'
+        if tipo not in ("ingreso", "salida"):
+            flash("Tipo de foto no válido.", "danger")
+            return redirect(url_for("spa.cita_detalle", id=id))
+
+        try:
+            nombre_foto = guardar_imagen(form.foto.data, subcarpeta="spa")
+            if tipo == "ingreso":
+                anterior = cita.foto_ingreso
+                cita.foto_ingreso = nombre_foto
+                flash("Foto de ingreso guardada exitosamente.", "success")
+            else:
+                anterior = cita.foto_salida
+                cita.foto_salida = nombre_foto
+                # Regla de negocio: al registrar la foto de salida, el estado cambia automáticamente a 'listo_recogida'
+                if cita.estado in ("programada", "en_proceso"):
+                    cita.estado = "listo_recogida"
+                    if not cita.fecha_listo:
+                        cita.fecha_listo = obtener_hora_bogota()
+                    flash(f"¡Foto de salida guardada! {cita.mascota.nombre} cambió automáticamente a 'Listo para recogida'. Ya puedes enviar la notificación por WhatsApp.", "success")
+                else:
+                    flash("Foto de salida guardada exitosamente.", "success")
+
+            db.session.commit()
+            if anterior:
+                eliminar_imagen("spa", anterior)
+        except ValueError as exc:
+            flash(str(exc), "danger")
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Error al subir foto de spa %d", id)
+            flash("Ocurrió un error al guardar la foto.", "danger")
+    else:
+        for errs in form.foto.errors:
+            flash(errs, "danger")
+
+    return redirect(url_for("spa.cita_detalle", id=id))
+
+
+@bp.route("/cita/<int:id>/pdf", methods=["GET"])
+def cita_spa_pdf(id: int):
+    """Descarga el Certificado Oficial de Atención de Spa en PDF."""
+    cita = db.session.execute(
+        select(CitaSpa)
+        .filter_by(id=id)
+        .options(
+            selectinload(CitaSpa.mascota).selectinload(Mascota.raza),
+            selectinload(CitaSpa.tutor),
+            selectinload(CitaSpa.servicio_spa),
+            selectinload(CitaSpa.groomer),
+        )
+    ).scalar_one_or_none()
+    if not cita:
+        flash("La cita de spa no existe.", "danger")
+        return redirect(url_for("spa.agenda"))
+
+    pdf_buffer = generar_pdf_spa(cita, db.session)
+    nombre_archivo = f"Spa_{cita.mascota.nombre if cita.mascota else 'Paciente'}_{cita.id:04d}.pdf"
+    return send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=nombre_archivo,
+    )
+
+
+@bp.route("/cita/<int:id>/foto/<string:tipo>/eliminar", methods=["POST"])
+@login_required
+@spa_required
+def cita_eliminar_foto(id: int, tipo: str):
+    """Elimina la foto de ingreso o salida de la cita de spa."""
+    cita = db.session.get(CitaSpa, id)
+    if not cita:
+        flash("La cita no existe.", "danger")
+        return redirect(url_for("spa.agenda"))
+
+    if tipo not in ("ingreso", "salida"):
+        flash("Tipo de foto no válido.", "danger")
+        return redirect(url_for("spa.cita_detalle", id=id))
+
+    foto_eliminar = cita.foto_ingreso if tipo == "ingreso" else cita.foto_salida
+    if foto_eliminar:
+        try:
+            if tipo == "ingreso":
+                cita.foto_ingreso = None
+            else:
+                cita.foto_salida = None
+            db.session.commit()
+            eliminar_imagen("spa", foto_eliminar)
+            flash(f"Foto de {tipo} eliminada.", "info")
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Error al eliminar foto de spa %d", id)
+            flash("No se pudo eliminar la foto.", "danger")
+
+    return redirect(url_for("spa.cita_detalle", id=id))
+
+
 @bp.route("/cita/<int:id>/estado", methods=["POST"])
 @login_required
 @spa_required
@@ -291,6 +449,7 @@ def cita_cambiar_estado(id: int):
         flash("La cita de spa no existe.", "danger")
         return redirect(url_for("spa.agenda"))
 
+    form = CambioEstadoSpaForm()
     nuevo_estado = request.form.get("estado")
     notas_salida = request.form.get("notas_salida", "").strip()
 
@@ -305,12 +464,27 @@ def cita_cambiar_estado(id: int):
         return redirect(url_for("spa.cita_detalle", id=id))
 
     if nuevo_estado in ESTADOS_SPA:
+        foto_ingreso_subida = _procesar_foto_spa(form.foto_ingreso)
+        foto_salida_subida = _procesar_foto_spa(form.foto_salida)
+
         try:
             cita.estado = nuevo_estado
             if nuevo_estado == "listo_recogida" and not cita.fecha_listo:
                 cita.fecha_listo = obtener_hora_bogota()
             if notas_salida:
                 cita.notas_salida = notas_salida
+
+            if foto_ingreso_subida:
+                ant_ingreso = cita.foto_ingreso
+                cita.foto_ingreso = foto_ingreso_subida
+                if ant_ingreso:
+                    eliminar_imagen("spa", ant_ingreso)
+
+            if foto_salida_subida:
+                ant_salida = cita.foto_salida
+                cita.foto_salida = foto_salida_subida
+                if ant_salida:
+                    eliminar_imagen("spa", ant_salida)
 
             db.session.commit()
 
@@ -330,6 +504,10 @@ def cita_cambiar_estado(id: int):
             return redirect(url_for("spa.cita_detalle", id=id))
         except Exception:
             db.session.rollback()
+            if foto_ingreso_subida:
+                eliminar_imagen("spa", foto_ingreso_subida)
+            if foto_salida_subida:
+                eliminar_imagen("spa", foto_salida_subida)
             current_app.logger.exception("Error al cambiar estado de la cita %d", id)
             flash("Error al actualizar el estado.", "danger")
 

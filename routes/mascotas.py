@@ -8,7 +8,22 @@ from sqlalchemy import select
 
 from decorators import admin_required, recepcion_required
 from forms import FallecimientoForm, FotoForm, MascotaForm, RegistroPesoForm, SoloCsrfForm
-from models import ESPECIES, Mascota, Raza, RegistroPeso, Tutor, db
+from models import (
+    ESPECIES,
+    Cirugia,
+    Cita,
+    CitaSpa,
+    ConsultaMedica,
+    DesparasitacionMascota,
+    ExamenLaboratorio,
+    Hospitalizacion,
+    Mascota,
+    Raza,
+    RegistroPeso,
+    Tutor,
+    VacunaMascota,
+    db,
+)
 from utils import (
     ZONA_BOGOTA,
     edad_en_meses,
@@ -22,7 +37,7 @@ from utils import (
 
 bp = Blueprint("mascotas", __name__, url_prefix="/mascotas")
 
-POR_PAGINA = 30
+POR_PAGINA = 12
 CARPETA_FOTOS = "mascotas"
 
 
@@ -100,48 +115,230 @@ def _fecha_hora_desde_dia(dia):
 
 
 def construir_linea_tiempo(mascota: Mascota) -> list[dict]:
-    """Eventos cronológicos de la mascota, del más reciente al más antiguo.
-
-    Cada fase agrega aquí sus eventos (consultas, vacunas, baños, compras).
-    Cada evento: fecha (datetime con zona), tipo, icono, color, titulo, detalle, url.
-    """
+    """Eventos cronológicos integrales de la mascota (consultas SOAP, spa, vacunas, citas, ingresos, etc.)."""
     eventos = [
         {
             "fecha": mascota.fecha_registro,
             "tipo": "registro",
+            "categoria": "Registro",
             "icono": "bi-clipboard2-plus",
-            "color": "info",
+            "color": "primary",
             "titulo": "Registro en el sistema",
             "detalle": f"Registrado por {mascota.creado_por.nombre}" if mascota.creado_por else "",
             "url": None,
         }
     ]
+
+    # 1. Consultas Médicas SOAP
+    consultas = db.session.execute(
+        select(ConsultaMedica).where(ConsultaMedica.mascota_id == mascota.id).order_by(ConsultaMedica.fecha_hora.desc())
+    ).scalars().all()
+    for c in consultas:
+        vet_nombre = c.veterinario.nombre if c.veterinario else "Veterinario"
+        diag = c.diagnostico or c.motivo_consulta or "Consulta clínica"
+        eventos.append({
+            "fecha": c.fecha_hora,
+            "tipo": "consulta",
+            "categoria": "Consulta Médica",
+            "icono": "bi-journal-medical",
+            "color": "danger",
+            "titulo": f"Consulta SOAP: {diag[:60]}",
+            "detalle": f"Atendido por {vet_nombre} · Motivo: {c.motivo_consulta or 'Revisión general'}",
+            "url": url_for("historias.consulta_detalle", id=c.id),
+        })
+
+    # 2. Servicios de Spa y Peluquería
+    citas_spa = db.session.execute(
+        select(CitaSpa).where(CitaSpa.mascota_id == mascota.id).order_by(CitaSpa.fecha_hora.desc())
+    ).scalars().all()
+    for s in citas_spa:
+        servicio_nom = s.servicio_spa.nombre if s.servicio_spa else "Servicio Spa / Peluquería"
+        groomer_nom = s.groomer.nombre if s.groomer else "Estilista"
+        estado_spa = s.estado_etiqueta if hasattr(s, "estado_etiqueta") else s.estado
+        eventos.append({
+            "fecha": s.fecha_hora,
+            "tipo": "spa",
+            "categoria": "Spa & Grooming",
+            "icono": "bi-scissors",
+            "color": "warning",
+            "titulo": f"Spa: {servicio_nom}",
+            "detalle": f"Estado: {estado_spa} · A cargo de {groomer_nom}{(' · ' + s.notas_ingreso) if s.notas_ingreso else ''}",
+            "url": url_for("spa.cita_detalle", id=s.id),
+            "foto_ingreso": s.url_mini_ingreso,
+            "foto_salida": s.url_mini_salida,
+        })
+
+    # 3. Citas Médicas Agendadas
+    citas_agenda = db.session.execute(
+        select(Cita).where(Cita.mascota_id == mascota.id).order_by(Cita.fecha_hora.desc())
+    ).scalars().all()
+    for a in citas_agenda:
+        prof = a.profesional.nombre if a.profesional else "General"
+        eventos.append({
+            "fecha": a.fecha_hora,
+            "tipo": "cita",
+            "categoria": "Cita Agendada",
+            "icono": "bi-calendar2-check",
+            "color": "info",
+            "titulo": f"Cita: {a.tipo_etiqueta}",
+            "detalle": f"Estado: {a.estado.capitalize()} · Con {prof}{(' · ' + a.motivo) if a.motivo else ''}",
+            "url": url_for("agenda.detalle", id=a.id),
+        })
+
+    # 4. Hospitalizaciones / Ingresos
+    hosps = db.session.execute(
+        select(Hospitalizacion).where(Hospitalizacion.mascota_id == mascota.id).order_by(Hospitalizacion.fecha_ingreso.desc())
+    ).scalars().all()
+    for h in hosps:
+        vet = h.veterinario_responsable.nombre if h.veterinario_responsable else "Veterinario"
+        jaula = f"Jaula: {h.jaula}" if h.jaula else ""
+        eventos.append({
+            "fecha": h.fecha_ingreso,
+            "tipo": "hospitalizacion",
+            "categoria": "Ingreso Hospitalario",
+            "icono": "bi-hospital",
+            "color": "danger",
+            "titulo": f"Ingreso Hospitalario ({h.estado.capitalize()})",
+            "detalle": f"Motivo: {h.motivo or 'Observación clínica'} · {jaula} · Responsable: {vet}",
+            "url": url_for("historias.hospitalizacion_detalle", id=h.id),
+        })
+
+    # 5. Cirugías
+    cirugias = db.session.execute(
+        select(Cirugia).where(Cirugia.mascota_id == mascota.id).order_by(Cirugia.fecha.desc())
+    ).scalars().all()
+    for cir in cirugias:
+        vet = cir.veterinario.nombre if cir.veterinario else "Cirujano"
+        fecha_dt = _fecha_hora_desde_dia(cir.fecha)
+        eventos.append({
+            "fecha": fecha_dt,
+            "tipo": "cirugia",
+            "categoria": "Cirugía",
+            "icono": "bi-bandaid",
+            "color": "danger",
+            "titulo": f"Cirugía: {cir.tipo_procedimiento}",
+            "detalle": f"Cirujano: {vet}{(' · ' + cir.notas_postquirurgicas[:60]) if cir.notas_postquirurgicas else ''}",
+            "url": url_for("historias.cirugia_detalle", id=cir.id),
+        })
+
+    # 6. Vacunas
+    vacunas = db.session.execute(
+        select(VacunaMascota).where(VacunaMascota.mascota_id == mascota.id).order_by(VacunaMascota.fecha_aplicacion.desc())
+    ).scalars().all()
+    for v in vacunas:
+        fecha_dt = _fecha_hora_desde_dia(v.fecha_aplicacion)
+        prox = f" · Próxima: {v.fecha_proxima.strftime('%d/%m/%Y')}" if v.fecha_proxima else ""
+        eventos.append({
+            "fecha": fecha_dt,
+            "tipo": "vacuna",
+            "categoria": "Vacunación",
+            "icono": "bi-shield-check",
+            "color": "success",
+            "titulo": f"Vacuna: {v.nombre_vacuna}",
+            "detalle": f"Lote: {v.lote or 'N/A'}{prox}",
+            "url": url_for("historias.ficha_medica", mascota_id=mascota.id),
+        })
+
+    # 7. Desparasitaciones
+    desparasitaciones = db.session.execute(
+        select(DesparasitacionMascota).where(DesparasitacionMascota.mascota_id == mascota.id).order_by(DesparasitacionMascota.fecha_aplicacion.desc())
+    ).scalars().all()
+    for d in desparasitaciones:
+        fecha_dt = _fecha_hora_desde_dia(d.fecha_aplicacion)
+        prox = f" · Próxima: {d.fecha_proxima.strftime('%d/%m/%Y')}" if d.fecha_proxima else ""
+        eventos.append({
+            "fecha": fecha_dt,
+            "tipo": "desparasitacion",
+            "categoria": "Desparasitación",
+            "icono": "bi-bug",
+            "color": "success",
+            "titulo": f"Desparasitación: {d.producto}",
+            "detalle": f"Tipo: {d.tipo.capitalize()}{prox}",
+            "url": url_for("historias.ficha_medica", mascota_id=mascota.id),
+        })
+
+    # 8. Registros de peso
     for peso in mascota.registros_peso:
-        eventos.append(
-            {
-                "fecha": peso.fecha,
-                "tipo": "peso",
-                "icono": "bi-speedometer2",
-                "color": "neutro",
-                "titulo": f"Peso registrado: {formato_kg(peso.peso_kg)}",
-                "detalle": f"Por {peso.registrado_por.nombre}" if peso.registrado_por else "",
-                "url": None,
-            }
-        )
+        eventos.append({
+            "fecha": peso.fecha,
+            "tipo": "peso",
+            "categoria": "Control de Peso",
+            "icono": "bi-speedometer2",
+            "color": "secondary",
+            "titulo": f"Peso registrado: {formato_kg(peso.peso_kg)}",
+            "detalle": f"Por {peso.registrado_por.nombre}" if peso.registrado_por else "",
+            "url": None,
+        })
+
+    # 9. Exámenes de laboratorio
+    examenes = db.session.execute(
+        select(ExamenLaboratorio).where(ExamenLaboratorio.mascota_id == mascota.id).order_by(ExamenLaboratorio.fecha_toma.desc())
+    ).scalars().all()
+    for ex in examenes:
+        fecha_dt = _fecha_hora_desde_dia(ex.fecha_toma) if ex.fecha_toma else ex.fecha_registro
+        eventos.append({
+            "fecha": fecha_dt,
+            "tipo": "laboratorio",
+            "categoria": "Laboratorio",
+            "icono": "bi-file-earmark-medical",
+            "color": "primary",
+            "titulo": f"Examen: {ex.tipo_examen}",
+            "detalle": f"Estado: {ex.estado.capitalize()}{(' · Lab: ' + ex.laboratorio_externo) if ex.laboratorio_externo else ''}",
+            "url": url_for("historias.examen_detalle", id=ex.id),
+        })
+
     if mascota.fallecido and mascota.fecha_fallecimiento:
-        eventos.append(
-            {
-                "fecha": datetime.combine(mascota.fecha_fallecimiento, time(23, 59), tzinfo=ZONA_BOGOTA),
-                "tipo": "fallecimiento",
-                "icono": "bi-heart",
-                "color": "urgente",
-                "titulo": "Fallecimiento",
-                "detalle": "",
-                "url": None,
-            }
-        )
-    eventos.sort(key=lambda evento: evento["fecha"], reverse=True)
+        eventos.append({
+            "fecha": datetime.combine(mascota.fecha_fallecimiento, time(23, 59), tzinfo=ZONA_BOGOTA),
+            "tipo": "fallecimiento",
+            "categoria": "Estado",
+            "icono": "bi-heart",
+            "color": "dark",
+            "titulo": "Fallecimiento",
+            "detalle": "",
+            "url": None,
+        })
+
+    eventos.sort(key=lambda evento: evento["fecha"] or datetime.min.replace(tzinfo=ZONA_BOGOTA), reverse=True)
     return eventos
+
+
+def obtener_resumen_atenciones(mascota: Mascota) -> dict:
+    """Calcula las últimas atenciones clave y el conteo de visitas para vista rápida."""
+    ultima_consulta = db.session.execute(
+        select(ConsultaMedica).where(ConsultaMedica.mascota_id == mascota.id).order_by(ConsultaMedica.fecha_hora.desc()).limit(1)
+    ).scalar_one_or_none()
+
+    ultimo_spa = db.session.execute(
+        select(CitaSpa).where(CitaSpa.mascota_id == mascota.id).order_by(CitaSpa.fecha_hora.desc()).limit(1)
+    ).scalar_one_or_none()
+
+    ultima_cita = db.session.execute(
+        select(Cita).where(Cita.mascota_id == mascota.id).order_by(Cita.fecha_hora.desc()).limit(1)
+    ).scalar_one_or_none()
+
+    ultima_vacuna = db.session.execute(
+        select(VacunaMascota).where(VacunaMascota.mascota_id == mascota.id).order_by(VacunaMascota.fecha_aplicacion.desc()).limit(1)
+    ).scalar_one_or_none()
+
+    ultimo_ingreso = db.session.execute(
+        select(Hospitalizacion).where(Hospitalizacion.mascota_id == mascota.id).order_by(Hospitalizacion.fecha_ingreso.desc()).limit(1)
+    ).scalar_one_or_none()
+
+    total_visitas = (
+        db.session.query(ConsultaMedica).filter_by(mascota_id=mascota.id).count()
+        + db.session.query(CitaSpa).filter_by(mascota_id=mascota.id).count()
+        + db.session.query(Hospitalizacion).filter_by(mascota_id=mascota.id).count()
+    )
+
+    return {
+        "ultima_consulta": ultima_consulta,
+        "ultimo_spa": ultimo_spa,
+        "ultima_cita": ultima_cita,
+        "ultima_vacuna": ultima_vacuna,
+        "ultimo_ingreso": ultimo_ingreso,
+        "total_visitas": total_visitas,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +437,7 @@ def detalle(mascota_id):
     return render_template(
         "mascotas/detalle.html",
         mascota=mascota,
+        resumen=obtener_resumen_atenciones(mascota),
         eventos=construir_linea_tiempo(mascota),
         datos_peso=datos_peso,
         form_peso=RegistroPesoForm(fecha=hoy_bogota()),

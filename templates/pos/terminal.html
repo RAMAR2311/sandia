@@ -360,24 +360,6 @@
   </div>
 </div>
 
-<!-- Modal: esperando aprobación de precio mínimo -->
-<div class="modal fade" id="modalAprobacion" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-warning">
-        <h5 class="modal-title"><i class="bi bi-hourglass-split me-2"></i>Esperando aprobación del administrador</h5>
-      </div>
-      <div class="modal-body text-center py-4" id="cuerpoAprobacion">
-        <div class="spinner-border text-warning mb-3" role="status"></div>
-        <p class="mb-0" id="mensajeAprobacion">El precio está por debajo del mínimo. Se avisó al administrador; esta ventana se actualiza sola.</p>
-      </div>
-      <div class="modal-footer bg-light">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="cancelarEsperaAprobacion()">Cancelar y ajustar precio</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <style>
 /* Contenedor con scroll táctil suave para celular y tablet */
 .contenedor-filtros-scroll {
@@ -1251,78 +1233,6 @@ async function confirmarVenta() {
     alert('Ocurrió un error de conexión.');
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Finalizar y Generar Factura';
-  }
-}
-
-// --- Aprobación de precio mínimo: espera con sondeo cada 5 segundos --------
-let temporizadorAprobacion = null;
-let itemEsperandoAprobacion = null; // { productoId, varianteId }
-
-function iniciarEsperaAprobacion(aprobacionId, mensaje, estadoInicial, productoId, varianteId) {
-  const modalPagoEl = document.getElementById('modalPago');
-  const modalPago = bootstrap.Modal.getInstance(modalPagoEl);
-  if (modalPago) modalPago.hide();
-
-  itemEsperandoAprobacion = { productoId, varianteId };
-  document.getElementById('cuerpoAprobacion').innerHTML =
-    `<div class="spinner-border text-warning mb-3" role="status"></div>
-     <p class="mb-0" id="mensajeAprobacion"></p>`;
-  document.getElementById('mensajeAprobacion').innerText = mensaje || 'Esperando aprobación del administrador...';
-  const modal = new bootstrap.Modal(document.getElementById('modalAprobacion'));
-  modal.show();
-
-  if (estadoInicial === 'rechazado') {
-    document.getElementById('cuerpoAprobacion').innerHTML =
-      `<i class="bi bi-x-circle-fill text-danger fs-1 d-block mb-2"></i><p class="mb-0">${mensaje}</p>`;
-    return; // ya viene resuelto (una solicitud anterior fue rechazada): no hay nada que sondear.
-  }
-
-  clearInterval(temporizadorAprobacion);
-  temporizadorAprobacion = setInterval(() => sondearAprobacion(aprobacionId), 5000);
-}
-
-function cancelarEsperaAprobacion() {
-  clearInterval(temporizadorAprobacion);
-  temporizadorAprobacion = null;
-}
-
-async function sondearAprobacion(aprobacionId) {
-  try {
-    const resp = await fetch(`/pos/aprobaciones/${aprobacionId}/estado`);
-    const res = await resp.json();
-
-    if (res.estado === 'aprobado') {
-      clearInterval(temporizadorAprobacion);
-      document.getElementById('cuerpoAprobacion').innerHTML =
-        `<i class="bi bi-check-circle-fill text-success fs-1 d-block mb-2"></i>
-         <p class="mb-0">¡Aprobado por $${res.precio_aprobado.toLocaleString('es-CO')}! Reintentando la venta...</p>`;
-
-      // Ajusta el precio del ítem del carrito que originó la solicitud al valor
-      // exacto autorizado por el admin (la venta solo se acepta a ese precio).
-      if (itemEsperandoAprobacion) {
-        const idx = carrito.findIndex(
-          it => it.producto_id === itemEsperandoAprobacion.productoId
-             && (it.variante_id || null) === (itemEsperandoAprobacion.varianteId || null)
-        );
-        if (idx >= 0) {
-          carrito[idx].precio_unitario = res.precio_aprobado;
-          renderCarrito();
-        }
-      }
-
-      window.setTimeout(() => {
-        bootstrap.Modal.getInstance(document.getElementById('modalAprobacion'))?.hide();
-        confirmarVenta();
-      }, 1200);
-    } else if (res.estado === 'rechazado') {
-      clearInterval(temporizadorAprobacion);
-      document.getElementById('cuerpoAprobacion').innerHTML =
-        `<i class="bi bi-x-circle-fill text-danger fs-1 d-block mb-2"></i>
-         <p class="mb-0">Solicitud rechazada: ${res.motivo_rechazo || 'sin motivo indicado'}. Ajusta el precio e inténtalo de nuevo.</p>`;
-    }
-    // Si sigue "pendiente" no se hace nada: se vuelve a sondear en 5 segundos.
-  } catch (err) {
-    console.error('Error al sondear la aprobación', err);
   }
 }
 </script>

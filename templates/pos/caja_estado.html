@@ -1,186 +1,313 @@
 {% extends "base.html" %}
-{% from "_macros.html" import encabezado %}
-{% block titulo %}Control de Caja - VetCare{% endblock %}
+{% block titulo %}Gestión y Control de Caja · Sandía{% endblock %}
 
 {% block contenido %}
-{% call encabezado("Gestión de Caja", "Apertura, cierre y arqueo de turnos de cobro") %}
-  <div class="d-flex gap-2">
+{# 1. Cabecera Principal #}
+<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge badge-sandia-rosa rounded-pill px-3 py-1">
+        <i class="bi bi-cash-coin me-1"></i> Punto de Venta & Caja
+      </span>
+    </div>
+    <h1 class="h3 fw-bold text-dark mb-1" style="font-family: var(--fuente-marca); color: #BE123C;">
+      Gestión y Control de Caja
+    </h1>
+    <p class="text-secondary small mb-0">
+      Apertura, control en vivo de ingresos, arqueo y cierre de turnos de cobro
+    </p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
     {% if turno_activo %}
-    <a href="{{ url_for('pos.terminal') }}" class="btn btn-success">
-      <i class="bi bi-cart-check-fill me-1"></i>Ir a Terminal POS
+    <a href="{{ url_for('pos.terminal') }}" class="btn btn-sm btn-sandia-verde rounded-pill px-4 py-2 shadow-sm">
+      <i class="bi bi-cart-check-fill me-1"></i> Ir a Terminal POS
     </a>
     {% endif %}
-    <a href="{{ url_for('pos.ventas_lista') }}" class="btn btn-outline-secondary">
-      <i class="bi bi-receipt me-1"></i>Historial de Ventas
+    <a href="{{ url_for('pos.ventas_lista') }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 py-2 shadow-xs">
+      <i class="bi bi-receipt me-1"></i> Historial de Ventas
     </a>
   </div>
-{% endcall %}
+</div>
 
 <div class="row g-4 mb-4">
-  <!-- Columna Izquierda: Estado del Turno -->
+  {# Columna Izquierda: Estado del Turno Actual #}
   <div class="col-12 col-lg-6">
     {% if turno_activo %}
-    <div class="card border-success shadow-sm h-100">
-      <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0"><i class="bi bi-unlock-fill me-2"></i>Turno Abierto</h5>
-        <span class="badge bg-light text-dark">ID #{{ turno_activo.id }}</span>
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white overflow-hidden" style="border: 1.5px solid #A7F3D0 !important;">
+      {# Header Turno Abierto #}
+      <div class="py-3 px-4 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%); border-bottom: 1.5px solid #A7F3D0;">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-success rounded-circle p-1 d-inline-block" style="width: 10px; height: 10px;"></span>
+          <span class="fw-bold text-success-emphasis fs-6" style="font-family: var(--fuente-marca);">Turno de Cobro Abierto</span>
+        </div>
+        <span class="badge bg-white text-success border border-success-subtle rounded-pill px-3 py-1 fw-bold shadow-xs">
+          Turno #{{ turno_activo.id }}
+        </span>
       </div>
-      <div class="card-body">
-        <div class="row g-3 mb-3">
+
+      <div class="card-body p-4">
+        {# KPIs Rápidos de Apertura #}
+        <div class="row g-3 mb-4">
           <div class="col-6">
-            <span class="text-secondary small d-block">Apertura</span>
-            <strong>{{ turno_activo.fecha_apertura|fecha_hora }}</strong>
+            <div class="p-3 rounded-3 bg-light border h-100">
+              <div class="text-secondary small fw-semibold text-uppercase" style="font-size: 0.72rem;">
+                <i class="bi bi-calendar3 me-1 text-danger"></i> Fecha y Hora Apertura
+              </div>
+              <div class="fw-bold text-dark fs-6 mt-1">{{ turno_activo.fecha_apertura|fecha_hora }}</div>
+            </div>
           </div>
           <div class="col-6">
-            <span class="text-secondary small d-block">Base Inicial (Efectivo)</span>
-            <strong class="fs-5 text-success">{{ turno_activo.monto_apertura|cop }}</strong>
+            <div class="p-3 rounded-3 bg-light border h-100">
+              <div class="text-secondary small fw-semibold text-uppercase" style="font-size: 0.72rem;">
+                <i class="bi bi-cash-stack me-1 text-success"></i> Base Inicial (Efectivo)
+              </div>
+              <div class="fw-bold text-success font-monospace fs-5 mt-1">{{ turno_activo.monto_apertura|cop }}</div>
+            </div>
           </div>
         </div>
 
-        <hr>
-
-        <h6 class="text-uppercase text-secondary small fw-bold mb-2">Resumen de Ventas del Turno</h6>
-        <div class="table-responsive mb-3">
-          <table class="table table-sm table-bordered align-middle">
-            <thead class="table-light">
-              <tr>
-                <th>Medio de Pago</th>
-                <th class="text-end">Monto Recaudado</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><i class="bi bi-cash me-1 text-success"></i>Efectivo en Ventas</td>
-                <td class="text-end font-monospace">{{ resumen.efectivo|cop }}</td>
-              </tr>
-              <tr>
-                <td><i class="bi bi-phone me-1 text-primary"></i>Nequi</td>
-                <td class="text-end font-monospace">{{ resumen.nequi|cop }}</td>
-              </tr>
-              <tr>
-                <td><i class="bi bi-phone-fill me-1 text-danger"></i>Daviplata</td>
-                <td class="text-end font-monospace">{{ resumen.daviplata|cop }}</td>
-              </tr>
-              <tr>
-                <td><i class="bi bi-credit-card me-1 text-info"></i>Tarjetas (Débito/Crédito)</td>
-                <td class="text-end font-monospace">{{ (resumen.tarjeta_debito + resumen.tarjeta_credito)|cop }}</td>
-              </tr>
-              <tr>
-                <td><i class="bi bi-bank me-1 text-secondary"></i>Transferencias</td>
-                <td class="text-end font-monospace">{{ resumen.transferencia|cop }}</td>
-              </tr>
-            </tbody>
-            <tfoot class="table-light fw-bold">
-              <tr>
-                <td>Total Facturado ({{ resumen.ventas_count }} ventas)</td>
-                <td class="text-end font-monospace text-primary fs-6">{{ resumen.total_ventas|cop }}</td>
-              </tr>
-            </tfoot>
-          </table>
+        {# Desglose de Medios de Pago #}
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">
+            <i class="bi bi-pie-chart-fill me-1 text-danger"></i> Resumen de Ventas del Turno
+          </span>
+          <span class="badge badge-sandia-rosa rounded-pill px-2 py-0.5 small">
+            {{ resumen.ventas_count }} {{ 'venta' if resumen.ventas_count == 1 else 'ventas' }}
+          </span>
         </div>
 
-        <div class="p-3 bg-light rounded mb-3 border">
-          <div class="d-flex justify-content-between align-items-center">
-            <span>Efectivo Esperado en Caja:</span>
-            <strong class="fs-5 text-dark font-monospace">{{ (turno_activo.monto_apertura + resumen.efectivo)|cop }}</strong>
+        <div class="list-group list-group-flush border rounded-3 overflow-hidden mb-3 shadow-xs">
+          {# Efectivo #}
+          <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 bg-white">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-success-subtle text-success rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                <i class="bi bi-cash"></i>
+              </span>
+              <span class="fw-semibold text-dark small">Efectivo en Ventas</span>
+            </div>
+            <span class="fw-bold font-monospace text-dark">{{ resumen.efectivo|cop }}</span>
           </div>
-          <small class="text-muted">Monto inicial (${{ turno_activo.monto_apertura|cop }}) + Efectivo ventas (${{ resumen.efectivo|cop }})</small>
+
+          {# Nequi #}
+          <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 bg-white">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-primary-subtle text-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                <i class="bi bi-phone"></i>
+              </span>
+              <span class="fw-semibold text-dark small">Nequi</span>
+            </div>
+            <span class="fw-bold font-monospace text-dark">{{ resumen.nequi|cop }}</span>
+          </div>
+
+          {# Daviplata #}
+          <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 bg-white">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-danger-subtle text-danger rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                <i class="bi bi-phone-fill"></i>
+              </span>
+              <span class="fw-semibold text-dark small">Daviplata</span>
+            </div>
+            <span class="fw-bold font-monospace text-dark">{{ resumen.daviplata|cop }}</span>
+          </div>
+
+          {# Tarjetas #}
+          <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 bg-white">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-info-subtle text-info-emphasis rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                <i class="bi bi-credit-card"></i>
+              </span>
+              <span class="fw-semibold text-dark small">Tarjetas (Débito/Crédito)</span>
+            </div>
+            <span class="fw-bold font-monospace text-dark">{{ (resumen.tarjeta_debito + resumen.tarjeta_credito)|cop }}</span>
+          </div>
+
+          {# Transferencias #}
+          <div class="list-group-item d-flex align-items-center justify-content-between py-2 px-3 bg-white">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-secondary-subtle text-secondary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                <i class="bi bi-bank"></i>
+              </span>
+              <span class="fw-semibold text-dark small">Transferencias Bancarias</span>
+            </div>
+            <span class="fw-bold font-monospace text-dark">{{ resumen.transferencia|cop }}</span>
+          </div>
+
+          {# Total Facturado #}
+          <div class="list-group-item d-flex align-items-center justify-content-between py-2.5 px-3" style="background-color: #FFF5F6;">
+            <div class="fw-bold text-dark small">
+              Total Facturado en Turno
+            </div>
+            <span class="fw-bold font-monospace text-danger fs-6">{{ resumen.total_ventas|cop }}</span>
+          </div>
         </div>
 
-        <button type="button" class="btn btn-danger w-100 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#modalCierreCaja">
-          <i class="bi bi-lock-fill me-1"></i>Realizar Arqueo y Cerrar Caja
+        {# Tarjeta Hero: Efectivo Esperado en Cajón #}
+        <div class="p-3 rounded-4 mb-4" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 50%, #FDF6EE 100%); border: 1.5px solid #FECDD3;">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <div class="small fw-bold text-danger text-uppercase" style="letter-spacing: 0.5px;">
+                <i class="bi bi-wallet2 me-1"></i> Efectivo Esperado en Caja:
+              </div>
+              <div class="text-secondary small mt-0.5" style="font-size: 0.78rem;">
+                Base inicial ({{ turno_activo.monto_apertura|cop }}) + Efectivo ventas ({{ resumen.efectivo|cop }})
+              </div>
+            </div>
+            <div class="fw-bold text-danger font-monospace fs-4">
+              {{ (turno_activo.monto_apertura + resumen.efectivo)|cop }}
+            </div>
+          </div>
+        </div>
+
+        {# Botón Arqueo y Cierre #}
+        <button type="button" class="btn btn-sandia-coral w-100 py-2.5 rounded-pill fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" data-bs-toggle="modal" data-bs-target="#modalCierreCaja">
+          <i class="bi bi-lock-fill fs-6"></i>
+          <span>Realizar Arqueo y Cerrar Caja</span>
         </button>
       </div>
     </div>
+
     {% else %}
-    <div class="card border-warning shadow-sm h-100">
-      <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0"><i class="bi bi-lock-fill me-2"></i>Caja Cerrada</h5>
-        <span class="badge bg-dark text-white">Sin turno activo</span>
+    {# Caja Cerrada #}
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-header card-header-sandia py-3 px-4 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">🔒</span>
+          <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Caja Cerrada</span>
+        </div>
+        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1 small">Sin Turno Activo</span>
       </div>
-      <div class="card-body">
-        <p class="text-secondary">Debes abrir un turno de caja especificando la base inicial en efectivo para comenzar a cobrar ventas.</p>
-        <form method="post" action="{{ url_for('pos.abrir_caja') }}">
+
+      <div class="card-body p-4">
+        <div class="p-3 rounded-4 mb-4" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%); border: 1px solid #FECDD3;">
+          <div class="small fw-bold text-danger mb-1"><i class="bi bi-info-circle-fill me-1"></i>Apertura de Turno Requerida</div>
+          <div class="text-secondary small">
+            Para iniciar el registro de ventas, servicios o cobros en el terminal POS, abre un turno especificando la base de efectivo inicial en el cajón.
+          </div>
+        </div>
+
+        <form method="post" action="{{ url_for('pos.abrir_caja') }}" novalidate>
           {{ form_apertura.csrf_token }}
+
           <div class="mb-3">
-            {{ form_apertura.monto_apertura.label(class="form-label fw-bold") }}
-            <div class="input-group input-group-lg">
-              <span class="input-group-text bg-white fw-bold text-success fs-4">$</span>
-              {{ form_apertura.monto_apertura(class="form-control form-control-lg font-monospace fw-bold fs-4 formato-miles-cop", id="inputMontoApertura", type="text", value="100.000", placeholder="100.000", autocomplete="off") }}
+            <label class="form-label small fw-bold text-dark mb-1" for="inputMontoApertura">
+              <i class="bi bi-cash me-1 text-success"></i>Base Inicial en Efectivo (COP) *
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-light text-success fw-bold fs-5">$</span>
+              {{ form_apertura.monto_apertura(class="form-control form-control-lg font-monospace fw-bold fs-5 formato-miles-cop bg-light" + (" is-invalid" if form_apertura.monto_apertura.errors else ""), id="inputMontoApertura", type="text", value="100.000", placeholder="100.000", autocomplete="off") }}
             </div>
-            <div class="d-flex flex-wrap gap-1 mt-2 align-items-center">
-              <span class="text-muted small me-1">Sugeridos:</span>
-              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-monto-rapido" data-monto="50.000">$50.000</button>
-              <button type="button" class="btn btn-sm btn-success py-0 px-2 fw-bold text-white btn-monto-rapido" data-monto="100.000">$100.000</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-monto-rapido" data-monto="150.000">$150.000</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-monto-rapido" data-monto="200.000">$200.000</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-monto-rapido" data-monto="300.000">$300.000</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-monto-rapido" data-monto="500.000">$500.000</button>
+            {% for error in form_apertura.monto_apertura.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+
+            <div class="d-flex flex-wrap gap-1.5 mt-2 align-items-center">
+              <span class="text-muted small me-1 fw-semibold" style="font-size: 0.76rem;">Sugeridos:</span>
+              <button type="button" class="btn btn-xs btn-sandia-rosa rounded-pill btn-monto-rapido" data-monto="50.000">$50.000</button>
+              <button type="button" class="btn btn-xs btn-sandia-coral rounded-pill btn-monto-rapido" data-monto="100.000">$100.000</button>
+              <button type="button" class="btn btn-xs btn-sandia-rosa rounded-pill btn-monto-rapido" data-monto="150.000">$150.000</button>
+              <button type="button" class="btn btn-xs btn-sandia-rosa rounded-pill btn-monto-rapido" data-monto="200.000">$200.000</button>
+              <button type="button" class="btn btn-xs btn-sandia-rosa rounded-pill btn-monto-rapido" data-monto="300.000">$300.000</button>
             </div>
-            {% for error in form_apertura.monto_apertura.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
           </div>
-          <div class="mb-3">
-            {{ form_apertura.notas.label(class="form-label") }}
-            {{ form_apertura.notas(class="form-control", rows="2", placeholder="Escribe observaciones iniciales si aplica...") }}
+
+          <div class="mb-4">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form_apertura.notas.id }}">
+              <i class="bi bi-card-text me-1 text-muted"></i>Notas u Observaciones de Apertura
+            </label>
+            {{ form_apertura.notas(class="form-control bg-light", rows="2", placeholder="Opcional: novedades del cajón, billetes disponibles...") }}
           </div>
-          {{ form_apertura.enviar(class="btn btn-success btn-lg w-100 fw-bold") }}
+
+          <button type="submit" class="btn btn-sandia-verde w-100 py-2.5 rounded-pill fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+            <i class="bi bi-unlock-fill"></i>
+            <span>Abrir Turno de Caja</span>
+          </button>
         </form>
       </div>
     </div>
     {% endif %}
   </div>
 
-  <!-- Columna Derecha: Historial de Turnos -->
+  {# Columna Derecha: Historial de Turnos #}
   <div class="col-12 col-lg-6">
-    <div class="card shadow-sm h-100">
-      <div class="card-header bg-light">
-        <h5 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Historial de Turnos</h5>
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-header card-header-sandia py-3 px-4 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">🕒</span>
+          <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Historial de Turnos</span>
+        </div>
+        <span class="badge badge-sandia-rosa rounded-pill px-2.5 py-1 small">
+          {{ turnos_recientes|length }} turnos
+        </span>
       </div>
+
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-hover table-striped align-middle mb-0">
-            <thead class="table-light">
+          <table class="table table-hover align-middle mb-0">
+            <thead style="background-color: #FFF5F6; border-bottom: 1.5px solid #FECDD3;">
               <tr>
-                <th>Cajero</th>
-                <th>Apertura / Cierre</th>
-                <th>Base</th>
-                <th>Diferencia</th>
-                <th>Estado</th>
+                <th class="ps-4 py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Cajero</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Apertura / Cierre</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Base</th>
+                <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Diferencia</th>
+                <th class="pe-4 py-2.5 text-end small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Estado</th>
               </tr>
             </thead>
             <tbody>
               {% for t in turnos_recientes %}
               <tr>
-                <td><strong>{{ t.usuario.nombre }}</strong></td>
-                <td class="small">
-                  <div>{{ t.fecha_apertura|fecha_hora }}</div>
-                  {% if t.fecha_cierre %}<div class="text-muted">{{ t.fecha_cierre|fecha_hora }}</div>{% endif %}
+                <td class="ps-4 py-3">
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-danger-subtle text-danger d-flex align-items-center justify-content-center fw-bold small flex-shrink-0" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                      {{ t.usuario.nombre[:1]|upper if t.usuario else '?' }}
+                    </div>
+                    <div class="min-w-0">
+                      <div class="fw-bold text-dark small text-truncate" style="max-width: 140px;">
+                        {{ t.usuario.nombre if t.usuario else '—' }}
+                      </div>
+                      <div class="text-muted" style="font-size: 0.7rem;">
+                        {{ t.usuario.rol_etiqueta if t.usuario else '' }}
+                      </div>
+                    </div>
+                  </div>
                 </td>
-                <td class="font-monospace small">{{ t.monto_apertura|cop }}</td>
-                <td class="font-monospace small">
-                  {% if t.diferencia is not none %}
-                    {% if t.diferencia == 0 %}
-                    <span class="badge bg-success">Cuadre ($0)</span>
-                    {% elif t.diferencia > 0 %}
-                    <span class="badge bg-info">+{{ t.diferencia|cop }}</span>
-                    {% else %}
-                    <span class="badge bg-danger">{{ t.diferencia|cop }}</span>
-                    {% endif %}
-                  {% else %}
-                  -
+                <td class="py-3 small">
+                  <div class="fw-semibold text-dark">{{ t.fecha_apertura|fecha_hora if t.fecha_apertura else '—' }}</div>
+                  {% if t.fecha_cierre %}
+                    <div class="text-muted" style="font-size: 0.72rem;"><i class="bi bi-clock-fill text-secondary me-0.5"></i>{{ t.fecha_cierre|fecha_hora }}</div>
                   {% endif %}
                 </td>
-                <td>
-                  {% if t.esta_abierta %}
-                  <span class="badge bg-success">Abierta</span>
+                <td class="py-3 font-monospace small fw-bold text-dark">
+                  {{ t.monto_apertura|cop }}
+                </td>
+                <td class="py-3 font-monospace small">
+                  {% if t.diferencia is not none %}
+                    {% if t.diferencia == 0 %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5">Cuadre ($0)</span>
+                    {% elif t.diferencia > 0 %}
+                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill px-2 py-0.5">+{{ t.diferencia|cop }}</span>
+                    {% else %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5">{{ t.diferencia|cop }}</span>
+                    {% endif %}
                   {% else %}
-                  <span class="badge bg-secondary">Cerrada</span>
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="pe-4 py-3 text-end">
+                  {% if t.esta_abierta %}
+                  <span class="badge bg-success rounded-pill px-2.5 py-1 small fw-semibold shadow-xs">
+                    <i class="bi bi-unlock-fill me-1"></i>Abierta
+                  </span>
+                  {% else %}
+                  <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2.5 py-1 small fw-semibold">
+                    <i class="bi bi-lock-fill me-1"></i>Cerrada
+                  </span>
                   {% endif %}
                 </td>
               </tr>
               {% else %}
               <tr>
-                <td colspan="5" class="text-center text-muted py-4">No se registran turnos anteriores.</td>
+                <td colspan="5" class="text-center text-muted py-5">
+                  <i class="bi bi-clock-history fs-3 d-block mb-2 text-secondary"></i>
+                  No se registran turnos anteriores.
+                </td>
               </tr>
               {% endfor %}
             </tbody>
@@ -191,63 +318,86 @@
   </div>
 </div>
 
-<!-- Modal Arqueo y Cierre -->
+{# Modal Arqueo y Cierre #}
 {% if turno_activo %}
-<div class="modal fade" id="modalCierreCaja" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalCierreCaja" tabindex="-1" aria-labelledby="modalCierreLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <form method="post" action="{{ url_for('pos.cerrar_caja') }}">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <form method="post" action="{{ url_for('pos.cerrar_caja') }}" novalidate>
         {{ form_cierre.csrf_token }}
-        <div class="modal-header bg-danger text-white">
-          <h5 class="modal-title"><i class="bi bi-shield-check me-2"></i>Arqueo y Cierre de Caja</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+
+        <div class="modal-header py-3 px-4 card-header-sandia border-bottom">
+          <div class="d-flex align-items-center gap-2" id="modalCierreLabel">
+            <span class="fs-5">🔒</span>
+            <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Arqueo y Cierre de Caja</span>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
-        <div class="modal-body">
-          <p class="text-secondary small">Ingresa los valores finales verificados físicamente para calcular el arqueo.</p>
+
+        <div class="modal-body p-4">
+          <p class="text-secondary small mb-3">
+            Ingresa los valores físicos y comprobantes verificados para calcular el arqueo final del turno.
+          </p>
 
           <div class="mb-3">
-            {{ form_cierre.monto_efectivo.label(class="form-label fw-bold") }}
-            <div class="input-group input-group-lg">
-              <span class="input-group-text bg-white fw-bold text-danger fs-4">$</span>
-              {{ form_cierre.monto_efectivo(class="form-control form-control-lg fw-bold font-monospace formato-miles-cop", id="cierreEfectivo", type="text", placeholder="0", autocomplete="off") }}
+            <label class="form-label small fw-bold text-dark mb-1" for="cierreEfectivo">
+              <i class="bi bi-cash-stack me-1 text-danger"></i>Efectivo Físico en Cajón (COP) *
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-light text-danger fw-bold fs-5">$</span>
+              {{ form_cierre.monto_efectivo(class="form-control form-control-lg fw-bold font-monospace formato-miles-cop bg-light", id="cierreEfectivo", type="text", placeholder="0", autocomplete="off") }}
             </div>
-            <small class="form-text text-muted">Monto total contado en el cajón de efectivo.</small>
+            <small class="form-text text-muted">Monto total de monedas y billetes contados físicamente.</small>
           </div>
 
           <div class="row g-2 mb-3">
             <div class="col-6">
-              {{ form_cierre.monto_nequi.label(class="form-label small") }}
-              {{ form_cierre.monto_nequi(class="form-control form-control-sm font-monospace formato-miles-cop", type="text", placeholder="0", autocomplete="off") }}
+              <label class="form-label small fw-semibold text-secondary mb-1">
+                <i class="bi bi-phone text-primary me-1"></i>Nequi
+              </label>
+              {{ form_cierre.monto_nequi(class="form-control form-control-sm font-monospace formato-miles-cop bg-light", type="text", placeholder="0", autocomplete="off") }}
             </div>
             <div class="col-6">
-              {{ form_cierre.monto_daviplata.label(class="form-label small") }}
-              {{ form_cierre.monto_daviplata(class="form-control form-control-sm font-monospace formato-miles-cop", type="text", placeholder="0", autocomplete="off") }}
+              <label class="form-label small fw-semibold text-secondary mb-1">
+                <i class="bi bi-phone-fill text-danger me-1"></i>Daviplata
+              </label>
+              {{ form_cierre.monto_daviplata(class="form-control form-control-sm font-monospace formato-miles-cop bg-light", type="text", placeholder="0", autocomplete="off") }}
             </div>
             <div class="col-6">
-              {{ form_cierre.monto_tarjetas.label(class="form-label small") }}
-              {{ form_cierre.monto_tarjetas(class="form-control form-control-sm font-monospace formato-miles-cop", type="text", placeholder="0", autocomplete="off") }}
+              <label class="form-label small fw-semibold text-secondary mb-1">
+                <i class="bi bi-credit-card text-info me-1"></i>Datafono / Tarjetas
+              </label>
+              {{ form_cierre.monto_tarjetas(class="form-control form-control-sm font-monospace formato-miles-cop bg-light", type="text", placeholder="0", autocomplete="off") }}
             </div>
             <div class="col-6">
-              {{ form_cierre.monto_transferencia.label(class="form-label small") }}
-              {{ form_cierre.monto_transferencia(class="form-control form-control-sm font-monospace formato-miles-cop", type="text", placeholder="0", autocomplete="off") }}
+              <label class="form-label small fw-semibold text-secondary mb-1">
+                <i class="bi bi-bank text-secondary me-1"></i>Transferencias
+              </label>
+              {{ form_cierre.monto_transferencia(class="form-control form-control-sm font-monospace formato-miles-cop bg-light", type="text", placeholder="0", autocomplete="off") }}
             </div>
           </div>
 
-          <div class="mb-3">
-            {{ form_cierre.notas.label(class="form-label") }}
-            {{ form_cierre.notas(class="form-control", rows="2", placeholder="Notas de cierre o motivos de discrepancia...") }}
+          <div class="mb-0">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form_cierre.notas.id }}">
+              <i class="bi bi-card-text text-muted me-1"></i>Observaciones o Justificación de Arqueo
+            </label>
+            {{ form_cierre.notas(class="form-control bg-light", rows="2", placeholder="Anotaciones de cierre, sobrantes o faltantes si aplica...") }}
           </div>
         </div>
-        <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          {{ form_cierre.enviar(class="btn btn-danger fw-bold") }}
+
+        <div class="modal-footer py-3 px-4 bg-light border-top d-flex justify-content-between">
+          <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-sm btn-sandia-coral rounded-pill px-4 fw-bold shadow-sm">
+            <i class="bi bi-shield-check me-1"></i> Confirmar Cierre y Arqueo
+          </button>
         </div>
       </form>
     </div>
   </div>
 </div>
 {% endif %}
-
 {% endblock %}
 
 {% block scripts %}
@@ -263,7 +413,7 @@ function formatearMilesCOP(input) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Manejar todos los inputs con formato de miles en vivo
+  // Manejar inputs con formato de miles en vivo
   document.querySelectorAll('.formato-miles-cop').forEach(function(inp) {
     inp.addEventListener('input', function() {
       formatearMilesCOP(this);
@@ -283,3 +433,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+

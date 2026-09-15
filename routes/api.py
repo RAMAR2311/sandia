@@ -6,18 +6,18 @@ datos (fases posteriores) exigen el token CSRF en el header ``X-CSRFToken``.
 
 from flask import Blueprint, jsonify, request, url_for
 from flask_login import login_required
-from sqlalchemy import or_, select
+from sqlalchemy import case, or_, select
 
 from models import ESPECIES, Mascota, Producto, Raza, ServicioSpa, Tutor, db
 from utils import PREFIJO_MINIATURA, normalizar_texto, solo_digitos
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
-LIMITE_MAXIMO = 25
+LIMITE_MAXIMO = 50
 
 
 def _limite() -> int:
-    limite = request.args.get("limite", 10, type=int)
+    limite = request.args.get("limite", 15, type=int)
     return max(1, min(limite, LIMITE_MAXIMO))
 
 
@@ -50,19 +50,25 @@ def mascota_a_dict(mascota: Mascota) -> dict:
         "especie": mascota.especie,
         "especie_etiqueta": mascota.especie_etiqueta,
         "emoji": mascota.especie_emoji,
-        "raza": mascota.raza.nombre if mascota.raza else "",
+        "raza": mascota.raza.nombre if mascota.raza else "Mestizo",
         "sexo": mascota.sexo,
         "edad": mascota.edad,
         "tamano": mascota.tamano or "",
         "activo": mascota.activo and not mascota.fallecido,
+        "microchip": mascota.microchip or "",
         "foto_mini": _foto_mini(mascota),
         "tutor": {
-            "id": mascota.tutor.id,
-            "nombre": mascota.tutor.nombre_completo,
+            "id": mascota.tutor.id if mascota.tutor else None,
+            "nombre": mascota.tutor.nombre_completo if mascota.tutor else "Sin tutor",
             "telefono": mascota.tutor.telefono or "",
-            "whatsapp": mascota.tutor.whatsapp_efectivo,
+            "whatsapp": mascota.tutor.whatsapp_efectivo if mascota.tutor else None,
+            "documento": mascota.tutor.documento_texto if mascota.tutor else "",
         },
         "url": url_for("mascotas.detalle", mascota_id=mascota.id),
+        "url_detalle": url_for("mascotas.detalle", mascota_id=mascota.id),
+        "url_ficha": url_for("historias.ficha_medica", mascota_id=mascota.id),
+        "url_consulta_nueva": url_for("historias.consulta_nueva", mascota_id=mascota.id),
+        "url_cita_spa": url_for("spa.cita_nueva", mascota_id=mascota.id),
     }
 
 
@@ -70,16 +76,18 @@ def mascota_a_dict(mascota: Mascota) -> dict:
 @login_required
 def buscar_tutores():
     texto = request.args.get("q", "").strip()
-    if len(texto) < 2:
+    if not texto:
         return jsonify([])
     condiciones = []
     normalizado = normalizar_texto(texto)
     if normalizado:
         condiciones.append(Tutor.nombre_busqueda.ilike(f"%{normalizado}%"))
     digitos = solo_digitos(texto)
-    if len(digitos) >= 3:
+    if digitos:
         patron = f"%{digitos}%"
         condiciones += [Tutor.telefono.ilike(patron), Tutor.whatsapp.ilike(patron), Tutor.numero_documento.ilike(patron)]
+    condiciones.append(Tutor.numero_documento.ilike(f"%{texto}%"))
+    condiciones.append(Tutor.telefono.ilike(f"%{texto}%"))
     consulta = (
         select(Tutor)
         .where(Tutor.activo.is_(True), or_(*condiciones))
@@ -93,18 +101,32 @@ def buscar_tutores():
 @login_required
 def buscar_mascotas():
     texto = request.args.get("q", "").strip()
-    if len(texto) < 2:
+    if not texto:
         return jsonify([])
     normalizado = normalizar_texto(texto)
+    condiciones = [
+        Mascota.nombre_busqueda.ilike(f"%{normalizado}%"),
+        Tutor.nombre_busqueda.ilike(f"%{normalizado}%"),
+    ]
+    if texto:
+        condiciones.append(Mascota.microchip.ilike(f"%{texto}%"))
+        condiciones.append(Tutor.numero_documento.ilike(f"%{texto}%"))
+        condiciones.append(Tutor.telefono.ilike(f"%{texto}%"))
+    
+    orden_relevancia = case(
+        (Mascota.nombre_busqueda.ilike(f"{normalizado}%"), 1),
+        (Mascota.nombre_busqueda.ilike(f"%{normalizado}%"), 2),
+        (Tutor.nombre_busqueda.ilike(f"{normalizado}%"), 3),
+        else_=4,
+    )
+    
     consulta = (
         select(Mascota)
         .join(Mascota.tutor)
         .where(
-            Mascota.activo.is_(True),
-            Mascota.fallecido.is_(False),
-            or_(Mascota.nombre_busqueda.ilike(f"%{normalizado}%"), Tutor.nombre_busqueda.ilike(f"%{normalizado}%")),
+            or_(*condiciones),
         )
-        .order_by(Mascota.nombre_busqueda)
+        .order_by(orden_relevancia, Mascota.nombre_busqueda.asc())
         .limit(_limite())
     )
     return jsonify([mascota_a_dict(m) for m in db.session.execute(consulta).scalars()])

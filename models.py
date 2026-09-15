@@ -11,7 +11,7 @@ Convenciones:
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
-from flask import g, has_app_context
+from flask import g, has_app_context, has_request_context, url_for
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData, func, select, text
@@ -19,6 +19,27 @@ from sqlalchemy.orm import validates
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from utils import edad_texto, enlace_whatsapp, hoy_bogota, normalizar_texto, normalizar_whatsapp, obtener_hora_bogota
+
+def _generar_url_segura(endpoint: str, **values) -> str:
+    """Genera URL absoluta o relativa sin fallar si está fuera de contexto web."""
+    try:
+        if has_request_context():
+            return url_for(endpoint, _external=True, **values)
+        if has_app_context():
+            try:
+                return url_for(endpoint, _external=True, **values)
+            except Exception:
+                return url_for(endpoint, _external=False, **values)
+    except Exception:
+        pass
+    if endpoint == "historias.consulta_documento_publico":
+        return f"/historias/consulta/{values.get('id')}/documento"
+    elif endpoint == "pos.venta_pdf":
+        return f"/pos/venta/{values.get('id')}/pdf"
+    elif endpoint in ("spa.cita_spa_pdf", "spa.cita_pdf"):
+        return f"/spa/cita/{values.get('id')}/pdf"
+    return "/"
+
 
 # Nombres predecibles para índices y restricciones (facilita las migraciones).
 CONVENCION_NOMBRES = {
@@ -1010,26 +1031,21 @@ class Venta(BaseModel):
 
     @property
     def mensaje_whatsapp(self) -> str:
-        """Mensaje pre-redactado con el resumen de la factura para enviar por WhatsApp."""
+        """Mensaje pre-redactado con el documento oficial de factura para enviar por WhatsApp."""
         nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
         nombre_mascota = f" (Mascota: {self.mascota.nombre})" if self.mascota else ""
-        
-        lineas_items = []
-        for d in self.detalles:
-            cant_str = f"x{int(d.cantidad)}" if d.cantidad == int(d.cantidad) else f"x{d.cantidad:.2f}"
-            lineas_items.append(f"• {d.descripcion} {cant_str} - ${int(d.total_linea):,}".replace(",", "."))
-        items_txt = "\n".join(lineas_items) if lineas_items else "• Detalle de servicios y productos"
         total_str = f"${int(self.total):,}".replace(",", ".")
-        pagos_txt = ", ".join([f"{p.metodo_etiqueta}" for p in self.pagos]) if self.pagos else "Pago registrado"
+        fecha_str = self.fecha_venta.strftime('%d/%m/%Y %I:%M %p') if hasattr(self.fecha_venta, 'strftime') else str(self.fecha_venta)
+        url_factura = _generar_url_segura("pos.venta_pdf", id=self.id)
 
         return (
-            f"¡Hola {nombre_tutor}! 👋🍉\n\n"
-            f"Te compartimos el comprobante de pago de *Sandía Medicina & Spa Veterinario*{nombre_mascota}:\n\n"
-            f"📄 *Factura:* {self.numero_factura}\n"
-            f"📅 *Fecha:* {self.fecha_venta.strftime('%d/%m/%Y %I:%M %p')}\n"
-            f"💳 *Medio de pago:* {pagos_txt}\n\n"
-            f"*Ítems:*\n{items_txt}\n\n"
+            f"🐾 *Sandía · Medicina & Spa Veterinario* 🍉\n"
+            f"🧾 *COMPROBANTE OFICIAL DE PAGO #{self.numero_factura}*\n\n"
+            f"Hola *{nombre_tutor}*{nombre_mascota},\n"
+            f"Te compartimos el comprobante de pago oficial de tu visita ({fecha_str}).\n\n"
             f"💰 *TOTAL PAGADO:* {total_str}\n\n"
+            f"📄 *Descargar Factura Oficial en PDF:*\n"
+            f"👉 {url_factura}\n\n"
             f"¡Muchas gracias por tu visita y por confiar en nosotros! 🐾❤️\n"
             f"_Sandía Medicina & Spa Veterinario_"
         )
@@ -1141,6 +1157,8 @@ class CitaSpa(BaseModel):
 
     notas_ingreso = db.Column(db.Text)
     notas_salida = db.Column(db.Text)
+    foto_ingreso = db.Column(db.String(255))
+    foto_salida = db.Column(db.String(255))
     notificado_whatsapp = db.Column(db.Boolean, nullable=False, default=False)
     fecha_listo = db.Column(db.DateTime(timezone=True))
     venta_id = db.Column(db.Integer, db.ForeignKey("ventas.id"))
@@ -1156,18 +1174,54 @@ class CitaSpa(BaseModel):
     creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
 
     @property
+    def url_foto_ingreso(self) -> str | None:
+        if not self.foto_ingreso:
+            return None
+        return url_for("static", filename=f"uploads/spa/{self.foto_ingreso}")
+
+    @property
+    def url_mini_ingreso(self) -> str | None:
+        if not self.foto_ingreso:
+            return None
+        return url_for("static", filename=f"uploads/spa/mini_{self.foto_ingreso}")
+
+    @property
+    def url_foto_salida(self) -> str | None:
+        if not self.foto_salida:
+            return None
+        return url_for("static", filename=f"uploads/spa/{self.foto_salida}")
+
+    @property
+    def url_mini_salida(self) -> str | None:
+        if not self.foto_salida:
+            return None
+        return url_for("static", filename=f"uploads/spa/mini_{self.foto_salida}")
+
+    @property
+    def tiene_fotos(self) -> bool:
+        return bool(self.foto_ingreso or self.foto_salida)
+
+    @property
     def estado_etiqueta(self):
         return ESTADOS_SPA.get(self.estado, self.estado)
 
     @property
     def mensaje_whatsapp(self) -> str:
-        """Mensaje pre-redactado de aviso de finalización de grooming."""
+        """Mensaje pre-redactado de aviso de finalización de grooming con documento."""
         nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
         nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
         nombre_servicio = self.servicio_spa.nombre if self.servicio_spa else "Spa"
+        url_doc = _generar_url_segura("spa.cita_spa_pdf", id=self.id)
+
         return (
-            f"Hola {nombre_tutor}, te informamos desde VetCare que {nombre_mascota} "
-            f"ha terminado su servicio de {nombre_servicio} y ya está listo/a y hermoso/a para su recogida. 🐾✨"
+            f"🐾 *Sandía · Medicina & Spa Veterinario* ✂️🧼\n"
+            f"✨ *¡{nombre_mascota} ESTÁ LISTO/A PARA RECOGIDA!*\n\n"
+            f"Hola *{nombre_tutor}*,\n"
+            f"Te informamos que *{nombre_mascota}* ha terminado su servicio de *{nombre_servicio}* y ya está listo/a y hermoso/a para su recogida.\n\n"
+            f"📄 *Descargar Certificado de Spa en PDF:*\n"
+            f"👉 {url_doc}\n\n"
+            f"¡Te esperamos pronto! 🐾❤️\n"
+            f"_Sandía Spa & Grooming_"
         )
 
     @property
@@ -1228,6 +1282,60 @@ class ConsultaMedica(BaseModel):
     enmiendas = db.relationship(
         "EnmiendaConsulta", back_populates="consulta", order_by="EnmiendaConsulta.fecha", cascade="all, delete-orphan"
     )
+
+    @property
+    def mensaje_whatsapp(self) -> str:
+        nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
+        nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
+        fecha_str = self.fecha_hora.strftime("%d/%m/%Y") if hasattr(self.fecha_hora, "strftime") else str(self.fecha_hora)
+        url_doc = _generar_url_segura("historias.consulta_documento_publico", id=self.id)
+
+        msg = f"🐾 *Sandía · Medicina & Spa Veterinario* 🍉\n"
+        msg += f"📋 *INFORME MÉDICO OFICIAL & RECETA (SOAP)*\n\n"
+        msg += f"Hola *{nombre_tutor}*, te compartimos el documento oficial correspondiente a la consulta de *{nombre_mascota}* ({fecha_str}).\n\n"
+        msg += f"• *Diagnóstico:* {self.diagnostico}\n"
+        msg += f"\n📄 *Ver / Descargar Documento Oficial en PDF:*\n"
+        msg += f"👉 {url_doc}\n\n"
+        msg += f"¡Muchas gracias por confiar en nosotros! 🐾❤️\n"
+        msg += f"_Sandía Medicina & Spa Veterinario_"
+        return msg
+
+    @property
+    def enlace_whatsapp(self) -> str | None:
+        if not self.tutor or not self.tutor.whatsapp_efectivo:
+            return None
+        return enlace_whatsapp(self.tutor.whatsapp_efectivo, self.mensaje_whatsapp)
+
+    @property
+    def sistemas_evaluados(self) -> dict | None:
+        """Devuelve el diccionario de sistemas estructurado si examen_sistemas es JSON valido."""
+        if not self.examen_sistemas:
+            return None
+        try:
+            import json
+            data = json.loads(self.examen_sistemas)
+            if isinstance(data, dict) and "sistemas" in data and isinstance(data["sistemas"], dict):
+                return data["sistemas"]
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            pass
+        return None
+
+    @property
+    def resumen_sistemas(self) -> dict:
+        """Devuelve un resumen con conteos de sistemas normales y anormales."""
+        sistemas = self.sistemas_evaluados
+        if not sistemas:
+            return {"total": 0, "normales": 0, "anormales": 0, "anormales_lista": []}
+        normales = sum(1 for s in sistemas.values() if isinstance(s, dict) and s.get("estado") == "normal")
+        anormales = [s.get("nombre") or k for k, s in sistemas.items() if isinstance(s, dict) and s.get("estado") == "anormal"]
+        return {
+            "total": len(sistemas),
+            "normales": normales,
+            "anormales": len(anormales),
+            "anormales_lista": anormales,
+        }
 
     def __repr__(self):
         return f"<ConsultaMedica {self.id} mascota={self.mascota_id} fecha={self.fecha_hora}>"
@@ -1349,6 +1457,24 @@ class DesparasitacionMascota(BaseModel):
             return "proxima_vencer"
         return "al_dia"
 
+    @property
+    def mensaje_whatsapp(self) -> str:
+        nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
+        nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
+        proxima_str = self.fecha_proxima.strftime("%d/%m/%Y") if self.fecha_proxima and hasattr(self.fecha_proxima, "strftime") else "próximamente"
+        return (
+            f"Hola {nombre_tutor}, te enviamos el registro de desparasitación de {nombre_mascota}:\n"
+            f"• Producto: {self.producto} ({self.tipo.capitalize()})\n"
+            f"• Próxima dosis: {proxima_str}\n"
+            "¡Gracias por cuidar la salud de tu mascota con Sandía VetCare! 🐾"
+        )
+
+    @property
+    def enlace_whatsapp(self) -> str | None:
+        if not self.tutor or not self.tutor.whatsapp_efectivo:
+            return None
+        return enlace_whatsapp(self.tutor.whatsapp_efectivo, self.mensaje_whatsapp)
+
     def __repr__(self):
         return f"<DesparasitacionMascota {self.id} mascota={self.mascota_id} producto={self.producto!r}>"
 
@@ -1437,9 +1563,9 @@ class Cita(BaseModel):
         nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
         nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
         return (
-            f"Hola {nombre_tutor}, te recordamos desde VetCare la cita de {nombre_mascota} "
-            f"({self.tipo_etiqueta}) el {self.fecha_hora.strftime('%d/%m/%Y')} a las "
-            f"{self.fecha_hora.strftime('%I:%M %p')}. ¡Te esperamos! 🐾"
+            f"¡Hola {nombre_tutor}! 👋🍉 Te recordamos con mucho cariño desde *Sandía Medicina & Spa Veterinario* la cita de *{nombre_mascota}* "
+            f"({self.tipo_etiqueta}) programada para el {self.fecha_hora.strftime('%d/%m/%Y')} a las "
+            f"{self.fecha_hora.strftime('%I:%M %p')}. ¡Te esperamos! 🐾✨"
         )
 
     @property
@@ -1578,6 +1704,14 @@ class Cirugia(BaseModel):
 # Exámenes de laboratorio
 # ---------------------------------------------------------------------------
 
+CATEGORIAS_EXAMEN = {
+    "laboratorio": "Examen de Laboratorio",
+    "radiografia": "Radiografía (Rayos X)",
+    "ecografia": "Ecografía / Ultrasonido",
+    "cardiologia": "Reporte Cardiológico",
+    "otro": "Otra Ayuda Diagnóstica",
+}
+
 ESTADOS_EXAMEN = {
     "solicitado": "Solicitado",
     "en_proceso": "En proceso",
@@ -1587,13 +1721,17 @@ ESTADOS_EXAMEN = {
 
 class ExamenLaboratorio(BaseModel):
     __tablename__ = "examenes_laboratorio"
-    __table_args__ = (db.Index("ix_examenes_laboratorio_estado", "estado"),)
+    __table_args__ = (
+        db.Index("ix_examenes_laboratorio_estado", "estado"),
+        db.Index("ix_examenes_laboratorio_categoria", "categoria"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     mascota_id = db.Column(db.Integer, db.ForeignKey("mascotas.id"), nullable=False, index=True)
     consulta_id = db.Column(db.Integer, db.ForeignKey("consultas_medicas.id"))
     solicitado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
 
+    categoria = db.Column(db.String(50), default="laboratorio", nullable=False)
     tipo_examen = db.Column(db.String(150), nullable=False)
     fecha_toma = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
     laboratorio_externo = db.Column(db.String(150))
@@ -1618,8 +1756,51 @@ class ExamenLaboratorio(BaseModel):
     def estado_etiqueta(self):
         return ESTADOS_EXAMEN.get(self.estado, self.estado)
 
+    @property
+    def categoria_etiqueta(self):
+        return CATEGORIAS_EXAMEN.get(self.categoria or "laboratorio", "Examen")
+
+    @property
+    def icono_categoria(self):
+        cat = self.categoria or "laboratorio"
+        if cat == "radiografia":
+            return "bi-film"
+        elif cat == "ecografia":
+            return "bi-soundwave"
+        elif cat == "cardiologia":
+            return "bi-heart-pulse"
+        elif cat == "laboratorio":
+            return "bi-clipboard2-pulse"
+        return "bi-file-earmark-medical"
+
+    @property
+    def color_categoria(self):
+        cat = self.categoria or "laboratorio"
+        if cat == "radiografia":
+            return "warning"
+        elif cat == "ecografia":
+            return "info"
+        elif cat == "cardiologia":
+            return "danger"
+        elif cat == "laboratorio":
+            return "primary"
+        return "secondary"
+
+    @property
+    def es_imagen(self) -> bool:
+        if not self.archivo_resultado:
+            return False
+        ext = self.archivo_resultado.rsplit(".", 1)[-1].lower() if "." in self.archivo_resultado else ""
+        return ext in ("jpg", "jpeg", "png", "webp", "gif")
+
+    @property
+    def es_pdf(self) -> bool:
+        if not self.archivo_resultado:
+            return False
+        return self.archivo_resultado.lower().endswith(".pdf")
+
     def __repr__(self):
-        return f"<ExamenLaboratorio {self.id} {self.tipo_examen!r} estado={self.estado}>"
+        return f"<ExamenLaboratorio {self.id} {self.tipo_examen!r} categoria={self.categoria} estado={self.estado}>"
 
 
 # ---------------------------------------------------------------------------

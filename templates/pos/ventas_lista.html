@@ -1,37 +1,57 @@
 {% extends "base.html" %}
-{% from "_macros.html" import encabezado %}
-{% block titulo %}Historial de Ventas - VetCare{% endblock %}
+{% block titulo %}Historial de Ventas · Sandía{% endblock %}
 
 {% block contenido %}
-{% call encabezado("Historial de Ventas", "Consulta de facturas emitidas, estados y comprobantes") %}
-  <div class="d-flex gap-2">
-    <a href="{{ url_for('pos.terminal') }}" class="btn btn-success">
-      <i class="bi bi-cart-plus me-1"></i>Nueva Venta (POS)
+{# 1. Cabecera Principal #}
+<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge badge-sandia-rosa rounded-pill px-3 py-1">
+        <i class="bi bi-receipt me-1"></i> Punto de Venta & Facturación
+      </span>
+    </div>
+    <h1 class="h3 fw-bold text-dark mb-1" style="font-family: var(--fuente-marca); color: #BE123C;">
+      Historial de Ventas y Facturas
+    </h1>
+    <p class="text-secondary small mb-0">
+      Consulta de tickets emitidos, comprobantes, estados y reimpresión de recibos
+    </p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <a href="{{ url_for('pos.terminal') }}" class="btn btn-sm btn-sandia-verde rounded-pill px-4 py-2 shadow-sm">
+      <i class="bi bi-cart-plus-fill me-1"></i> Nueva Venta (POS)
     </a>
-    <a href="{{ url_for('pos.caja_estado') }}" class="btn btn-outline-secondary">
-      <i class="bi bi-cash-coin me-1"></i>Estado de Caja
+    <a href="{{ url_for('pos.caja_estado') }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 py-2 shadow-xs">
+      <i class="bi bi-cash-coin me-1"></i> Control de Caja
     </a>
   </div>
-{% endcall %}
+</div>
 
-<form method="get" class="card mb-3" role="search">
-  <div class="card-body py-3">
+{# 2. Filtros y Búsqueda #}
+<form method="get" class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden" role="search" style="border: 1.5px solid #FECDD3 !important;">
+  <div class="card-body p-3 p-md-4">
     <div class="row g-2 align-items-end">
       <div class="col-12 col-md-4">
-        <label class="form-label mb-1" for="q">Buscar Factura</label>
-        <input class="form-control" type="search" id="q" name="q" value="{{ q }}" placeholder="Ej. VET-20260914-0001">
+        <label class="form-label small fw-bold text-secondary mb-1" for="q">
+          <i class="bi bi-search me-1 text-danger"></i>Buscar Factura o Cliente
+        </label>
+        <input class="form-control bg-light" type="search" id="q" name="q" value="{{ q }}" placeholder="Ej. VET-20260914-0001 o nombre...">
       </div>
       <div class="col-6 col-md-3">
-        <label class="form-label mb-1" for="estado">Estado</label>
-        <select class="form-select" id="estado" name="estado">
+        <label class="form-label small fw-bold text-secondary mb-1" for="estado">
+          <i class="bi bi-funnel me-1 text-danger"></i>Estado
+        </label>
+        <select class="form-select bg-light" id="estado" name="estado">
           <option value="">Todos los estados</option>
           <option value="completada" {% if estado == 'completada' %}selected{% endif %}>Completada</option>
           <option value="anulada" {% if estado == 'anulada' %}selected{% endif %}>Anulada</option>
         </select>
       </div>
       <div class="col-6 col-md-3">
-        <label class="form-label mb-1" for="metodo">Medio de Pago</label>
-        <select class="form-select" id="metodo" name="metodo">
+        <label class="form-label small fw-bold text-secondary mb-1" for="metodo">
+          <i class="bi bi-credit-card me-1 text-danger"></i>Medio de Pago
+        </label>
+        <select class="form-select bg-light" id="metodo" name="metodo">
           <option value="">Todos los medios</option>
           <option value="efectivo" {% if metodo == 'efectivo' %}selected{% endif %}>Efectivo</option>
           <option value="nequi" {% if metodo == 'nequi' %}selected{% endif %}>Nequi</option>
@@ -41,65 +61,90 @@
         </select>
       </div>
       <div class="col-12 col-md-2 d-grid">
-        <button class="btn btn-outline-primary" type="submit"><i class="bi bi-search me-1"></i>Filtrar</button>
+        <button class="btn btn-sandia-coral rounded-pill fw-bold shadow-xs py-2" type="submit">
+          <i class="bi bi-search me-1"></i>Filtrar
+        </button>
       </div>
     </div>
   </div>
 </form>
 
-<div class="card shadow-sm">
+{# 3. Tabla de Ventas #}
+<div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+  <div class="card-header card-header-sandia py-3 px-4 d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-2">
+      <span class="fs-5">🧾</span>
+      <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Registro de Facturación</span>
+    </div>
+    <span class="badge badge-sandia-rosa rounded-pill px-2.5 py-1 small">
+      {{ ventas|length }} facturas
+    </span>
+  </div>
+
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
-        <thead class="table-light">
+        <thead style="background-color: #FFF5F6; border-bottom: 1.5px solid #FECDD3;">
           <tr>
-            <th>N° Factura</th>
-            <th>Fecha y Hora</th>
-            <th>Cliente / Tutor</th>
-            <th>Cajero</th>
-            <th>Total Facturado</th>
-            <th>Estado</th>
-            <th class="text-end">Acciones</th>
+            <th class="ps-4 py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">N° Factura</th>
+            <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Fecha y Hora</th>
+            <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Cliente / Tutor</th>
+            <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Cajero</th>
+            <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Total Facturado</th>
+            <th class="py-2.5 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Estado</th>
+            <th class="pe-4 py-2.5 text-end small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem;">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {% for v in ventas %}
           <tr>
-            <td>
-              <a href="{{ url_for('pos.venta_detalle', id=v.id) }}" class="fw-bold text-decoration-none">
+            <td class="ps-4 py-3">
+              <a href="{{ url_for('pos.venta_detalle', id=v.id) }}" class="fw-bold text-decoration-none font-monospace text-danger">
                 {{ v.numero_factura }}
               </a>
             </td>
-            <td class="small">{{ v.fecha_venta|fecha_hora }}</td>
-            <td>
+            <td class="py-3 small text-dark">{{ v.fecha_venta|fecha_hora }}</td>
+            <td class="py-3">
               {% if v.tutor %}
-              <strong>{{ v.tutor.nombre_completo }}</strong>
+              <div class="fw-bold text-dark small">{{ v.tutor.nombre_completo }}</div>
+              {% if v.tutor.telefono %}<div class="text-muted" style="font-size: 0.72rem;">{{ v.tutor.telefono }}</div>{% endif %}
               {% else %}
-              <span class="text-muted">Cliente Ocasional</span>
+              <span class="text-muted fst-italic small">Cliente Ocasional</span>
               {% endif %}
             </td>
-            <td class="small text-secondary">{{ v.usuario.nombre }}</td>
-            <td class="fw-bold font-monospace text-success">{{ v.total|cop }}</td>
-            <td>
+            <td class="py-3 small text-secondary">
+              <div class="d-flex align-items-center gap-1.5">
+                <i class="bi bi-person-circle text-danger small"></i>
+                <span>{{ v.usuario.nombre }}</span>
+              </div>
+            </td>
+            <td class="py-3 fw-bold font-monospace text-success fs-6">{{ v.total|cop }}</td>
+            <td class="py-3">
               {% if v.estado == 'completada' %}
-              <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Completada</span>
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 small fw-semibold">
+                <i class="bi bi-check-circle me-1"></i>Completada
+              </span>
               {% else %}
-              <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Anulada</span>
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2.5 py-1 small fw-semibold">
+                <i class="bi bi-x-circle me-1"></i>Anulada
+              </span>
               {% endif %}
             </td>
-            <td class="text-end">
-              <a href="{{ url_for('pos.venta_detalle', id=v.id) }}" class="btn btn-sm btn-outline-primary" title="Ver detalle">
-                <i class="bi bi-eye-fill"></i>
-              </a>
-              <a href="{{ url_for('pos.ticket_impresion', id=v.id) }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimir Ticket">
-                <i class="bi bi-printer-fill"></i>
-              </a>
+            <td class="pe-4 py-3 text-end">
+              <div class="d-inline-flex gap-1">
+                <a href="{{ url_for('pos.venta_detalle', id=v.id) }}" class="btn btn-xs btn-sandia-rosa rounded-pill px-2.5" title="Ver detalle">
+                  <i class="bi bi-eye-fill"></i>
+                </a>
+                <a href="{{ url_for('pos.ticket_impresion', id=v.id) }}" target="_blank" class="btn btn-xs btn-outline-secondary rounded-pill px-2.5" title="Imprimir Ticket">
+                  <i class="bi bi-printer-fill"></i>
+                </a>
+              </div>
             </td>
           </tr>
           {% else %}
           <tr>
             <td colspan="7" class="text-center text-muted py-5">
-              <i class="bi bi-receipt fs-1 d-block mb-2 text-secondary"></i>
+              <i class="bi bi-receipt fs-1 d-block mb-2 text-danger opacity-50"></i>
               No se registraron ventas coincidentes.
             </td>
           </tr>
@@ -110,3 +155,4 @@
   </div>
 </div>
 {% endblock %}
+

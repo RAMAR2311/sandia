@@ -1,21 +1,119 @@
 {% extends "base.html" %}
 {% from "_macros.html" import campo, campo_select, campo_switch, encabezado %}
-{% block titulo %}{{ 'Editar raza' if raza else 'Nueva raza' }}{% endblock %}
+{% block titulo %}{{ 'Editar raza' if raza else 'Nueva raza' }} · Sandía{% endblock %}
 
 {% block contenido %}
-{{ encabezado('Editar raza' if raza else 'Nueva raza') }}
-<div class="card" style="max-width: 520px;">
-  <div class="card-body">
-    <form method="post" novalidate>
-      {{ form.hidden_tag() }}
-      {{ campo_select(form.especie) }}
-      {{ campo(form.nombre, autocomplete="off", autofocus=True, autocapitalize="words") }}
-      {{ campo_switch(form.activo, ayuda="Una raza inactiva no se ofrece en formularios nuevos, pero las mascotas que la tienen la conservan.") }}
-      <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
-        {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
-        <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('admin.razas', especie=form.especie.data or 'canino') }}">Cancelar</a>
+{% set especie_actual = form.especie.data or (raza.especie if raza else 'canino') %}
+{% set especie_emojis = {'canino': '🐶', 'felino': '🐱', 'ave': '🐦', 'roedor': '🐹', 'otro': '🐾'} %}
+
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a href="{{ url_for('admin.razas', especie=especie_actual) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs">
+    <i class="bi bi-arrow-left me-1"></i> Volver a Razas
+  </a>
+</div>
+
+{{ encabezado('Editar raza' if raza else 'Nueva raza', 'Define o modifica el nombre y estado de la raza para su uso en mascotas') }}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+
+    {# Hero Live Preview Card #}
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden text-center p-4" style="border-top: 4px solid var(--sandia-rojo) !important;">
+      <div class="d-inline-flex align-items-center justify-content-center rounded-circle mx-auto mb-3 shadow-xs" 
+           id="preview-icono"
+           style="width: 72px; height: 72px; background: linear-gradient(135deg, #FDECEB 0%, #FEE2E2 100%); font-size: 2.2rem;">
+        {{ especie_emojis.get(especie_actual, '🐾') }}
       </div>
-    </form>
+      <h2 class="h4 fw-bold text-dark mb-1" id="preview-nombre" style="font-family: var(--fuente-marca);">
+        {{ form.nombre.data or (raza.nombre if raza else 'Nombre de la raza') }}
+      </h2>
+      <div class="d-flex align-items-center justify-content-center gap-2 mt-1">
+        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1 fw-semibold" id="preview-especie">
+          {{ especie_actual|capitalize }}
+        </span>
+        <span class="badge {% if form.activo.data %}bg-success-subtle text-success border border-success-subtle{% else %}bg-secondary-subtle text-secondary{% endif %} rounded-pill px-3 py-1 fw-semibold" id="preview-estado">
+          {{ 'Activa' if form.activo.data else 'Inactiva' }}
+        </span>
+      </div>
+    </div>
+
+    {# Formulario #}
+    <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+      <div class="card-body p-4">
+        <form method="post" novalidate>
+          {{ form.hidden_tag() }}
+          
+          <div class="mb-3">
+            <label class="form-label fw-bold text-dark d-flex align-items-center gap-2">
+              <i class="bi bi-tag-fill text-danger"></i> Especie
+            </label>
+            {{ campo_select(form.especie) }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold text-dark d-flex align-items-center gap-2">
+              <i class="bi bi-fonts text-primary"></i> Nombre de la raza
+            </label>
+            {{ campo(form.nombre, autocomplete="off", autofocus=True, autocapitalize="words", placeholder="Ej: Golden Retriever, Siamés...") }}
+          </div>
+
+          <div class="p-3 rounded-3 bg-light border mb-4">
+            {{ campo_switch(form.activo, ayuda="Una raza inactiva no se ofrece en formularios nuevos, pero las mascotas que la tienen la conservan.") }}
+          </div>
+
+          <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+            <button type="submit" class="btn btn-sandia btn-lg flex-grow-1 shadow-sm">
+              <i class="bi bi-check2-circle me-1"></i> {{ 'Guardar cambios' if raza else 'Crear raza' }}
+            </button>
+            <a class="btn btn-outline-secondary btn-lg rounded-pill" href="{{ url_for('admin.razas', especie=especie_actual) }}">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const inputNombre = document.getElementById('nombre');
+    const selectEspecie = document.getElementById('especie');
+    const checkActivo = document.getElementById('activo');
+
+    const previewNombre = document.getElementById('preview-nombre');
+    const previewIcono = document.getElementById('preview-icono');
+    const previewEspecie = document.getElementById('preview-especie');
+    const previewEstado = document.getElementById('preview-estado');
+
+    const emojis = {{ especie_emojis|tojson }};
+
+    if (inputNombre && previewNombre) {
+      inputNombre.addEventListener('input', function() {
+        previewNombre.textContent = this.value.trim() || 'Nombre de la raza';
+      });
+    }
+
+    if (selectEspecie && previewIcono && previewEspecie) {
+      selectEspecie.addEventListener('change', function() {
+        const val = this.value;
+        previewIcono.textContent = emojis[val] || '🐾';
+        previewEspecie.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+      });
+    }
+
+    if (checkActivo && previewEstado) {
+      checkActivo.addEventListener('change', function() {
+        if (this.checked) {
+          previewEstado.textContent = 'Activa';
+          previewEstado.className = 'badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-semibold';
+        } else {
+          previewEstado.textContent = 'Inactiva';
+          previewEstado.className = 'badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1 fw-semibold';
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}

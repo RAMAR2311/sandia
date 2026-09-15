@@ -204,10 +204,33 @@ def razas():
     especie = request.args.get("especie", "canino")
     if especie not in ESPECIES:
         especie = "canino"
-    lista = db.session.execute(
-        select(Raza).where(Raza.especie == especie).order_by(Raza.activo.desc(), Raza.nombre)
-    ).scalars().all()
-    return render_template("admin/razas.html", razas=lista, especie=especie, ESPECIES=ESPECIES)
+
+    texto = request.args.get("q", "").strip()
+    pagina = request.args.get("page", 1, type=int)
+
+    consulta = select(Raza).where(Raza.especie == especie)
+    if texto:
+        patron = f"%{texto}%"
+        consulta = consulta.where(Raza.nombre.ilike(patron))
+    consulta = consulta.order_by(Raza.activo.desc(), Raza.nombre)
+
+    paginacion = db.paginate(consulta, page=pagina, per_page=12, error_out=False)
+
+    conteos_por_especie = dict(
+        db.session.execute(
+            select(Raza.especie, func.count(Raza.id)).group_by(Raza.especie)
+        ).all()
+    )
+
+    return render_template(
+        "admin/razas.html",
+        razas=paginacion.items,
+        pagina=paginacion,
+        especie=especie,
+        ESPECIES=ESPECIES,
+        filtro_texto=texto,
+        conteos_por_especie=conteos_por_especie,
+    )
 
 
 @bp.route("/razas/nueva", methods=["GET", "POST"])

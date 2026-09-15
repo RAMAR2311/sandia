@@ -4,96 +4,278 @@
 
 {% block contenido %}
 {% call encabezado("Consulta Médica #" ~ consulta.id, "Paciente: " ~ consulta.mascota.nombre ~ " | Fecha: " ~ consulta.fecha_hora|fecha_hora) %}
-  <a href="{{ url_for('historias.ficha_medica', mascota_id=consulta.mascota_id) }}" class="btn btn-outline-secondary">
-    <i class="bi bi-arrow-left me-1"></i>Volver a Ficha Médica
-  </a>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{{ url_for('historias.consulta_pdf', id=consulta.id) }}" class="btn btn-danger rounded-pill fw-bold shadow-xs">
+      <i class="bi bi-file-earmark-pdf-fill me-1"></i>Descargar PDF
+    </a>
+    {% if consulta.receta_medica %}
+    <a href="{{ url_for('historias.receta_pdf', id=consulta.id) }}" class="btn btn-outline-danger rounded-pill fw-bold">
+      <i class="bi bi-prescription2 me-1"></i>Fórmula PDF
+    </a>
+    {% endif %}
+    {% if consulta.enlace_whatsapp %}
+    <a href="{{ consulta.enlace_whatsapp }}" target="_blank" class="btn btn-success rounded-pill fw-bold">
+      <i class="bi bi-whatsapp me-1"></i>Enviar WhatsApp
+    </a>
+    {% endif %}
+    <a href="{{ url_for('historias.ficha_medica', mascota_id=consulta.mascota_id) }}" class="btn btn-outline-secondary rounded-pill">
+      <i class="bi bi-arrow-left me-1"></i>Ficha Médica
+    </a>
+  </div>
 {% endcall %}
 
-<div class="row justify-content-center">
-  <div class="col-12 col-lg-9">
-    <div class="card shadow-sm mb-4">
-      <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <span class="fw-bold"><i class="bi bi-journal-medical me-1"></i>Registro Clínico (SOAP)</span>
-        <span class="badge bg-secondary">Atendido por: Dr/a. {{ consulta.veterinario.nombre }}</span>
+<!-- Banner Resumen -->
+<div class="card shadow-sm border-0 mb-4" style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); color: #FFFFFF; border-radius: 16px;">
+  <div class="card-body p-3 p-md-4">
+    <div class="row align-items-center g-3">
+      <div class="col-auto">
+        <div class="bg-white text-dark rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 54px; height: 54px; font-size: 1.6rem;">
+          {% if consulta.mascota.especie == 'canino' %}🐶
+          {% elif consulta.mascota.especie == 'felino' %}🐱
+          {% else %}🐾{% endif %}
+        </div>
       </div>
-      <div class="card-body">
-        <h5 class="fw-bold text-primary mb-3">Motivo: {{ consulta.motivo_consulta }}</h5>
-        
+      <div class="col">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+          <h4 class="fw-bold mb-0 text-white">{{ consulta.mascota.nombre }}</h4>
+          <span class="badge bg-danger rounded-pill">{{ consulta.mascota.especie|capitalize }}</span>
+          {% if consulta.mascota.raza %}<span class="badge bg-secondary rounded-pill">{{ consulta.mascota.raza.nombre }}</span>{% endif %}
+        </div>
+        <div class="small text-white-50 d-flex flex-wrap gap-3">
+          <span><i class="bi bi-person me-1"></i>Tutor: <strong>{{ consulta.mascota.tutor.nombre_completo if consulta.mascota.tutor else 'N/A' }}</strong></span>
+          <span><i class="bi bi-person-badge me-1"></i>Médico Tratante: <strong>Dr/a. {{ consulta.veterinario.nombre if consulta.veterinario else 'Veterinario' }}</strong></span>
+          <span><i class="bi bi-calendar3 me-1"></i>Fecha: <strong>{{ consulta.fecha_hora|fecha_hora }}</strong></span>
+        </div>
+      </div>
+      <div class="col-auto text-end">
+        {% set res = consulta.resumen_sistemas %}
+        {% if res.total > 0 %}
+          {% if res.anormales > 0 %}
+          <span class="badge bg-danger bg-opacity-25 text-danger border border-danger px-3 py-2 rounded-pill">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ res.anormales }} hallazgos por sistemas
+          </span>
+          {% else %}
+          <span class="badge bg-success bg-opacity-25 text-success border border-success px-3 py-2 rounded-pill">
+            <i class="bi bi-check-all me-1"></i>9 sistemas evaluados (Normal)
+          </span>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-11">
+
+    <!-- SECCIÓN S: SUBJETIVO -->
+    <div class="soap-section-card">
+      <div class="soap-section-header bg-light">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge soap-badge-s px-3 py-2 rounded-pill fw-bold fs-6">S</span>
+          <div>
+            <h5 class="fw-bold mb-0 text-dark">Subjetivo (S) - Motivo & Anamnesis</h5>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-3 p-md-4">
+        <div class="mb-3">
+          <label class="text-muted small fw-bold text-uppercase">Motivo de Consulta:</label>
+          <div class="fs-5 fw-bold text-primary">{{ consulta.motivo_consulta }}</div>
+        </div>
         {% if consulta.anamnesis %}
-        <div class="mb-4">
-          <h6 class="fw-bold text-dark border-bottom pb-1"><i class="bi bi-person-lines-fill me-1"></i>Subjetivo (S)</h6>
-          <p class="text-secondary">{{ consulta.anamnesis }}</p>
+        <div>
+          <label class="text-muted small fw-bold text-uppercase">Anamnesis / Historia Previa:</label>
+          <p class="text-secondary mb-0 bg-light p-3 rounded-3">{{ consulta.anamnesis }}</p>
         </div>
         {% endif %}
+      </div>
+    </div>
 
-        <div class="mb-4">
-          <h6 class="fw-bold text-dark border-bottom pb-1"><i class="bi bi-activity me-1"></i>Objetivo (O) - Constantes Vitales</h6>
-          <div class="row g-2 text-center my-2">
-            <div class="col-4 col-md-2 bg-light p-2 rounded">
-              <div class="small text-muted">Peso</div>
-              <div class="fw-bold">{{ consulta.peso_kg or 'N/R' }} kg</div>
-            </div>
-            <div class="col-4 col-md-2 bg-light p-2 rounded">
-              <div class="small text-muted">Temp</div>
-              <div class="fw-bold">{{ consulta.temperatura_c or 'N/R' }} °C</div>
-            </div>
-            <div class="col-4 col-md-2 bg-light p-2 rounded">
-              <div class="small text-muted">FC</div>
-              <div class="fw-bold">{{ consulta.frecuencia_cardiaca or 'N/R' }} lpm</div>
-            </div>
-            <div class="col-4 col-md-2 bg-light p-2 rounded">
-              <div class="small text-muted">FR</div>
-              <div class="fw-bold">{{ consulta.frecuencia_respiratoria or 'N/R' }} rpm</div>
-            </div>
-            <div class="col-4 col-md-2 bg-light p-2 rounded">
-              <div class="small text-muted">Mucosas</div>
-              <div class="fw-bold text-capitalize">{{ consulta.mucosas or 'N/R' }}</div>
-            </div>
-            <div class="col-4 col-md-2 bg-light p-2 rounded">
-              <div class="small text-muted">C.C.</div>
-              <div class="fw-bold">{{ consulta.condicion_corporal or 'N/R' }}</div>
+    <!-- SECCIÓN O: OBJETIVO -->
+    <div class="soap-section-card">
+      <div class="soap-section-header bg-light">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge soap-badge-o px-3 py-2 rounded-pill fw-bold fs-6">O</span>
+          <div>
+            <h5 class="fw-bold mb-0 text-dark">Objetivo (O) - Constantes Vitales & Examen Físico</h5>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-3 p-md-4">
+        <!-- Vitals Metric Cards -->
+        <div class="row g-2 mb-4 text-center">
+          <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 bg-light rounded-3 border">
+              <div class="small text-muted fw-bold"><i class="bi bi-speedometer2 text-primary me-1"></i>Peso</div>
+              <div class="fs-5 fw-bold text-dark">{{ consulta.peso_kg or '—' }} <span class="fs-6 text-muted">kg</span></div>
             </div>
           </div>
-          {% if consulta.examen_sistemas %}
-          <p class="text-secondary mt-2">{{ consulta.examen_sistemas }}</p>
+          <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 bg-light rounded-3 border">
+              <div class="small text-muted fw-bold"><i class="bi bi-thermometer-half text-danger me-1"></i>Temp</div>
+              <div class="fs-5 fw-bold text-dark">{{ consulta.temperatura_c or '—' }} <span class="fs-6 text-muted">°C</span></div>
+            </div>
+          </div>
+          <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 bg-light rounded-3 border">
+              <div class="small text-muted fw-bold"><i class="bi bi-heart-pulse text-danger me-1"></i>FC</div>
+              <div class="fs-5 fw-bold text-dark">{{ consulta.frecuencia_cardiaca or '—' }} <span class="fs-6 text-muted">lpm</span></div>
+            </div>
+          </div>
+          <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 bg-light rounded-3 border">
+              <div class="small text-muted fw-bold"><i class="bi bi-lungs text-info me-1"></i>FR</div>
+              <div class="fs-5 fw-bold text-dark">{{ consulta.frecuencia_respiratoria or '—' }} <span class="fs-6 text-muted">rpm</span></div>
+            </div>
+          </div>
+          <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 bg-light rounded-3 border">
+              <div class="small text-muted fw-bold"><i class="bi bi-droplet-half text-danger me-1"></i>Mucosas</div>
+              <div class="fs-5 fw-bold text-dark text-capitalize">{{ consulta.mucosas or '—' }}</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-4 col-lg-2">
+            <div class="p-3 bg-light rounded-3 border">
+              <div class="small text-muted fw-bold"><i class="bi bi-body-text text-secondary me-1"></i>C. Corporal</div>
+              <div class="fs-5 fw-bold text-dark">{{ consulta.condicion_corporal or '—' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Examen por Sistemas -->
+        <div>
+          <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-diagram-3-fill text-danger"></i>Examen Físico por Sistemas:
+          </h6>
+
+          {% set sistemas = consulta.sistemas_evaluados %}
+          {% if sistemas %}
+          <div class="row g-3">
+            {% for s_key, s_data in sistemas.items() %}
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="p-3 rounded-3 border {% if s_data.estado == 'anormal' %}border-danger-subtle bg-danger-subtle bg-opacity-25{% else %}border-success-subtle bg-success-subtle bg-opacity-10{% endif %}">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="fw-bold text-dark">{{ s_data.nombre or s_key|replace('_', ' ')|capitalize }}</span>
+                  {% if s_data.estado == 'anormal' %}
+                  <span class="badge bg-danger rounded-pill"><i class="bi bi-exclamation-triangle-fill me-1"></i>Anormal</span>
+                  {% else %}
+                  <span class="badge bg-success rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>Normal</span>
+                  {% endif %}
+                </div>
+                {% if s_data.observacion %}
+                <div class="small text-dark mt-2 p-2 bg-white rounded border border-light-subtle">
+                  <i class="bi bi-chat-quote-fill text-secondary me-1"></i>{{ s_data.observacion }}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% elif consulta.examen_sistemas %}
+          <div class="p-3 bg-light rounded-3 border text-secondary">
+            {{ consulta.examen_sistemas }}
+          </div>
+          {% else %}
+          <div class="text-muted small">Sin hallazgos registrados.</div>
           {% endif %}
         </div>
+      </div>
+    </div>
 
-        <div class="mb-4">
-          <h6 class="fw-bold text-dark border-bottom pb-1"><i class="bi bi-check-circle me-1"></i>Diagnóstico / Avalúo (A)</h6>
-          <p class="fw-bold text-dark">{{ consulta.diagnostico }}</p>
-        </div>
-
-        <div class="mb-4">
-          <h6 class="fw-bold text-dark border-bottom pb-1"><i class="bi bi-clipboard-check me-1"></i>Plan de Tratamiento (P)</h6>
-          <p class="text-secondary">{{ consulta.plan_tratamiento }}</p>
-        </div>
-
-        {% if consulta.receta_medica %}
-        <div class="card bg-light border-primary mb-3">
-          <div class="card-body">
-            <h6 class="fw-bold text-primary mb-2"><i class="bi bi-file-earmark-medical me-1"></i>Fórmula Médica / Prescripción</h6>
-            <pre class="bg-white p-3 border rounded text-dark font-monospace mb-0">{{ consulta.receta_medica }}</pre>
+    <!-- SECCIÓN A: AVALÚO -->
+    <div class="soap-section-card">
+      <div class="soap-section-header bg-light">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge soap-badge-a px-3 py-2 rounded-pill fw-bold fs-6">A</span>
+          <div>
+            <h5 class="fw-bold mb-0 text-dark">Avalúo (A) - Diagnóstico Clínico</h5>
           </div>
+        </div>
+      </div>
+      <div class="card-body p-3 p-md-4">
+        <div class="alert alert-warning border-warning-subtle mb-0 py-3">
+          <h5 class="fw-bold text-dark mb-0"><i class="bi bi-check2-circle text-warning me-2"></i>{{ consulta.diagnostico }}</h5>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN P: PLAN & RECETA -->
+    <div class="soap-section-card">
+      <div class="soap-section-header bg-light">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge soap-badge-p px-3 py-2 rounded-pill fw-bold fs-6">P</span>
+          <div>
+            <h5 class="fw-bold mb-0 text-dark">Plan (P) - Tratamiento & Prescripción</h5>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-3 p-md-4">
+        <!-- Tratamiento -->
+        <div class="mb-4">
+          <label class="text-muted small fw-bold text-uppercase">Plan de Tratamiento / Indicaciones:</label>
+          <div class="bg-light p-3 rounded-3 text-dark">{{ consulta.plan_tratamiento }}</div>
+        </div>
+
+        <!-- Receta Médica -->
+        {% if consulta.receta_medica %}
+        <div class="prescription-paper mb-4 shadow-sm">
+          <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+              <span class="fs-4 fw-bold text-primary font-monospace">Rx</span>
+              <span class="fw-bold text-dark">Fórmula Médica / Prescripción</span>
+            </div>
+            <span class="badge bg-primary text-white rounded-pill">Sandía VetCare</span>
+          </div>
+          <pre class="bg-white p-3 border rounded text-dark font-monospace mb-0" style="white-space: pre-wrap; font-size: 0.95rem;">{{ consulta.receta_medica }}</pre>
         </div>
         {% endif %}
 
-        <hr>
-        <h6 class="fw-bold text-dark"><i class="bi bi-pencil-square me-1"></i>Enmiendas</h6>
-        <p class="small text-secondary">La consulta original nunca se edita ni se borra. Cualquier corrección queda aquí, con autor y fecha.</p>
-        {% for e in consulta.enmiendas %}
-        <div class="alert alert-warning py-2">
-          <div class="small text-secondary">{{ e.fecha|fecha_hora }} · {{ e.autor.nombre if e.autor else '—' }}</div>
-          <div>{{ e.texto }}</div>
+        <!-- Observaciones -->
+        {% if consulta.observaciones %}
+        <div>
+          <label class="text-muted small fw-bold text-uppercase">Observaciones Adicionales / Recontrol:</label>
+          <div class="small text-secondary">{{ consulta.observaciones }}</div>
         </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ENMIENDAS -->
+    <div class="soap-section-card">
+      <div class="soap-section-header bg-light">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-pencil-square text-warning fs-5"></i>
+          <div>
+            <h6 class="fw-bold mb-0 text-dark">Enmiendas y Correcciones Clínicas</h6>
+            <small class="text-muted">Por trazabilidad médico-legal, la consulta original es inmutable. Cualquier nota se anexa aquí.</small>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-3 p-md-4">
+        {% for e in consulta.enmiendas %}
+        <div class="alert alert-warning py-2 mb-2">
+          <div class="small text-muted d-flex justify-content-between">
+            <span><i class="bi bi-person me-1"></i>{{ e.autor.nombre if e.autor else '—' }}</span>
+            <span><i class="bi bi-clock me-1"></i>{{ e.fecha|fecha_hora }}</span>
+          </div>
+          <div class="text-dark fw-bold mt-1">{{ e.texto }}</div>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-3">No hay enmiendas registradas para esta consulta.</p>
         {% endfor %}
-        <form method="post" action="{{ url_for('historias.consulta_enmienda', id=consulta.id) }}" class="mt-2">
+
+        <form method="post" action="{{ url_for('historias.consulta_enmienda', id=consulta.id) }}" class="mt-3">
           {{ form_enmienda.hidden_tag() }}
-          {{ form_enmienda.texto(class_="form-control mb-2", rows="2", placeholder="Explica la corrección...") }}
-          {{ form_enmienda.enviar(class_="btn btn-outline-warning btn-sm") }}
+          <label class="form-label small fw-bold text-dark">Agregar Enmienda Médica:</label>
+          {{ form_enmienda.texto(class_="form-control mb-2", rows="2", placeholder="Escribe aquí la aclaración o corrección clínica...") }}
+          <div class="text-end">
+            {{ form_enmienda.enviar(class_="btn btn-warning rounded-pill px-4 fw-bold") }}
+          </div>
         </form>
       </div>
     </div>
+
   </div>
 </div>
 {% endblock %}

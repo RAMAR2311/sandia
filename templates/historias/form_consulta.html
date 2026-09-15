@@ -3,111 +3,733 @@
 {% block titulo %}Nueva Consulta Médica - {{ mascota.nombre }}{% endblock %}
 
 {% block contenido %}
-{% call encabezado("Nueva Consulta Médica (SOAP)", "Paciente: " ~ mascota.nombre ~ " (" ~ mascota.tutor.nombre_completo ~ ")") %}
-  <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="btn btn-outline-secondary">
+{% call encabezado("Nueva Consulta Médica (SOAP)", "Paciente: " ~ mascota.nombre ~ " | Tutor: " ~ (mascota.tutor.nombre_completo if mascota.tutor else "Sin tutor")) %}
+  <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="btn btn-outline-secondary rounded-pill">
     <i class="bi bi-arrow-left me-1"></i>Volver a Ficha Médica
   </a>
 {% endcall %}
 
+<!-- Banner Resumen del Paciente -->
+<div class="card shadow-sm border-0 mb-4" style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); color: #FFFFFF; border-radius: 16px;">
+  <div class="card-body p-3 p-md-4">
+    <div class="row align-items-center g-3">
+      <div class="col-auto">
+        <div class="bg-white text-dark rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 58px; height: 58px; font-size: 1.75rem;">
+          {% if mascota.especie == 'canino' %}🐶
+          {% elif mascota.especie == 'felino' %}🐱
+          {% elif mascota.especie == 'ave' %}🦜
+          {% elif mascota.especie == 'roedor' %}🐹
+          {% else %}🐾{% endif %}
+        </div>
+      </div>
+      <div class="col">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+          <h4 class="fw-bold mb-0 text-white">{{ mascota.nombre }}</h4>
+          <span class="badge bg-danger rounded-pill">{{ mascota.especie|capitalize }}</span>
+          {% if mascota.raza %}<span class="badge bg-secondary rounded-pill">{{ mascota.raza.nombre }}</span>{% endif %}
+          <span class="badge bg-dark border border-secondary rounded-pill text-capitalize">{{ mascota.sexo or 'Sexo N/R' }}</span>
+        </div>
+        <div class="small text-white-50 d-flex flex-wrap gap-3">
+          <span><i class="bi bi-person me-1"></i>Tutor: <strong>{{ mascota.tutor.nombre_completo if mascota.tutor else 'N/A' }}</strong></span>
+          {% if mascota.tutor and mascota.tutor.telefono %}<span><i class="bi bi-telephone me-1"></i>{{ mascota.tutor.telefono }}</span>{% endif %}
+          <span><i class="bi bi-calendar-event me-1"></i>Edad: <strong>{{ mascota.edad_formateada if mascota.edad_formateada else 'N/R' }}</strong></span>
+          <span><i class="bi bi-speedometer2 me-1"></i>Último peso: <strong>{{ (mascota.peso_actual.peso_kg ~ ' kg') if mascota.peso_actual else 'Sin registro previo' }}</strong></span>
+        </div>
+      </div>
+      <div class="col-auto text-end d-none d-md-block">
+        <span class="badge bg-success bg-opacity-25 text-success border border-success px-3 py-2 rounded-pill">
+          <i class="bi bi-shield-check me-1"></i>Consulta Oficial SOAP
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="row justify-content-center">
-  <div class="col-12 col-lg-10">
-    <form method="post">
+  <div class="col-12 col-xl-11">
+    <form method="post" id="form-consulta-soap" novalidate>
       {{ form.csrf_token }}
 
-      <!-- Sección Subjetiva y General -->
-      <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white fw-bold">
-          <i class="bi bi-person-lines-fill me-1"></i>Motivo & Anamnesis (Subjetivo - S)
-        </div>
-        <div class="card-body">
-          <div class="mb-3">
-            {{ form.motivo_consulta.label(class="form-label fw-bold") }}
-            {{ form.motivo_consulta(class="form-control", placeholder="Ej. Inapetencia, vómito de 2 días, vacuna anual...") }}
-            {% for error in form.motivo_consulta.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+      <!-- ===================================================================
+           SECCIÓN S: SUBJETIVO (Motivo & Anamnesis)
+           =================================================================== -->
+      <div class="soap-section-card">
+        <div class="soap-section-header bg-light">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge soap-badge-s px-3 py-2 rounded-pill fw-bold fs-6">S</span>
+            <div>
+              <h5 class="fw-bold mb-0 text-dark">Subjetivo & Anamnesis</h5>
+              <small class="text-muted">Motivo de la visita e información provista por el tutor</small>
+            </div>
           </div>
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">Paso 1 de 4</span>
+        </div>
+        <div class="card-body p-3 p-md-4">
+          <!-- Motivo de Consulta -->
+          <div class="mb-4">
+            <label for="motivo_consulta" class="form-label fw-bold d-flex justify-content-between align-items-center">
+              <span>{{ form.motivo_consulta.label.text }} <span class="text-danger">*</span></span>
+              <span class="small text-muted fw-normal">Sugerencias rápidas:</span>
+            </label>
+            <div class="d-flex flex-wrap gap-1 mb-2">
+              <button type="button" class="chip-sugerencia btn-motive" data-text="Control general y chequeo preventivo">🩺 Chequeo preventivo</button>
+              <button type="button" class="chip-sugerencia btn-motive" data-text="Vacunación y plan de desparasitación">💉 Vacunación</button>
+              <button type="button" class="chip-sugerencia btn-motive" data-text="Cuadro gastroentérico: inapetencia y vómito">🤢 Inapetencia / Vómito</button>
+              <button type="button" class="chip-sugerencia btn-motive" data-text="Claudicación y dolor en extremidad">🦴 Claudicación / Cojera</button>
+              <button type="button" class="chip-sugerencia btn-motive" data-text="Prurito severo y lesiones en piel">🐾 Prurito / Piel</button>
+              <button type="button" class="chip-sugerencia btn-motive" data-text="Tos recurrente y dificultad respiratoria">🫁 Tos / Respiratorio</button>
+              <button type="button" class="chip-sugerencia btn-motive" data-text="Secreción y molestias en conducto auditivo">👂 Oído / Otitis</button>
+              <button type="button" class="chip-sugerencia btn-motive" data-text="Control postquirúrgico y retiro de puntos">✂️ Control Postquirúrgico</button>
+            </div>
+            {{ form.motivo_consulta(class="form-control form-control-lg fs-6", placeholder="Ej. Inapetencia de 2 días, vómito matutino, dolor abdominal...", required=true) }}
+            {% for error in form.motivo_consulta.errors %}
+              <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <!-- Anamnesis -->
           <div>
-            {{ form.anamnesis.label(class="form-label") }}
-            {{ form.anamnesis(class="form-control", rows="3", placeholder="Historia previa, síntomas reportados por el tutor, dieta, ambiente...") }}
+            <label for="anamnesis" class="form-label fw-bold">{{ form.anamnesis.label.text }}</label>
+            {{ form.anamnesis(class="form-control", rows="3", placeholder="Tiempo de evolución de los síntomas, dieta actual, ambiente, tratamientos previos administrados por el tutor, etc.") }}
           </div>
         </div>
       </div>
 
-      <!-- Sección Objetiva: Constantes Vitales -->
-      <div class="card shadow-sm mb-4">
-        <div class="card-header bg-info text-dark fw-bold">
-          <i class="bi bi-activity me-1"></i>Constantes Vitales & Examen Físico (Objetivo - O)
-        </div>
-        <div class="card-body">
-          <div class="row g-3 mb-3">
-            <div class="col-6 col-md-3">
-              {{ form.peso_kg.label(class="form-label fw-bold") }}
-              {{ form.peso_kg(class="form-control", placeholder="0.00") }}
-            </div>
-            <div class="col-6 col-md-3">
-              {{ form.temperatura_c.label(class="form-label fw-bold") }}
-              {{ form.temperatura_c(class="form-control", placeholder="38.5") }}
-            </div>
-            <div class="col-6 col-md-3">
-              {{ form.frecuencia_cardiaca.label(class="form-label") }}
-              {{ form.frecuencia_cardiaca(class="form-control", placeholder="120") }}
-            </div>
-            <div class="col-6 col-md-3">
-              {{ form.frecuencia_respiratoria.label(class="form-label") }}
-              {{ form.frecuencia_respiratoria(class="form-control", placeholder="30") }}
+      <!-- ===================================================================
+           SECCIÓN O: OBJETIVO (Constantes Vitales + 9 Sistemas Requeridos)
+           =================================================================== -->
+      <div class="soap-section-card">
+        <div class="soap-section-header bg-light">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge soap-badge-o px-3 py-2 rounded-pill fw-bold fs-6">O</span>
+            <div>
+              <h5 class="fw-bold mb-0 text-dark">Objetivo: Constantes Vitales & Examen Físico</h5>
+              <small class="text-muted">Parámetros clínicos cuantificables y evaluación integral por sistemas</small>
             </div>
           </div>
-
-          <div class="row g-3 mb-3">
+          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">Paso 2 de 4</span>
+        </div>
+        <div class="card-body p-3 p-md-4">
+          <!-- 1. Constantes Vitales -->
+          <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-activity text-success"></i>1. Constantes Fisiológicas
+          </h6>
+          <div class="row g-3 mb-4">
+            <!-- Peso -->
             <div class="col-6 col-md-3">
-              {{ form.tllc_segundos.label(class="form-label") }}
-              {{ form.tllc_segundos(class="form-control", placeholder="2") }}
+              <div class="vital-metric-card">
+                <div class="vital-metric-label"><i class="bi bi-speedometer2 text-primary"></i> Peso</div>
+                {{ form.peso_kg(class="vital-metric-input", placeholder="0.00", step="0.01") }}
+                <span class="vital-metric-unit">kg</span>
+              </div>
             </div>
+            <!-- Temperatura -->
+            <div class="col-6 col-md-3">
+              <div class="vital-metric-card">
+                <div class="vital-metric-label"><i class="bi bi-thermometer-half text-danger"></i> Temperatura</div>
+                {{ form.temperatura_c(class="vital-metric-input", placeholder="38.5", step="0.1") }}
+                <span class="vital-metric-unit">°C</span>
+              </div>
+            </div>
+            <!-- FC -->
+            <div class="col-6 col-md-3">
+              <div class="vital-metric-card">
+                <div class="vital-metric-label"><i class="bi bi-heart-pulse text-danger"></i> Frec. Cardíaca</div>
+                {{ form.frecuencia_cardiaca(class="vital-metric-input", placeholder="120") }}
+                <span class="vital-metric-unit">lpm</span>
+              </div>
+            </div>
+            <!-- FR -->
+            <div class="col-6 col-md-3">
+              <div class="vital-metric-card">
+                <div class="vital-metric-label"><i class="bi bi-lungs text-info"></i> Frec. Respirat.</div>
+                {{ form.frecuencia_respiratoria(class="vital-metric-input", placeholder="28") }}
+                <span class="vital-metric-unit">rpm</span>
+              </div>
+            </div>
+
+            <!-- TLLC -->
             <div class="col-6 col-md-4">
-              {{ form.mucosas.label(class="form-label") }}
-              {{ form.mucosas(class="form-select") }}
+              <div class="vital-metric-card">
+                <div class="vital-metric-label"><i class="bi bi-clock-history text-warning"></i> TLLC</div>
+                {{ form.tllc_segundos(class="vital-metric-input", placeholder="2") }}
+                <span class="vital-metric-unit">seg</span>
+              </div>
             </div>
-            <div class="col-12 col-md-5">
-              {{ form.condicion_corporal.label(class="form-label") }}
-              {{ form.condicion_corporal(class="form-select") }}
+            <!-- Mucosas -->
+            <div class="col-6 col-md-4">
+              <div class="vital-metric-card">
+                <div class="vital-metric-label"><i class="bi bi-droplet-half text-danger"></i> Mucosas</div>
+                {{ form.mucosas(class="form-select border-0 p-0 fw-bold fs-6 text-dark shadow-none bg-transparent") }}
+              </div>
+            </div>
+            <!-- Condición Corporal -->
+            <div class="col-12 col-md-4">
+              <div class="vital-metric-card">
+                <div class="vital-metric-label"><i class="bi bi-body-text text-secondary"></i> Condición Corporal</div>
+                {{ form.condicion_corporal(class="form-select border-0 p-0 fw-bold fs-6 text-dark shadow-none bg-transparent") }}
+              </div>
             </div>
           </div>
 
-          <div>
-            {{ form.examen_sistemas.label(class="form-label") }}
-            {{ form.examen_sistemas(class="form-control", rows="3", placeholder="Hallazgos en piel, ganglios, digestivo, cardiorrespiratorio, locomotor, etc.") }}
+          <hr class="my-4">
+
+          <!-- 2. Evaluador Clínico de los 9 Sistemas -->
+          <div id="seccion-sistemas" class="p-3 p-md-4 rounded-4 border bg-white shadow-sm">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
+              <div>
+                <h5 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                  <i class="bi bi-diagram-3-fill text-danger"></i>
+                  2. Examen Físico por Sistemas <span class="text-danger">*</span>
+                </h5>
+                <p class="small text-muted mb-0">
+                  Es obligatorio evaluar los <strong>9 sistemas</strong> del paciente. Puedes evaluarlos con 1 clic o añadir observaciones detalladas.
+                </p>
+              </div>
+              <div class="d-flex flex-wrap align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-success rounded-pill fw-bold shadow-sm px-3" id="btn-marcar-todos-normal">
+                  <i class="bi bi-check-all me-1"></i>Marcar todos Normales
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="btn-reiniciar-sistemas">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar
+                </button>
+              </div>
+            </div>
+
+            <!-- Barra de Progreso y Contador -->
+            <div class="mb-4">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="small fw-bold text-dark" id="sistemas-progreso-texto">Progreso de evaluación:</span>
+                <span id="sistemas-counter-badge" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-1 rounded-pill fw-bold">
+                  0 de 9 evaluados (0%)
+                </span>
+              </div>
+              <div class="sistemas-progress-container">
+                <div id="sistemas-progress-bar" class="sistemas-progress-bar" style="width: 0%;"></div>
+              </div>
+              <div id="sistemas-alerta-faltantes" class="alert alert-danger py-2 mt-2 d-none">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                <span id="sistemas-faltantes-texto"></span>
+              </div>
+            </div>
+
+            <!-- Grilla 3x3 de los 9 Sistemas -->
+            <div class="row g-3 mb-4" id="sistemas-cards-grid">
+              {% for sist in catalogo_sistemas %}
+              <div class="col-12 col-md-6 col-lg-4">
+                <div class="sistema-card-item is-pending" id="card-sistema-{{ sist.id }}" data-id="{{ sist.id }}" data-nombre="{{ sist.nombre }}">
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="sistema-icon-box bg-{{ sist.badge_color }}-subtle text-{{ sist.badge_color }} border border-{{ sist.badge_color }}-subtle">
+                        <i class="bi {{ sist.icono }}"></i>
+                      </div>
+                      <div>
+                        <div class="fw-bold text-dark lh-sm fs-6">{{ sist.nombre }}</div>
+                        <small class="text-muted" style="font-size: 0.72rem;">{{ sist.descripcion }}</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Mini badge de estado + Botones de acción directa -->
+                  <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+                    <div>
+                      <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill status-pill" id="badge-status-{{ sist.id }}">
+                        <i class="bi bi-clock-history me-1"></i>Pendiente
+                      </span>
+                      <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill note-indicator d-none" id="note-indicator-{{ sist.id }}">
+                        <i class="bi bi-chat-text-fill me-1"></i>Con nota
+                      </span>
+                    </div>
+                    <div class="btn-group btn-group-sm" role="group">
+                      <button type="button" class="btn btn-outline-success btn-sm btn-quick-normal" data-id="{{ sist.id }}" title="Marcar Normal">
+                        <i class="bi bi-check-lg"></i> Normal
+                      </button>
+                      <button type="button" class="btn btn-outline-danger btn-sm btn-quick-anormal" data-id="{{ sist.id }}" title="Marcar Anormal">
+                        <i class="bi bi-exclamation-circle"></i> Anormal
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+
+            <!-- Panel Inspector / Editor del Sistema Seleccionado -->
+            <div class="sistema-inspector-panel" id="sistema-inspector">
+              <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3 pb-2 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="sistema-icon-box bg-primary text-white shadow-sm" id="inspector-icon-box">
+                    <i class="bi bi-activity" id="inspector-icon"></i>
+                  </div>
+                  <div>
+                    <h5 class="fw-bold mb-0 text-dark" id="inspector-titulo">Músculo esquelético</h5>
+                    <small class="text-muted" id="inspector-desc">Huesos, articulaciones, tono muscular, marcha y simetría</small>
+                  </div>
+                </div>
+                <!-- Toggle Estado Segmentado -->
+                <div class="btn-group shadow-sm" role="group">
+                  <input type="radio" class="btn-check" name="inspector_estado" id="inspector_estado_normal" value="normal" autocomplete="off">
+                  <label class="btn btn-outline-success px-3 fw-bold" for="inspector_estado_normal">
+                    <i class="bi bi-check-circle me-1"></i>Normal
+                  </label>
+
+                  <input type="radio" class="btn-check" name="inspector_estado" id="inspector_estado_anormal" value="anormal" autocomplete="off">
+                  <label class="btn btn-outline-danger px-3 fw-bold" for="inspector_estado_anormal">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Anormal / Hallazgo
+                  </label>
+                </div>
+              </div>
+
+              <!-- Sugerencias Rápidas para el sistema activo -->
+              <div class="mb-2">
+                <label class="small fw-bold text-secondary mb-1 d-block"><i class="bi bi-lightning-charge-fill text-warning me-1"></i>Observaciones frecuentes (haz clic para insertar):</label>
+                <div class="d-flex flex-wrap gap-1" id="inspector-sugerencias">
+                  <!-- Se llenan dinámicamente con JS -->
+                </div>
+              </div>
+
+              <!-- Textarea de Observaciones -->
+              <div class="mb-3">
+                <label for="inspector-observacion" class="form-label fw-bold small text-dark">
+                  Comentarios y hallazgos específicos:
+                </label>
+                <textarea class="form-control" id="inspector-observacion" rows="2" placeholder="Describe los hallazgos en este sistema (o déjalo vacío si es normal sin particularidades)..."></textarea>
+              </div>
+
+              <!-- Navegación Entre Sistemas -->
+              <div class="d-flex justify-content-between align-items-center">
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" id="btn-sistema-prev">
+                  <i class="bi bi-chevron-left me-1"></i>Anterior
+                </button>
+                <span class="small text-muted fw-bold" id="inspector-posicion">Sistema 1 de 9</span>
+                <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold" id="btn-sistema-next">
+                  Siguiente Sistema<i class="bi bi-chevron-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Campo oculto donde se guarda el JSON consolidado -->
+            {{ form.examen_sistemas(id="examen_sistemas", class="d-none") }}
           </div>
         </div>
       </div>
 
-      <!-- Sección Avalúo (Diagnóstico) y Plan -->
-      <div class="card shadow-sm mb-4">
-        <div class="card-header bg-success text-white fw-bold">
-          <i class="bi bi-file-earmark-medical me-1"></i>Diagnóstico & Plan (Avalúo - A / Plan - P)
+      <!-- ===================================================================
+           SECCIÓN A: AVALÚO (Diagnóstico)
+           =================================================================== -->
+      <div class="soap-section-card">
+        <div class="soap-section-header bg-light">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge soap-badge-a px-3 py-2 rounded-pill fw-bold fs-6">A</span>
+            <div>
+              <h5 class="fw-bold mb-0 text-dark">Avalúo & Diagnóstico</h5>
+              <small class="text-muted">Diagnóstico presuntivo, definitivo o diferenciales</small>
+            </div>
+          </div>
+          <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1">Paso 3 de 4</span>
         </div>
-        <div class="card-body">
-          <div class="mb-3">
-            {{ form.diagnostico.label(class="form-label fw-bold") }}
-            {{ form.diagnostico(class="form-control", rows="3", placeholder="Diagnóstico presuntivo o definitivo...") }}
-            {% for error in form.diagnostico.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        <div class="card-body p-3 p-md-4">
+          <label for="diagnostico" class="form-label fw-bold">{{ form.diagnostico.label.text }} <span class="text-danger">*</span></label>
+          {{ form.diagnostico(class="form-control", rows="3", placeholder="Diagnóstico presuntivo o definitivo (Ej. Gastroenteritis viral aguda, Otitis externa bacteriana, Traqueobronquitis infecciosa...)", required=true) }}
+          {% for error in form.diagnostico.errors %}
+            <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           SECCIÓN P: PLAN (Tratamiento, Prescripción & Observaciones)
+           =================================================================== -->
+      <div class="soap-section-card">
+        <div class="soap-section-header bg-light">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge soap-badge-p px-3 py-2 rounded-pill fw-bold fs-6">P</span>
+            <div>
+              <h5 class="fw-bold mb-0 text-dark">Plan Terapéutico & Prescripción</h5>
+              <small class="text-muted">Indicaciones clínicas, fórmula médica y próximos controles</small>
+            </div>
           </div>
-          <div class="mb-3">
-            {{ form.plan_tratamiento.label(class="form-label fw-bold") }}
-            {{ form.plan_tratamiento(class="form-control", rows="3", placeholder="Tratamiento aplicado, procedimientos recomendados, exámanes solicitados...") }}
-            {% for error in form.plan_tratamiento.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1">Paso 4 de 4</span>
+        </div>
+        <div class="card-body p-3 p-md-4">
+          <!-- Plan de Tratamiento -->
+          <div class="mb-4">
+            <label for="plan_tratamiento" class="form-label fw-bold">{{ form.plan_tratamiento.label.text }} <span class="text-danger">*</span></label>
+            {{ form.plan_tratamiento(class="form-control", rows="3", placeholder="Procedimientos realizados en consulta, terapia instaurada, recomendaciones de manejo en casa, exámenes complementarios...", required=true) }}
+            {% for error in form.plan_tratamiento.errors %}
+              <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+            {% endfor %}
           </div>
-          <div class="mb-3">
-            {{ form.receta_medica.label(class="form-label fw-bold text-primary") }}
-            {{ form.receta_medica(class="form-control", rows="4", placeholder="Medicamento - Dosis - Frecuencia - Duración (Fórmula médica)") }}
+
+          <!-- Receta Médica / Prescripción -->
+          <div class="prescription-paper mb-4 shadow-sm">
+            <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fs-4 fw-bold text-primary font-monospace">Rx</span>
+                <span class="fw-bold text-dark">Fórmula Médica / Prescripción al Tutor</span>
+              </div>
+              <span class="badge bg-light text-muted border">Opcional</span>
+            </div>
+            {{ form.receta_medica(class="form-control font-monospace border-0 bg-transparent p-0", rows="4", placeholder="1. Medicamento / Principio Activo - Dosis exacta - Vía - Frecuencia - Duración&#10;2. Recomendaciones de administración...") }}
+            <small class="text-muted d-block mt-2" style="font-size: 0.75rem;">
+              <i class="bi bi-info-circle me-1"></i>Este contenido se podrá enviar por WhatsApp o imprimir para el tutor.
+            </small>
           </div>
+
+          <!-- Observaciones / Próximo Control -->
           <div>
-            {{ form.observaciones.label(class="form-label") }}
-            {{ form.observaciones(class="form-control", rows="2", placeholder="Próximo control, advertencias o notas internas...") }}
+            <label for="observaciones" class="form-label fw-bold">{{ form.observaciones.label.text }}</label>
+            {{ form.observaciones(class="form-control", rows="2", placeholder="Notas internas, fecha sugerida de recontrol, signos de alarma para el tutor...") }}
           </div>
         </div>
       </div>
 
-      {{ form.enviar(class="btn btn-primary w-100 py-3 fw-bold fs-5 mb-5") }}
+      <!-- BOTÓN PRINCIPAL DE ENVÍO -->
+      <div class="card shadow-sm border-0 mb-5 sticky-bottom" style="border-radius: 16px; background: #FFFFFF; bottom: 1rem; z-index: 10;">
+        <div class="card-body p-3 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+          <div class="d-flex align-items-center gap-2">
+            <div class="rounded-circle bg-success-subtle text-success p-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+              <i class="bi bi-clipboard2-pulse fs-5"></i>
+            </div>
+            <div>
+              <div class="fw-bold text-dark">Finalizar Consulta SOAP</div>
+              <small class="text-muted" id="submit-help-text">Asegúrate de haber evaluado los 9 sistemas requeridos.</small>
+            </div>
+          </div>
+          <div class="d-flex gap-2 w-100 w-md-auto">
+            <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="btn btn-outline-secondary rounded-pill px-4">Cancelar</a>
+            <button type="submit" id="btn-submit-consulta" class="btn btn-primary btn-lg rounded-pill fw-bold px-5 shadow flex-grow-1 flex-md-grow-0">
+              <i class="bi bi-check-circle-fill me-2"></i>Guardar Consulta Médica
+            </button>
+          </div>
+        </div>
+      </div>
+
     </form>
   </div>
 </div>
+
+<!-- ===================================================================
+     JAVASCRIPT DE EVALUACIÓN CLÍNICA INTERACTIVA POR SISTEMAS
+     =================================================================== -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Catálogo de sistemas inyectado desde Python
+  const catalogoSistemas = {{ catalogo_sistemas|tojson }};
+  
+  // Estado local para cada sistema
+  // { 'musculo_esqueletico': { estado: 'normal'|'anormal'|'pendiente', observacion: '...' }, ... }
+  const state = {};
+  catalogoSistemas.forEach(s => {
+    state[s.id] = {
+      nombre: s.nombre,
+      estado: 'pendiente',
+      observacion: ''
+    };
+  });
+
+  let activeIndex = 0;
+
+  // Elementos DOM
+  const hiddenJsonInput = document.getElementById('examen_sistemas');
+  const progressBar = document.getElementById('sistemas-progress-bar');
+  const counterBadge = document.getElementById('sistemas-counter-badge');
+  const alertFaltantes = document.getElementById('sistemas-alerta-faltantes');
+  const faltantesTexto = document.getElementById('sistemas-faltantes-texto');
+  
+  const inspectorTitulo = document.getElementById('inspector-titulo');
+  const inspectorDesc = document.getElementById('inspector-desc');
+  const inspectorIcon = document.getElementById('inspector-icon');
+  const inspectorIconBox = document.getElementById('inspector-icon-box');
+  const inspectorSugerencias = document.getElementById('inspector-sugerencias');
+  const inspectorObs = document.getElementById('inspector-observacion');
+  const radioNormal = document.getElementById('inspector_estado_normal');
+  const radioAnormal = document.getElementById('inspector_estado_anormal');
+  const inspectorPosicion = document.getElementById('inspector-posicion');
+  const btnPrev = document.getElementById('btn-sistema-prev');
+  const btnNext = document.getElementById('btn-sistema-next');
+
+  // Inicializar inspector con el primer sistema
+  function loadInspector(index) {
+    if (index < 0) index = 0;
+    if (index >= catalogoSistemas.length) index = catalogoSistemas.length - 1;
+    activeIndex = index;
+
+    const sist = catalogoSistemas[activeIndex];
+    const data = state[sist.id];
+
+    inspectorTitulo.textContent = sist.nombre;
+    inspectorDesc.textContent = sist.descripcion;
+    inspectorIcon.className = `bi ${sist.icono}`;
+    inspectorIconBox.className = `sistema-icon-box bg-${sist.badge_color} text-white shadow-sm`;
+    inspectorPosicion.textContent = `Sistema ${activeIndex + 1} de ${catalogoSistemas.length}`;
+
+    // Estado radios
+    radioNormal.checked = (data.estado === 'normal');
+    radioAnormal.checked = (data.estado === 'anormal');
+
+    // Observación
+    inspectorObs.value = data.observacion || '';
+
+    // Sugerencias rápidas
+    inspectorSugerencias.innerHTML = '';
+    (sist.sugerencias || []).forEach(sug => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip-sugerencia';
+      chip.textContent = '+ ' + sug;
+      chip.addEventListener('click', function() {
+        if (inspectorObs.value.trim() === '') {
+          inspectorObs.value = sug;
+        } else if (!inspectorObs.value.includes(sug)) {
+          inspectorObs.value += '. ' + sug;
+        }
+        data.observacion = inspectorObs.value;
+        syncState();
+      });
+      inspectorSugerencias.appendChild(chip);
+    });
+
+    // Resaltar tarjeta activa en la grilla
+    catalogoSistemas.forEach(s => {
+      const card = document.getElementById(`card-sistema-${s.id}`);
+      if (card) {
+        if (s.id === sist.id) {
+          card.classList.add('is-active');
+        } else {
+          card.classList.remove('is-active');
+        }
+      }
+    });
+
+    btnPrev.disabled = (activeIndex === 0);
+    btnNext.innerHTML = (activeIndex === catalogoSistemas.length - 1) ? 'Finalizar <i class="bi bi-check2 ms-1"></i>' : 'Siguiente Sistema<i class="bi bi-chevron-right ms-1"></i>';
+  }
+
+  // Sincronizar UI de tarjetas y progreso
+  function syncState() {
+    let evaluadosCount = 0;
+    let normalCount = 0;
+    let anormalCount = 0;
+
+    catalogoSistemas.forEach(s => {
+      const data = state[s.id];
+      const card = document.getElementById(`card-sistema-${s.id}`);
+      const badge = document.getElementById(`badge-status-${s.id}`);
+      const noteBadge = document.getElementById(`note-indicator-${s.id}`);
+
+      if (!card || !badge) return;
+
+      // Limpiar clases
+      card.classList.remove('is-pending', 'is-normal', 'is-anormal', 'shake-error');
+
+      if (data.estado === 'normal') {
+        evaluadosCount++;
+        normalCount++;
+        card.classList.add('is-normal');
+        badge.className = 'badge bg-success-subtle text-success border border-success-subtle rounded-pill status-pill';
+        badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Normal';
+      } else if (data.estado === 'anormal') {
+        evaluadosCount++;
+        anormalCount++;
+        card.classList.add('is-anormal');
+        badge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill status-pill';
+        badge.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i>Anormal';
+      } else {
+        card.classList.add('is-pending');
+        badge.className = 'badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill status-pill';
+        badge.innerHTML = '<i class="bi bi-clock-history me-1"></i>Pendiente';
+      }
+
+      // Nota indicadora
+      if (noteBadge) {
+        if (data.observacion && data.observacion.trim().length > 0) {
+          noteBadge.classList.remove('d-none');
+        } else {
+          noteBadge.classList.add('d-none');
+        }
+      }
+    });
+
+    // Progreso
+    const pct = Math.round((evaluadosCount / catalogoSistemas.length) * 100);
+    progressBar.style.width = pct + '%';
+
+    if (evaluadosCount === catalogoSistemas.length) {
+      counterBadge.className = 'badge bg-success text-white border border-success px-3 py-1 rounded-pill fw-bold';
+      counterBadge.innerHTML = `<i class="bi bi-check-all me-1"></i>9 de 9 evaluados (${anormalCount > 0 ? anormalCount + ' con hallazgos' : 'Todos normales'})`;
+      alertFaltantes.classList.add('d-none');
+    } else {
+      counterBadge.className = 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-1 rounded-pill fw-bold';
+      counterBadge.innerHTML = `${evaluadosCount} de ${catalogoSistemas.length} evaluados (${pct}%)`;
+    }
+
+    // Actualizar JSON consolidado
+    const payload = {
+      sistemas: state,
+      total_evaluados: evaluadosCount,
+      completado: (evaluadosCount === catalogoSistemas.length)
+    };
+    hiddenJsonInput.value = JSON.stringify(payload);
+  }
+
+  // Eventos de inspector
+  radioNormal.addEventListener('change', function() {
+    if (this.checked) {
+      const sist = catalogoSistemas[activeIndex];
+      state[sist.id].estado = 'normal';
+      syncState();
+    }
+  });
+
+  radioAnormal.addEventListener('change', function() {
+    if (this.checked) {
+      const sist = catalogoSistemas[activeIndex];
+      state[sist.id].estado = 'anormal';
+      syncState();
+    }
+  });
+
+  inspectorObs.addEventListener('input', function() {
+    const sist = catalogoSistemas[activeIndex];
+    state[sist.id].observacion = this.value;
+    syncState();
+  });
+
+  btnPrev.addEventListener('click', function() {
+    if (activeIndex > 0) {
+      loadInspector(activeIndex - 1);
+    }
+  });
+
+  btnNext.addEventListener('click', function() {
+    if (activeIndex < catalogoSistemas.length - 1) {
+      loadInspector(activeIndex + 1);
+    }
+  });
+
+  // Botones directos en tarjetas
+  document.querySelectorAll('.btn-quick-normal').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const id = this.getAttribute('data-id');
+      state[id].estado = 'normal';
+      const idx = catalogoSistemas.findIndex(s => s.id === id);
+      if (idx !== -1) loadInspector(idx);
+      syncState();
+    });
+  });
+
+  document.querySelectorAll('.btn-quick-anormal').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const id = this.getAttribute('data-id');
+      state[id].estado = 'anormal';
+      const idx = catalogoSistemas.findIndex(s => s.id === id);
+      if (idx !== -1) loadInspector(idx);
+      syncState();
+    });
+  });
+
+  // Clic en toda la tarjeta activa el inspector
+  document.querySelectorAll('.sistema-card-item').forEach(card => {
+    card.addEventListener('click', function() {
+      const id = this.getAttribute('data-id');
+      const idx = catalogoSistemas.findIndex(s => s.id === id);
+      if (idx !== -1) {
+        loadInspector(idx);
+        document.getElementById('sistema-inspector').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+  });
+
+  // Botón "Marcar todos Normales"
+  document.getElementById('btn-marcar-todos-normal').addEventListener('click', function() {
+    catalogoSistemas.forEach(s => {
+      if (state[s.id].estado === 'pendiente') {
+        state[s.id].estado = 'normal';
+      }
+    });
+    syncState();
+    loadInspector(activeIndex);
+  });
+
+  // Botón "Reiniciar"
+  document.getElementById('btn-reiniciar-sistemas').addEventListener('click', function() {
+    if (confirm('¿Deseas reiniciar la evaluación de todos los sistemas?')) {
+      catalogoSistemas.forEach(s => {
+        state[s.id].estado = 'pendiente';
+        state[s.id].observacion = '';
+      });
+      syncState();
+      loadInspector(0);
+    }
+  });
+
+  // Botones de motivo de consulta rápido
+  document.querySelectorAll('.btn-motive').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const input = document.getElementById('motivo_consulta');
+      const text = this.getAttribute('data-text');
+      if (input) {
+        if (!input.value.trim()) {
+          input.value = text;
+        } else {
+          input.value += ' / ' + text;
+        }
+        input.focus();
+      }
+    });
+  });
+
+  // =========================================================================
+  // VALIDACIÓN OBLIGATORIA DE LOS 9 SISTEMAS AL ENVIAR FORMULARIO
+  // =========================================================================
+  const form = document.getElementById('form-consulta-soap');
+  form.addEventListener('submit', function(e) {
+    const pendientes = catalogoSistemas.filter(s => state[s.id].estado === 'pendiente');
+
+    if (pendientes.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const nombres = pendientes.map(s => s.nombre).join(', ');
+      alertFaltantes.classList.remove('d-none');
+      faltantesTexto.innerHTML = `<strong>Atención:</strong> Debes completar la evaluación de todos los sistemas antes de guardar. Faltan ${pendientes.length}: <em>${nombres}</em>.`;
+
+      // Sacudir tarjetas pendientes
+      pendientes.forEach(s => {
+        const card = document.getElementById(`card-sistema-${s.id}`);
+        if (card) {
+          card.classList.add('shake-error');
+        }
+      });
+
+      // Abrir el primer pendiente en el inspector
+      const primerPendienteIdx = catalogoSistemas.findIndex(s => s.id === pendientes[0].id);
+      if (primerPendienteIdx !== -1) {
+        loadInspector(primerPendienteIdx);
+      }
+
+      // Scroll hacia la sección de sistemas
+      document.getElementById('seccion-sistemas').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return false;
+    }
+
+    // Verificar motivo y diagnostico requeridos
+    const motivo = document.getElementById('motivo_consulta');
+    const diag = document.getElementById('diagnostico');
+    const plan = document.getElementById('plan_tratamiento');
+
+    if (!motivo.value.trim() || !diag.value.trim() || !plan.value.trim()) {
+      // Dejar que la validación HTML5 o Flask actúe
+      return true;
+    }
+  });
+
+  // Inicializar primer sistema
+  loadInspector(0);
+  syncState();
+});
+</script>
 {% endblock %}

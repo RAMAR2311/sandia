@@ -1,45 +1,151 @@
 {% extends "base.html" %}
-{% from "_macros.html" import campo, campo_select, campo_switch, campo_textarea, encabezado %}
-{% block titulo %}{{ 'Editar tutor' if tutor else 'Nuevo tutor' }}{% endblock %}
+{% from "_macros.html" import campo, campo_select, campo_switch, campo_textarea %}
+{% block titulo %}{{ 'Editar Tutor · ' ~ tutor.nombre_completo if tutor else 'Nuevo Tutor · Sandía' }}{% endblock %}
 
 {% block contenido %}
-{{ encabezado('Editar tutor' if tutor else 'Nuevo tutor', tutor.nombre_completo if tutor else 'Datos del dueño o responsable de la mascota') }}
+{# Cabecera de Página #}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('tutores.detalle', tutor_id=tutor.id) if tutor else url_for('tutores.lista') }}" 
+         class="btn btn-sm btn-outline-secondary rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center" 
+         style="width: 34px; height: 34px;">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca);">
+        {{ 'Editar Tutor: ' ~ tutor.nombre_completo if tutor else 'Registro de Nuevo Tutor' }}
+      </h1>
+    </div>
+    <p class="text-secondary small mb-0 mt-1 ms-4 ps-2">
+      {{ 'Actualiza la información de contacto, documento y preferencias del tutor' if tutor else 'Ingresa los datos personales, canales de contacto y preferencias del dueño de la mascota' }}
+    </p>
+  </div>
+</div>
+
 <form method="post" novalidate>
   {{ form.hidden_tag() }}
-  <div class="row g-3">
+
+  <div class="row g-4">
+    {# Bloque 1: Identificación y Contacto Principal #}
     <div class="col-12 col-lg-7">
-      <div class="card h-100">
-        <div class="card-header">Identificación y contacto</div>
-        <div class="card-body">
-          {{ campo(form.nombre_completo, autocomplete="off", autofocus=True, autocapitalize="words") }}
-          <div class="row g-2">
-            <div class="col-5">{{ campo_select(form.tipo_documento) }}</div>
-            <div class="col-7">{{ campo(form.numero_documento, inputmode="numeric", autocomplete="off") }}</div>
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+        <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">👤</span>
+            <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Identificación y Contacto</span>
           </div>
-          <div class="row g-2">
-            <div class="col-12 col-sm-6">{{ campo(form.telefono, type="tel", inputmode="tel", autocomplete="off", placeholder="3105551234") }}</div>
-            <div class="col-12 col-sm-6">{{ campo(form.whatsapp, type="tel", inputmode="tel", autocomplete="off", placeholder="Si es distinto al teléfono", ayuda="Si lo dejas vacío se usa el teléfono.") }}</div>
+          <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small">Requerido</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.nombre_completo.id }}">
+              Nombre Completo *
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-light text-muted"><i class="bi bi-person-fill text-danger"></i></span>
+              {{ form.nombre_completo(class_="form-control bg-light" + (" is-invalid" if form.nombre_completo.errors else ""), placeholder="Ej: Andrés Felipe Martínez...", autocomplete="off", autofocus=True, autocapitalize="words") }}
+            </div>
+            {% for error in form.nombre_completo.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
           </div>
-          {{ campo(form.email, type="email", inputmode="email", autocomplete="off") }}
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-5">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.tipo_documento.id }}">Tipo de Documento</label>
+              {{ form.tipo_documento(class_="form-select bg-light" + (" is-invalid" if form.tipo_documento.errors else "")) }}
+              {% for error in form.tipo_documento.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-sm-7">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.numero_documento.id }}">Número de Documento</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light text-muted"><i class="bi bi-card-text text-primary"></i></span>
+                {{ form.numero_documento(class_="form-control bg-light" + (" is-invalid" if form.numero_documento.errors else ""), placeholder="Ej: 1098456789", inputmode="numeric", autocomplete="off") }}
+              </div>
+              {% for error in form.numero_documento.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.telefono.id }}">
+                <i class="bi bi-telephone text-success me-1"></i>Teléfono Principal *
+              </label>
+              {{ form.telefono(class_="form-control bg-light" + (" is-invalid" if form.telefono.errors else ""), type="tel", inputmode="tel", autocomplete="off", placeholder="Ej: 3105551234") }}
+              {% for error in form.telefono.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.whatsapp.id }}">
+                <i class="bi bi-whatsapp text-success me-1"></i>WhatsApp (Opcional)
+              </label>
+              {{ form.whatsapp(class_="form-control bg-light" + (" is-invalid" if form.whatsapp.errors else ""), type="tel", inputmode="tel", autocomplete="off", placeholder="Si es diferente al principal") }}
+              <div class="form-text small" style="font-size: 0.75rem;">Si se deja vacío, se utilizará el teléfono principal.</div>
+              {% for error in form.whatsapp.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-0">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.email.id }}">
+              <i class="bi bi-envelope text-primary me-1"></i>Correo Electrónico (Opcional)
+            </label>
+            {{ form.email(class_="form-control bg-light" + (" is-invalid" if form.email.errors else ""), type="email", inputmode="email", autocomplete="off", placeholder="ejemplo@correo.com") }}
+            {% for error in form.email.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
         </div>
       </div>
     </div>
+
+    {# Bloque 2: Dirección, Notas y Preferencias #}
     <div class="col-12 col-lg-5">
-      <div class="card h-100">
-        <div class="card-header">Dirección y notas</div>
-        <div class="card-body">
-          {{ campo(form.direccion, autocomplete="off") }}
-          {{ campo(form.barrio, autocomplete="off") }}
-          {{ campo_textarea(form.notas, filas=3, ayuda="Preferencias, advertencias, cómo le gusta que le hablen…") }}
-          {{ campo_switch(form.acepta_recordatorios) }}
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+        <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex align-items-center gap-2">
+          <span class="fs-5">📍</span>
+          <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Ubicación y Preferencias</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.direccion.id }}">
+              <i class="bi bi-geo-alt me-1 text-primary"></i>Dirección de Residencia
+            </label>
+            {{ form.direccion(class_="form-control bg-light", placeholder="Ej: Calle 45 # 23-12 Apto 301", autocomplete="off") }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.barrio.id }}">
+              <i class="bi bi-houses me-1 text-primary"></i>Barrio o Sector
+            </label>
+            {{ form.barrio(class_="form-control bg-light", placeholder="Ej: Laureles, El Poblado, Centro...", autocomplete="off") }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.notas.id }}">
+              <i class="bi bi-chat-left-text me-1 text-primary"></i>Notas Internas del Cliente
+            </label>
+            {{ form.notas(class_="form-control bg-light", rows="3", placeholder="Preferencias, advertencias, horario favorito para citas, etc.") }}
+          </div>
+
+          <div class="p-3 bg-light rounded-3 border">
+            <div class="form-check form-switch mb-0">
+              {{ form.acepta_recordatorios(class_="form-check-input", role="switch", id="acepta_recordatorios") }}
+              <label class="form-check-label fw-bold text-dark small" for="acepta_recordatorios">
+                <i class="bi bi-bell text-success me-1"></i>Acepta recordatorios y avisos por WhatsApp
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-  <div class="acciones-fijas mt-3">
-    <div class="d-flex flex-column flex-sm-row gap-2">
-      {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
-      <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('tutores.detalle', tutor_id=tutor.id) if tutor else url_for('tutores.lista') }}">Cancelar</a>
+
+  {# Barra de Botones #}
+  <div class="card border-0 shadow-sm rounded-4 bg-white mt-4 p-3 p-md-4">
+    <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3">
+      <a class="btn btn-outline-secondary rounded-pill px-4 fw-semibold shadow-xs" 
+         href="{{ url_for('tutores.detalle', tutor_id=tutor.id) if tutor else url_for('tutores.lista') }}">
+        <i class="bi bi-x-circle me-1"></i> Cancelar
+      </a>
+      <button type="submit" class="btn btn-primary rounded-pill px-5 py-2 fw-bold shadow-sm d-flex align-items-center gap-2">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>{{ 'Guardar Cambios' if tutor else 'Registrar Tutor' }}</span>
+      </button>
     </div>
   </div>
 </form>

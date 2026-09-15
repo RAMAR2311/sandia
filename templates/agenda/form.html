@@ -1,52 +1,150 @@
 {% extends "base.html" %}
-{% from "_macros.html" import campo, campo_select, campo_textarea, encabezado %}
-{% block titulo %}Nueva cita{% endblock %}
+{% from "_macros.html" import campo, campo_select, campo_textarea %}
+{% block titulo %}Nueva Cita · Sandía{% endblock %}
 
 {% block contenido %}
-{{ encabezado("Nueva cita") }}
-<form method="post" novalidate>
+<div class="mb-3">
+  <a href="{{ url_for('agenda.lista') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+    <i class="bi bi-arrow-left me-1"></i> Volver a la agenda
+  </a>
+</div>
+
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h1 class="h3 fw-bold text-dark mb-1" style="font-family: var(--fuente-marca); color: var(--sandia-tinta);">
+      <i class="bi bi-calendar-plus text-danger me-2"></i>Nueva Cita Médica / Spa
+    </h1>
+    <p class="text-secondary mb-0">Programa consultas clínicas, controles, procedimientos o servicios de spa veterinario.</p>
+  </div>
+</div>
+
+<form method="post" novalidate id="form-nueva-cita">
   {{ form.hidden_tag() }}
-  <div class="card mb-3">
-    <div class="card-header">Mascota</div>
-    <div class="card-body">
-      <div id="mascota-seleccionada" class="fila-lista d-flex align-items-center gap-3 mb-2 d-none">
-        <div class="flex-grow-1 min-w-0">
-          <div class="fw-bold" data-campo="nombre"></div>
-          <div class="small text-secondary" data-campo="detalle"></div>
+
+  <div class="row g-4">
+    {# Columna 1: Paciente & Tutor #}
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm rounded-4 h-100" style="background-color: #FFFFFF;">
+        <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">🐾</span>
+            <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">1. Paciente & Tutor</span>
+          </div>
         </div>
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="cambiar-mascota">Cambiar</button>
-      </div>
-      <div id="buscador-mascota">
-        <label class="form-label" for="buscar-mascota">Buscar mascota</label>
-        <input class="form-control" type="search" id="buscar-mascota" placeholder="Nombre de la mascota o del tutor" autocomplete="off">
-        <div class="list-group mt-2 d-none" id="resultados-mascota"></div>
-      </div>
-      {% for error in form.mascota_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-      {% for error in form.tutor_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-    </div>
-  </div>
+        <div class="card-body p-4">
+          {# Estado Mascota Seleccionada #}
+          <div id="mascota-seleccionada" class="p-3 rounded-4 mb-3 border d-none" style="background-color: #FDF6EE; border-color: #F7D6B5 !important;">
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-sandia-circulo fs-2 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm flex-shrink-0" style="width: 54px; height: 54px;" data-campo="emoji">
+                🐾
+              </div>
+              <div class="flex-grow-1 min-w-0">
+                <div class="fw-bold text-dark fs-5" data-campo="nombre"></div>
+                <div class="small text-secondary fw-semibold" data-campo="detalle"></div>
+                <div class="small text-muted mt-1" data-campo="tutor"></div>
+              </div>
+            </div>
+            <div class="mt-3 pt-2 border-top d-flex justify-content-end" style="border-color: #F7D6B5 !important;">
+              <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" id="cambiar-mascota">
+                <i class="bi bi-pencil-square me-1"></i> Cambiar paciente
+              </button>
+            </div>
+          </div>
 
-  <div class="card mb-3">
-    <div class="card-header">Detalles</div>
-    <div class="card-body">
-      <div class="row g-2">
-        <div class="col-6">{{ campo_select(form.tipo) }}</div>
-        <div class="col-6">{{ campo_select(form.profesional_id) }}</div>
-      </div>
-      <div class="row g-2">
-        <div class="col-6">{{ campo(form.fecha, type="date") }}</div>
-        <div class="col-6">{{ campo(form.hora, type="time") }}</div>
-      </div>
-      {{ campo(form.duracion_minutos, type="number") }}
-      {{ campo(form.motivo, autocomplete="off") }}
-      {{ campo_textarea(form.notas, filas=3) }}
-    </div>
-  </div>
+          {# Buscador en vivo #}
+          <div id="buscador-mascota">
+            <label class="form-label fw-bold text-dark small text-uppercase" for="buscar-mascota">
+              Buscar paciente
+            </label>
+            <div class="input-group mb-2">
+              <span class="input-group-text bg-white border-end-0 text-secondary">
+                <i class="bi bi-search"></i>
+              </span>
+              <input class="form-control border-start-0 ps-0" type="search" id="buscar-mascota" placeholder="Nombre de la mascota o del tutor..." autocomplete="off" autofocus>
+            </div>
+            <div class="form-text text-muted small mb-2">
+              Escribe al menos 2 letras para buscar pacientes activos y sus tutores registrados.
+            </div>
+            <div class="list-group shadow-sm border rounded-3 overflow-hidden d-none mt-2" id="resultados-mascota" style="max-height: 280px; overflow-y: auto;"></div>
+          </div>
 
-  <div class="acciones-fijas">
-    <div class="d-flex flex-column flex-sm-row gap-2">
-      {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
-      <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('agenda.lista') }}">Cancelar</a>
+          {% for error in form.mascota_id.errors %}
+            <div class="alert alert-danger py-2 px-3 small rounded-3 mt-3 mb-0">
+              <i class="bi bi-exclamation-circle me-1"></i> {{ error }}
+            </div>
+          {% endfor %}
+          {% for error in form.tutor_id.errors %}
+            <div class="alert alert-danger py-2 px-3 small rounded-3 mt-3 mb-0">
+              <i class="bi bi-exclamation-circle me-1"></i> {{ error }}
+            </div>
+          {% endfor %}
+
+          <div class="mt-4 pt-3 border-top text-secondary small">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle text-primary"></i>
+              <span>¿Paciente nuevo? <a href="{{ url_for('mascotas.nueva') }}" target="_blank" class="fw-bold text-decoration-none">Regístralo aquí <i class="bi bi-box-arrow-up-right small"></i></a></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Columna 2: Detalles de la Cita #}
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm rounded-4" style="background-color: #FFFFFF;">
+        <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">🗓️</span>
+            <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">2. Detalles de la Cita</span>
+          </div>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              {{ campo_select(form.tipo) }}
+            </div>
+            <div class="col-md-6">
+              {{ campo_select(form.profesional_id) }}
+            </div>
+
+            <div class="col-md-6">
+              {{ campo(form.fecha, type="date", min=hoy.isoformat(), ayuda="No se admiten fechas pasadas") }}
+            </div>
+            <div class="col-md-6">
+              {{ campo(form.hora, type="time") }}
+            </div>
+
+            <div class="col-12">
+              <label class="form-label fw-bold">{{ form.duracion_minutos.label.text }}</label>
+              <div class="d-flex gap-2 flex-wrap mb-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 chip-duracion" data-minutos="15">15 min</button>
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 chip-duracion active" data-minutos="30">30 min</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 chip-duracion" data-minutos="45">45 min</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 chip-duracion" data-minutos="60">1 hora</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 chip-duracion" data-minutos="90">1.5 horas</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 chip-duracion" data-minutos="120">2 horas</button>
+              </div>
+              {{ campo(form.duracion_minutos, type="number", min="10", max="480", placeholder="Minutos") }}
+            </div>
+
+            <div class="col-12">
+              {{ campo(form.motivo, autocomplete="off", placeholder="Ej: Control de vacunas, consulta dermatológica, profilaxis dental, baño y peluquería...") }}
+            </div>
+
+            <div class="col-12">
+              {{ campo_textarea(form.notas, filas=3, placeholder="Observaciones especiales, síntomas previos, indicaciones del tutor...") }}
+            </div>
+          </div>
+        </div>
+        <div class="card-footer bg-light border-top py-3 px-4 rounded-bottom-4 d-flex flex-column flex-sm-row gap-3 justify-content-between align-items-center">
+          <a class="btn btn-outline-secondary px-4 rounded-pill order-2 order-sm-1" href="{{ url_for('agenda.lista') }}">
+            Cancelar
+          </a>
+          <button type="submit" class="btn btn-primary btn-lg px-4 rounded-pill fw-bold shadow-sm order-1 order-sm-2">
+            <i class="bi bi-calendar-check me-2"></i> Agendar Cita
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </form>
@@ -54,4 +152,39 @@
 
 {% block scripts %}
 <script src="{{ static_url('js/buscar_mascota.js') }}"></script>
+<script>
+  // Manejo de chips de duración rápida
+  document.querySelectorAll('.chip-duracion').forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      var minutos = this.getAttribute('data-minutos');
+      var input = document.getElementById('duracion_minutos');
+      if (input) {
+        input.value = minutos;
+      }
+      document.querySelectorAll('.chip-duracion').forEach(function(c) {
+        c.classList.remove('btn-outline-primary', 'active');
+        c.classList.add('btn-outline-secondary');
+      });
+      this.classList.remove('btn-outline-secondary');
+      this.classList.add('btn-outline-primary', 'active');
+    });
+  });
+
+  // Sincronizar input manual con chips
+  var inputDuracion = document.getElementById('duracion_minutos');
+  if (inputDuracion) {
+    inputDuracion.addEventListener('input', function() {
+      var val = this.value;
+      document.querySelectorAll('.chip-duracion').forEach(function(c) {
+        if (c.getAttribute('data-minutos') === val) {
+          c.classList.remove('btn-outline-secondary');
+          c.classList.add('btn-outline-primary', 'active');
+        } else {
+          c.classList.remove('btn-outline-primary', 'active');
+          c.classList.add('btn-outline-secondary');
+        }
+      });
+    });
+  }
+</script>
 {% endblock %}

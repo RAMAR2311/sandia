@@ -4,23 +4,104 @@
 
 {% block contenido %}
 {{ encabezado('Editar usuario' if usuario else 'Nuevo usuario', usuario.email if usuario else 'Crea una cuenta para un miembro del equipo') }}
-<div class="card" style="max-width: 640px;">
-  <div class="card-body">
-    <form method="post" novalidate>
-      {{ form.hidden_tag() }}
-      {{ campo(form.nombre, autocomplete="off", autofocus=True) }}
-      {{ campo(form.email, type="email", inputmode="email", autocomplete="off") }}
-      {{ campo(form.telefono, type="tel", inputmode="tel", autocomplete="off") }}
-      {{ campo_select(form.rol, ayuda="Define a qué módulos tiene acceso.") }}
-      {{ campo_switch(form.activo, ayuda="Un usuario inactivo no puede iniciar sesión, pero su historial se conserva.") }}
-      <hr>
-      {{ campo(form.password, autocomplete="new-password", ayuda=("Déjala vacía para no cambiarla." if usuario else "Mínimo 8 caracteres.")) }}
-      {{ campo(form.password_confirmacion, autocomplete="new-password") }}
-      <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
-        {{ form.enviar(class_="btn btn-primary btn-lg flex-grow-1") }}
-        <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('admin.usuarios') }}">Cancelar</a>
+
+<div style="max-width: 640px;">
+
+  {# Hero del formulario #}
+  <div class="card mb-3" style="border-top: 3px solid var(--sandia-rojo); overflow:hidden;">
+    <div class="card-body" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFF8F8 60%, #ffffff 100%); padding: 1.5rem;">
+      <div class="d-flex align-items-center gap-3">
+        <div id="form-avatar-preview" class="usuario-avatar usuario-avatar--0" style="width:56px;height:56px;font-size:1.5rem;flex-shrink:0;">
+          {% if usuario %}{{ usuario.nombre[:1]|upper }}{% else %}<i class="bi bi-person" style="font-size:1.4rem;"></i>{% endif %}
+        </div>
+        <div>
+          <div class="fw-bold" style="font-size:1.05rem;" id="form-nombre-preview">
+            {% if usuario %}{{ usuario.nombre }}{% else %}Nuevo usuario{% endif %}
+          </div>
+          <div class="small text-secondary">
+            {% if usuario %}<span class="rol-badge rol-badge--{{ usuario.rol }}">{{ usuario.rol_etiqueta }}</span>
+            {% else %}<span class="text-secondary">Completa el formulario</span>{% endif %}
+          </div>
+        </div>
       </div>
-    </form>
+    </div>
+  </div>
+
+  <div class="card" style="border-top: 3px solid var(--sandia-rojo);">
+    <div class="card-body p-4">
+      <form method="post" novalidate id="usuario-form">
+        {{ form.hidden_tag() }}
+
+        {# Datos personales #}
+        <div class="mb-3">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#FDECEB,#FEE2E2);display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-person-fill" style="color:var(--sandia-rojo);font-size:0.85rem;"></i>
+            </div>
+            <span class="fw-bold" style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--sandia-gris);">Datos personales</span>
+          </div>
+          {{ campo(form.nombre, autocomplete="off", autofocus=True) }}
+          {{ campo(form.email, type="email", inputmode="email", autocomplete="off") }}
+          {{ campo(form.telefono, type="tel", inputmode="tel", autocomplete="off") }}
+        </div>
+
+        <hr class="my-3">
+
+        {# Rol y acceso #}
+        <div class="mb-3">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#E0F2F1,#B2DFDB);display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-shield-check-fill" style="color:#00897B;font-size:0.85rem;"></i>
+            </div>
+            <span class="fw-bold" style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--sandia-gris);">Rol y acceso</span>
+          </div>
+          {{ campo_select(form.rol, ayuda="Define a qué módulos tiene acceso este usuario.") }}
+          {{ campo_switch(form.activo, ayuda="Un usuario inactivo no puede iniciar sesión, pero su historial se conserva.") }}
+        </div>
+
+        <hr class="my-3">
+
+        {# Contraseña #}
+        <div class="mb-1">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#EDE9FE,#DDD6FE);display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-key-fill" style="color:#7C3AED;font-size:0.85rem;"></i>
+            </div>
+            <span class="fw-bold" style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--sandia-gris);">Contraseña</span>
+          </div>
+          {{ campo(form.password, autocomplete="new-password", ayuda=("Déjala vacía para no cambiarla." if usuario else "Mínimo 8 caracteres.")) }}
+          {{ campo(form.password_confirmacion, autocomplete="new-password") }}
+        </div>
+
+        <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+          {{ form.enviar(class_="btn btn-sandia btn-lg flex-grow-1") }}
+          <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('admin.usuarios') }}">
+            <i class="bi bi-arrow-left me-1"></i>Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
+
+{% block scripts %}
+<script>
+  // Actualiza el avatar preview al escribir el nombre
+  const nombreInput = document.getElementById('{{ form.nombre.id }}');
+  const preview = document.getElementById('form-avatar-preview');
+  const nombrePreview = document.getElementById('form-nombre-preview');
+  if (nombreInput) {
+    nombreInput.addEventListener('input', function() {
+      const val = this.value.trim();
+      if (val) {
+        preview.innerHTML = val[0].toUpperCase();
+        nombrePreview.textContent = val;
+      } else {
+        preview.innerHTML = '<i class="bi bi-person" style="font-size:1.4rem;"></i>';
+        nombrePreview.textContent = 'Nuevo usuario';
+      }
+    });
+  }
+</script>
+{% endblock %}
 {% endblock %}

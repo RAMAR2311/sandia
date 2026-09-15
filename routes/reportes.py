@@ -1,5 +1,6 @@
 """Controladores y vistas para la Fase 7: Reportes, Métricas y Tableros."""
 
+import calendar
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from flask import Blueprint, render_template, request
@@ -27,15 +28,39 @@ bp = Blueprint("reportes", __name__, url_prefix="/reportes")
 
 def _obtener_rango_fechas(periodo: str, fecha_inicio_str: str = None, fecha_fin_str: str = None):
     hoy = hoy_bogota()
+    ultimo_dia_mes = calendar.monthrange(hoy.year, hoy.month)[1]
+
     if periodo == "hoy":
         inicio_date = hoy
         fin_date = hoy
+    elif periodo == "ayer":
+        inicio_date = hoy - timedelta(days=1)
+        fin_date = hoy - timedelta(days=1)
     elif periodo == "semana":
         inicio_date = hoy - timedelta(days=hoy.weekday())
         fin_date = hoy
+    elif periodo == "quincena":
+        # Quincena en curso (1-15 o 16-fin de mes)
+        if hoy.day <= 15:
+            inicio_date = hoy.replace(day=1)
+            fin_date = hoy.replace(day=15)
+        else:
+            inicio_date = hoy.replace(day=16)
+            fin_date = hoy.replace(day=ultimo_dia_mes)
+    elif periodo == "primera_quincena":
+        inicio_date = hoy.replace(day=1)
+        fin_date = hoy.replace(day=15)
+    elif periodo == "segunda_quincena":
+        inicio_date = hoy.replace(day=16)
+        fin_date = hoy.replace(day=ultimo_dia_mes)
     elif periodo == "mes":
         inicio_date = hoy.replace(day=1)
-        fin_date = hoy
+        fin_date = hoy.replace(day=ultimo_dia_mes)
+    elif periodo == "mes_anterior":
+        primer_dia_mes_actual = hoy.replace(day=1)
+        ultimo_dia_mes_anterior = primer_dia_mes_actual - timedelta(days=1)
+        inicio_date = ultimo_dia_mes_anterior.replace(day=1)
+        fin_date = ultimo_dia_mes_anterior
     elif periodo == "personalizado" and fecha_inicio_str and fecha_fin_str:
         try:
             inicio_date = datetime.strptime(fecha_inicio_str, "%Y-%m-%d").date()
@@ -45,7 +70,7 @@ def _obtener_rango_fechas(periodo: str, fecha_inicio_str: str = None, fecha_fin_
             fin_date = hoy
     else:
         inicio_date = hoy.replace(day=1)
-        fin_date = hoy
+        fin_date = hoy.replace(day=ultimo_dia_mes)
 
     inicio_dt = datetime.combine(inicio_date, time.min, tzinfo=ZONA_BOGOTA)
     fin_dt = datetime.combine(fin_date, time.max, tzinfo=ZONA_BOGOTA)

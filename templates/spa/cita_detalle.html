@@ -1,171 +1,543 @@
 {% extends "base.html" %}
-{% from "_macros.html" import encabezado %}
-{% block titulo %}Cita de Spa #{{ cita.id }} - VetCare{% endblock %}
+{% from "_macros.html" import avatar_mascota, boton_whatsapp %}
+{% block titulo %}Gestionar Turno Spa #{{ cita.id }} · {{ cita.mascota.nombre }} · Sandía{% endblock %}
 
 {% block contenido %}
-{% call encabezado("Cita de Grooming #" ~ cita.id, "Seguimiento de servicio, estados y aviso a tutor") %}
-  <a href="{{ url_for('spa.agenda', fecha=cita.fecha_hora.strftime('%Y-%m-%d')) }}" class="btn btn-outline-secondary">
-    <i class="bi bi-arrow-left me-1"></i>Volver a la Agenda
-  </a>
-{% endcall %}
-
-<div class="row g-4">
-  <!-- Columna Izquierda: Información de Cita -->
-  <div class="col-12 col-lg-7">
-    <div class="card shadow-sm mb-4">
-      <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0">Detalles de la Mascota y Servicio</h5>
-        <span class="badge fs-6 
-          {% if cita.estado == 'programada' %}bg-primary
-          {% elif cita.estado == 'en_proceso' %}bg-warning text-dark
-          {% elif cita.estado == 'listo_recogida' %}bg-success
-          {% elif cita.estado == 'entregado' %}bg-secondary
-          {% else %}bg-danger{% endif %}">
-          {{ cita.estado_etiqueta }}
-        </span>
-      </div>
-      <div class="card-body">
-        <div class="row g-3 mb-4">
-          <div class="col-6">
-            <span class="text-secondary small d-block">Mascota</span>
-            <h4 class="fw-bold mb-0">🐾 {{ cita.mascota.nombre }}</h4>
-            <span class="badge bg-light text-dark">{{ cita.mascota.especie }} - {{ cita.mascota.raza_nombre }}</span>
-          </div>
-          <div class="col-6">
-            <span class="text-secondary small d-block">Tutor / Cliente</span>
-            <h5 class="fw-bold mb-0">{{ cita.tutor.nombre_completo }}</h5>
-            <small class="text-muted"><i class="bi bi-telephone me-1"></i>{{ cita.tutor.telefono }}</small>
-          </div>
-        </div>
-
-        <div class="p-3 bg-light rounded mb-4 border">
-          <div class="row g-2">
-            <div class="col-6">
-              <span class="text-secondary small d-block">Servicio</span>
-              <strong class="fs-5 text-primary">{{ cita.servicio_spa.nombre }}</strong>
-            </div>
-            <div class="col-6 text-end">
-              <span class="text-secondary small d-block">Precio Sugerido</span>
-              <strong class="fs-5 text-success font-monospace">{{ cita.servicio_spa.precio_sugerido|cop }}</strong>
-            </div>
-            <div class="col-6">
-              <span class="text-secondary small d-block">Fecha y Hora</span>
-              <strong>{{ cita.fecha_hora|fecha_hora }}</strong>
-            </div>
-            <div class="col-6 text-end">
-              <span class="text-secondary small d-block">Groomer Asignado</span>
-              <strong>{{ cita.groomer.nombre if cita.groomer else 'Sin asignar' }}</strong>
-            </div>
-          </div>
-        </div>
-
-        {% if cita.notas_ingreso %}
-        <div class="mb-3">
-          <label class="fw-bold small text-secondary">Notas de Ingreso:</label>
-          <div class="p-2 bg-white rounded border">{{ cita.notas_ingreso }}</div>
-        </div>
-        {% endif %}
-
-        {% if cita.notas_salida %}
-        <div class="mb-3">
-          <label class="fw-bold small text-secondary">Observaciones de Salida / Entrega:</label>
-          <div class="p-2 bg-white rounded border">{{ cita.notas_salida }}</div>
-        </div>
-        {% endif %}
-      </div>
-    </div>
+{# Barra Superior de Navegación y Acciones #}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <div>
+    <a href="{{ url_for('spa.agenda', fecha=cita.fecha_hora.strftime('%Y-%m-%d')) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs">
+      <i class="bi bi-arrow-left me-1"></i> Volver a la Agenda de Spa
+    </a>
   </div>
-
-  <!-- Columna Derecha: Acciones Rápidas y Notificación WhatsApp -->
-  <div class="col-12 col-lg-5">
-    <!-- Card Notificación WhatsApp -->
-    {% if cita.enlace_whatsapp %}
-    <div class="card border-success shadow-sm mb-4">
-      <div class="card-header bg-success text-white">
-        <h5 class="card-title mb-0"><i class="bi bi-whatsapp me-2"></i>Aviso por WhatsApp</h5>
-      </div>
-      <div class="card-body">
-        <p class="small text-secondary mb-2">Mensaje pre-redactado para enviar al tutor cuando la mascota esté lista:</p>
-        <div class="p-3 bg-light rounded border mb-3 small italic">
-          "{{ cita.mensaje_whatsapp }}"
-        </div>
-
-        <a href="{{ cita.enlace_whatsapp }}" target="_blank" class="btn btn-success btn-lg w-100 fw-bold py-2 mb-2" onclick="marcarNotificado({{ cita.id }})">
-          <i class="bi bi-whatsapp me-2"></i>Enviar Notificación por WhatsApp
-        </a>
-
-        {% if cita.notificado_whatsapp %}
-        <div class="text-center text-success small font-weight-bold">
-          <i class="bi bi-check-all me-1"></i>Notificación registrada previamente.
-        </div>
-        {% endif %}
-      </div>
-    </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{{ url_for('mascotas.detalle', mascota_id=cita.mascota.id) }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 shadow-xs">
+      <i class="bi bi-heart-pulse me-1"></i> Ficha del Paciente
+    </a>
+    {% if not cita.venta %}
+    <a href="{{ url_for('pos.terminal', cita_spa_id=cita.id) }}" class="btn btn-sm btn-success rounded-pill px-3 shadow-xs fw-semibold">
+      <i class="bi bi-cart-check-fill me-1"></i> Facturar en POS
+    </a>
     {% endif %}
+  </div>
+</div>
 
-    <!-- Card Cambio de Estado -->
-    <div class="card shadow-sm">
-      <div class="card-header bg-light">
-        <h5 class="card-title mb-0"><i class="bi bi-sliders me-2"></i>Cambiar Estado de la Cita</h5>
+{# Banner Hero: Datos del Paciente y Estado del Spa #}
+<div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden" style="background: linear-gradient(135deg, #FFFFFF 0%, #FFF5F6 50%, #FFF0F3 100%); border: 1.5px solid #FECDD3 !important;">
+  <div class="card-body p-4">
+    <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+      <div class="d-flex align-items-center gap-3 min-w-0">
+        <div class="position-relative flex-shrink-0">
+          {{ avatar_mascota(cita.mascota, 72, 'rounded-circle shadow-xs border') }}
+          <span class="position-absolute bottom-0 end-0 bg-white rounded-circle shadow-xs fs-6 d-flex align-items-center justify-content-center border" style="width: 26px; height: 26px;">
+            {{ cita.mascota.especie_emoji or '🐾' }}
+          </span>
+        </div>
+        <div class="min-w-0">
+          <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+            <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca); color: #BE123C;">{{ cita.mascota.nombre }}</h1>
+            <span class="badge badge-sandia-rosa rounded-pill px-2 py-1 small">
+              <i class="bi bi-scissors me-1"></i>{{ cita.servicio_spa.nombre }}
+            </span>
+          </div>
+          <div class="text-secondary small">
+            <i class="bi bi-person me-1"></i><strong>Tutor:</strong> {{ cita.tutor.nombre_completo }}
+            {% if cita.tutor.telefono %}
+              <span class="ms-2">· <i class="bi bi-telephone text-success me-1"></i>{{ cita.tutor.telefono }}</span>
+            {% endif %}
+            {% if cita.mascota.raza %}
+              <span class="ms-2">· {{ cita.mascota.raza.nombre }}</span>
+            {% endif %}
+          </div>
+        </div>
       </div>
-      <div class="card-body">
-        <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=cita.id) }}">
-          {{ form_estado.csrf_token }}
 
-          <div class="mb-3">
-            {{ form_estado.estado.label(class="form-label fw-bold") }}
-            {{ form_estado.estado(class="form-select") }}
-          </div>
-
-          <div class="mb-3">
-            {{ form_estado.notas_salida.label(class="form-label") }}
-            {{ form_estado.notas_salida(class="form-control", rows="3", placeholder="Resultado del grooming, champú usado, recomendaciones...") }}
-          </div>
-
-          {{ form_estado.enviar(class="btn btn-primary w-100 fw-bold py-2") }}
-        </form>
-
-        <hr>
-
-        {% if cita.venta %}
-        <div class="alert alert-success d-flex align-items-center gap-2 mb-0" role="alert">
-          <i class="bi bi-check-circle-fill fs-5"></i>
-          <div>
-            Pagada · Factura <a href="{{ url_for('pos.venta_detalle', id=cita.venta_id) }}" class="alert-link">{{ cita.venta.numero_factura }}</a>
-            ({{ cita.venta.total|cop }})
-          </div>
-        </div>
+      <div class="text-end">
+        <div class="small text-muted mb-1 text-uppercase fw-semibold" style="letter-spacing: 0.5px;">Estado del Turno</div>
+        {% if cita.estado == 'en_proceso' %}
+          <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fs-6 shadow-sm fw-semibold">
+            <i class="bi bi-scissors me-1"></i> En Proceso de Grooming
+          </span>
+        {% elif cita.estado == 'listo_recogida' %}
+          <span class="badge bg-success text-white rounded-pill px-3 py-2 fs-6 shadow-sm fw-semibold animate-pulse">
+            <i class="bi bi-bell-fill me-1"></i> ¡Listo para Recoger!
+          </span>
+        {% elif cita.estado == 'entregado' %}
+          <span class="badge bg-secondary-subtle text-secondary border px-3 py-2 fs-6 fw-semibold">
+            <i class="bi bi-check2-all me-1"></i> Entregado al Tutor
+          </span>
+        {% elif cita.estado == 'cancelada' %}
+          <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-2 fs-6 fw-semibold">
+            <i class="bi bi-x-circle me-1"></i> Cancelado
+          </span>
         {% else %}
-        <a href="{{ url_for('pos.terminal', cita_spa_id=cita.id) }}" class="btn btn-success w-100 fw-bold py-2 mb-3 shadow-sm">
-          <i class="bi bi-cart-check-fill me-2 fs-5 align-middle"></i>Facturar Servicio en POS
-        </a>
-        <div class="alert alert-warning small mb-3" role="alert">
-          <i class="bi bi-info-circle-fill me-1"></i>Al facturar en POS, el tutor, la mascota y el servicio se cargarán automáticamente y la factura quedará vinculada de inmediato.
-        </div>
-        <form method="post" action="{{ url_for('spa.cita_vincular_venta', id=cita.id) }}" class="d-flex gap-2">
-          {{ form_venta.csrf_token }}
-          {{ form_venta.numero_factura(class="form-control", placeholder="VET-20260914-0007") }}
-          {{ form_venta.enviar(class="btn btn-primary") }}
-        </form>
-        {% for error in form_venta.numero_factura.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          <span class="badge badge-sandia-rosa rounded-pill px-3 py-2 fs-6">
+            <i class="bi bi-clock me-1"></i> Programado
+          </span>
         {% endif %}
       </div>
     </div>
   </div>
 </div>
 
+{# SECCIÓN DESTACADA: Galería Antes y Después (Ingreso vs Salida) #}
+<div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+  <div class="card-header card-header-sandia py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-2">
+      <span class="fs-5">📸</span>
+      <div>
+        <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Registro Visual del Servicio (Antes & Después)</span>
+        <div class="small text-secondary" style="font-size: 0.76rem;">Fotografías de ingreso y resultado final para control de calidad e historial</div>
+      </div>
+    </div>
+    <span class="badge bg-white text-danger border border-danger-subtle rounded-pill px-3 py-1 shadow-xs fw-bold">
+      Turno #{{ cita.id }}
+    </span>
+  </div>
+  <div class="card-body p-4">
+    <div class="row g-4">
+      
+      {# 1. FOTO DE INGRESO (ANTES) #}
+      <div class="col-12 col-md-6">
+        <div class="foto-spa-card h-100 d-flex flex-column justify-content-between">
+          <div>
+            <div class="p-3 border-bottom d-flex align-items-center justify-content-between bg-light">
+              <span class="badge foto-badge-antes rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1">
+                <i class="bi bi-camera-fill"></i> INGRESO (Antes)
+              </span>
+              <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 shadow-xs fw-semibold" 
+                      onclick="abrirModalFoto('ingreso', '{{ 'Cambiar Foto de Ingreso' if cita.foto_ingreso else 'Tomar / Subir Foto de Ingreso' }}')">
+                <i class="bi {{ 'bi-arrow-repeat' if cita.foto_ingreso else 'bi-camera-plus' }} me-1"></i> {{ 'Cambiar' if cita.foto_ingreso else '+ Subir Foto' }}
+              </button>
+            </div>
+            <div class="foto-spa-img-wrapper">
+              {% if cita.foto_ingreso %}
+                <img src="{{ cita.url_foto_ingreso }}" alt="Foto de ingreso {{ cita.mascota.nombre }}" class="foto-spa-img" 
+                     onclick="verFotoZoom('{{ cita.url_foto_ingreso }}', 'Foto de Ingreso (Antes) - {{ cita.mascota.nombre }}')">
+              {% else %}
+                <div class="foto-spa-placeholder">
+                  <div class="display-5 mb-2 text-warning opacity-75">📷</div>
+                  <div class="fw-bold text-dark small mb-1">Sin foto de ingreso</div>
+                  <div class="small text-secondary mb-3" style="max-width: 220px;">Toma una foto al recibir la mascota para registrar el estado inicial del pelaje.</div>
+                  <button type="button" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 py-2 shadow-xs fw-semibold" 
+                          onclick="abrirModalFoto('ingreso', 'Tomar / Subir Foto de Ingreso (Antes)')">
+                    <i class="bi bi-camera-fill me-1"></i> Tomar foto con cámara
+                  </button>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+          {% if cita.foto_ingreso %}
+          <div class="p-3 border-top bg-light d-flex align-items-center justify-content-between">
+            <button type="button" class="btn btn-sm btn-link text-primary p-0 text-decoration-none fw-semibold small" 
+                    onclick="verFotoZoom('{{ cita.url_foto_ingreso }}', 'Foto de Ingreso (Antes) - {{ cita.mascota.nombre }}')">
+              <i class="bi bi-zoom-in me-1"></i> Ver en grande
+            </button>
+            <form method="post" action="{{ url_for('spa.cita_eliminar_foto', id=cita.id, tipo='ingreso') }}" onsubmit="return confirm('¿Eliminar esta foto de ingreso?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-link text-danger p-0 text-decoration-none small">
+                <i class="bi bi-trash3 me-1"></i> Eliminar
+              </button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# 2. FOTO DE SALIDA (DESPUÉS) #}
+      <div class="col-12 col-md-6">
+        <div class="foto-spa-card h-100 d-flex flex-column justify-content-between">
+          <div>
+            <div class="p-3 border-bottom d-flex align-items-center justify-content-between bg-light">
+              <span class="badge foto-badge-despues rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1">
+                <i class="bi bi-stars"></i> SALIDA (Después)
+              </span>
+              <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 shadow-xs fw-semibold" 
+                      onclick="abrirModalFoto('salida', '{{ 'Cambiar Foto de Salida' if cita.foto_salida else 'Tomar / Subir Foto de Salida' }}')">
+                <i class="bi {{ 'bi-arrow-repeat' if cita.foto_salida else 'bi-camera-plus' }} me-1"></i> {{ 'Cambiar' if cita.foto_salida else '+ Subir Foto' }}
+              </button>
+            </div>
+            <div class="foto-spa-img-wrapper">
+              {% if cita.foto_salida %}
+                <img src="{{ cita.url_foto_salida }}" alt="Foto de salida {{ cita.mascota.nombre }}" class="foto-spa-img" 
+                     onclick="verFotoZoom('{{ cita.url_foto_salida }}', 'Foto de Salida (Después) - {{ cita.mascota.nombre }}')">
+              {% else %}
+                <div class="foto-spa-placeholder">
+                  <div class="display-5 mb-2 text-success opacity-75">✨</div>
+                  <div class="fw-bold text-dark small mb-1">Sin foto de salida</div>
+                  <div class="small text-secondary mb-3" style="max-width: 220px;">Fotografía el resultado final del grooming para enviarlo al tutor o guardarlo de referencia.</div>
+                  <button type="button" class="btn btn-sm btn-success rounded-pill px-3 py-2 shadow-xs fw-semibold" 
+                          onclick="abrirModalFoto('salida', 'Tomar / Subir Foto de Salida (Después)')">
+                    <i class="bi bi-camera-fill me-1"></i> Tomar foto con cámara
+                  </button>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+          {% if cita.foto_salida %}
+          <div class="p-3 border-top bg-light d-flex align-items-center justify-content-between">
+            <button type="button" class="btn btn-sm btn-link text-success p-0 text-decoration-none fw-semibold small" 
+                    onclick="verFotoZoom('{{ cita.url_foto_salida }}', 'Foto de Salida (Después) - {{ cita.mascota.nombre }}')">
+              <i class="bi bi-zoom-in me-1"></i> Ver en grande
+            </button>
+            <form method="post" action="{{ url_for('spa.cita_eliminar_foto', id=cita.id, tipo='salida') }}" onsubmit="return confirm('¿Eliminar esta foto de salida?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-link text-danger p-0 text-decoration-none small">
+                <i class="bi bi-trash3 me-1"></i> Eliminar
+              </button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  {# Columna Izquierda: Información del Servicio, Actualizar Estado & Historial de Looks Anteriores #}
+  <div class="col-12 col-lg-7">
+    
+    {# Card 1: Detalles de la Cita de Spa #}
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-header card-header-sandia py-3 px-4 rounded-top-4">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">📋</span>
+          <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Detalles del Servicio de Estética</span>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <div class="p-3 rounded-3 bg-light border">
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-calendar3 me-1 text-danger"></i> Fecha y Hora</div>
+              <div class="fw-bold text-dark fs-6 mt-1">{{ cita.fecha_hora|fecha_hora }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 rounded-3 bg-light border">
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-stopwatch me-1 text-danger"></i> Duración Estimada</div>
+              <div class="fw-bold text-dark fs-6 mt-1">{{ cita.duracion_minutos }} minutos</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 rounded-3 bg-light border">
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-person-badge me-1 text-danger"></i> Estilista / Groomer</div>
+              <div class="fw-bold text-dark fs-6 mt-1">{{ cita.groomer.nombre if cita.groomer else 'Sin asignar / General' }}</div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 rounded-3 bg-light border">
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-cash-stack me-1 text-success"></i> Tarifa Sugerida</div>
+              <div class="fw-bold text-success font-monospace fs-5 mt-1">{{ cita.servicio_spa.precio_sugerido|cop }}</div>
+            </div>
+          </div>
+        </div>
+
+        {% if cita.notas_ingreso %}
+        <div class="mt-3 p-3 bg-light rounded-3 border">
+          <div class="small fw-semibold text-secondary text-uppercase mb-1"><i class="bi bi-card-text me-1 text-danger"></i> Notas de Ingreso / Pedido del Cliente:</div>
+          <div class="text-dark small">{{ cita.notas_ingreso }}</div>
+        </div>
+        {% endif %}
+
+        {% if cita.notas_salida %}
+        <div class="mt-3 p-3 bg-light rounded-3 border">
+          <div class="small fw-semibold text-secondary text-uppercase mb-1"><i class="bi bi-check-circle me-1 text-success"></i> Observaciones de Entrega:</div>
+          <div class="text-dark small">{{ cita.notas_salida }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Card 2: Actualizar Estado del Turno #}
+    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4" style="border: 1.5px solid #FECDD3 !important;">
+      <div class="card-header card-header-sandia py-3 px-4 rounded-top-4">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">🎛️</span>
+          <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Actualizar Estado del Servicio</span>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=cita.id) }}" enctype="multipart/form-data">
+          {{ form_estado.csrf_token }}
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form_estado.estado.id }}">Nuevo Estado *</label>
+            {{ form_estado.estado(class_="form-select bg-light") }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form_estado.notas_salida.id }}">
+              Observaciones de Salida / Champú Utilizado / Recomendaciones
+            </label>
+            {{ form_estado.notas_salida(class_="form-control bg-light", rows="3", placeholder="Ej: Pelo desenredado con éxito, se aplicó tratamiento hidratante...") }}
+          </div>
+
+          <button type="submit" class="btn btn-sandia-coral rounded-pill px-4 py-2 fw-bold shadow-sm w-100">
+            <i class="bi bi-check-circle-fill me-1"></i> Guardar y Actualizar Estado
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {# Card 3: Historial de Sesiones Anteriores ("Como la última vez") #}
+    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4 overflow-hidden">
+      <div class="card-header bg-light border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">✂️</span>
+          <div>
+            <span class="fw-bold text-dark fs-6">Historial de Looks Previos ("Como la última vez")</span>
+            <div class="small text-secondary" style="font-size: 0.74rem;">Sesiones anteriores de {{ cita.mascota.nombre }} con fotos y detalles de corte</div>
+          </div>
+        </div>
+        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1 small">
+          {{ citas_previas|length }} registros
+        </span>
+      </div>
+      <div class="card-body p-3 p-md-4">
+        {% if not citas_previas %}
+          <div class="text-center py-4 text-secondary">
+            <div class="fs-3 mb-2">🐾</div>
+            <div class="fw-bold small">Esta es la primera sesión de spa de {{ cita.mascota.nombre }}</div>
+            <div class="small text-muted">Las fotos que tomes hoy quedarán guardadas como referencia para sus próximas visitas.</div>
+          </div>
+        {% else %}
+          <div class="d-flex flex-column gap-3">
+            {% for ant in citas_previas %}
+            <div class="historial-spa-item">
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-light text-dark border fw-bold">{{ ant.fecha_hora|fecha }}</span>
+                  <span class="fw-bold text-dark small">{{ ant.servicio_spa.nombre }}</span>
+                  {% if ant.groomer %}
+                    <span class="text-muted small">· Estilista: <strong>{{ ant.groomer.nombre }}</strong></span>
+                  {% endif %}
+                </div>
+                <a href="{{ url_for('spa.cita_detalle', id=ant.id) }}" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 text-decoration-none small">
+                  Ver turno #{{ ant.id }} <i class="bi bi-arrow-right"></i>
+                </a>
+              </div>
+
+              {# Fotos de la sesión previa #}
+              <div class="d-flex align-items-center gap-3 mt-2">
+                {% if ant.foto_ingreso or ant.foto_salida %}
+                  <div class="d-flex gap-2">
+                    {% if ant.foto_ingreso %}
+                    <div class="text-center">
+                      <img src="{{ ant.url_mini_ingreso }}" alt="Antes" class="historial-spa-mini shadow-xs" 
+                           onclick="verFotoZoom('{{ ant.url_foto_ingreso }}', 'Antes ({{ ant.fecha_hora|fecha }}) - {{ ant.mascota.nombre }}')" title="Ver foto de ingreso">
+                      <div class="text-secondary" style="font-size: 0.68rem;">Antes</div>
+                    </div>
+                    {% endif %}
+                    {% if ant.foto_salida %}
+                    <div class="text-center">
+                      <img src="{{ ant.url_mini_salida }}" alt="Después" class="historial-spa-mini shadow-xs" 
+                           onclick="verFotoZoom('{{ ant.url_foto_salida }}', 'Resultado ({{ ant.fecha_hora|fecha }}) - {{ ant.mascota.nombre }}')" title="Ver foto de salida">
+                      <div class="text-success fw-bold" style="font-size: 0.68rem;">Resultado ✨</div>
+                    </div>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <span class="badge bg-light text-muted border small py-2 px-3">Sin fotos registradas en esta fecha</span>
+                {% endif %}
+
+                <div class="flex-grow-1 min-w-0 small text-secondary bg-light p-2 rounded-3 border">
+                  {% if ant.notas_salida %}
+                    <div><strong>Observaciones:</strong> {{ ant.notas_salida }}</div>
+                  {% elif ant.notas_ingreso %}
+                    <div><strong>Notas:</strong> {{ ant.notas_ingreso }}</div>
+                  {% else %}
+                    <div class="text-muted">Servicio completado satisfactoriamente.</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  {# Columna Derecha: Notificación por WhatsApp & Facturación POS #}
+  <div class="col-12 col-lg-5">
+    {# Card WhatsApp Notificación #}
+    {% if cita.enlace_whatsapp %}
+    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4 overflow-hidden">
+      <div class="card-header bg-success text-white py-3 px-4 rounded-top-4 d-flex align-items-center gap-2">
+        <i class="bi bi-whatsapp fs-5"></i>
+        <span class="fw-bold fs-6">Aviso al Tutor por WhatsApp</span>
+      </div>
+      <div class="card-body p-4">
+        <p class="small text-secondary mb-2">Mensaje automático con la identidad de <strong>Sandía Medicina & Spa</strong>:</p>
+        
+        <div class="p-3 bg-light rounded-3 border mb-3 small" style="border-left: 4px solid #25D366 !important; font-family: system-ui;">
+          <i class="bi bi-chat-quote-fill text-success me-1"></i>
+          {{ cita.mensaje_whatsapp }}
+        </div>
+
+        <a href="{{ url_for('spa.cita_pdf', id=cita.id) }}" 
+           class="btn btn-outline-danger rounded-pill w-100 py-2 fw-bold mb-2 d-flex align-items-center justify-content-center gap-2">
+          <i class="bi bi-file-earmark-pdf-fill"></i>
+          <span>Descargar Certificado Spa (PDF)</span>
+        </a>
+
+        <a href="{{ cita.enlace_whatsapp }}" target="_blank" rel="noopener" 
+           class="btn btn-success rounded-pill w-100 py-2 fw-bold shadow-sm mb-2 d-flex align-items-center justify-content-center gap-2"
+           onclick="marcarNotificado({{ cita.id }})">
+          <i class="bi bi-whatsapp"></i>
+          <span>Enviar Notificación por WhatsApp</span>
+        </a>
+
+        {% if cita.notificado_whatsapp %}
+        <div class="text-center text-success small fw-semibold mt-2">
+          <i class="bi bi-check2-all me-1"></i>Notificación enviada previamente al tutor.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Card Facturación POS #}
+    <div class="card border-0 shadow-sm rounded-4 bg-white p-4">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <span class="fs-5">💳</span>
+        <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Facturación y Cobro</span>
+      </div>
+
+      {% if cita.venta %}
+      <div class="p-3 bg-success-subtle text-success-emphasis rounded-3 border border-success-subtle d-flex align-items-center gap-3">
+        <i class="bi bi-check-circle-fill fs-3 text-success"></i>
+        <div>
+          <div class="fw-bold">Servicio Pagado</div>
+          <div class="small">
+            Factura <a href="{{ url_for('pos.venta_detalle', id=cita.venta_id) }}" class="fw-bold text-success text-decoration-underline">{{ cita.venta.numero_factura }}</a>
+            ({{ cita.venta.total|cop }})
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <a href="{{ url_for('pos.terminal', cita_spa_id=cita.id) }}" class="btn btn-primary rounded-pill w-100 fw-bold py-2 shadow-sm mb-3 d-flex align-items-center justify-content-center gap-2">
+        <i class="bi bi-cart-check-fill"></i>
+        <span>Facturar Servicio en el POS</span>
+      </a>
+
+      <div class="small text-muted mb-3">
+        <i class="bi bi-info-circle me-1 text-primary"></i>Al facturar en el POS, el paciente, tutor y tarifa se cargan automáticamente a la caja.
+      </div>
+
+      <form method="post" action="{{ url_for('spa.cita_vincular_venta', id=cita.id) }}" class="pt-3 border-top">
+        {{ form_venta.csrf_token }}
+        <label class="form-label small fw-semibold text-secondary mb-1">¿Ya cobraste? Vincular número de factura:</label>
+        <div class="input-group">
+          {{ form_venta.numero_factura(class_="form-control form-control-sm bg-light", placeholder="Ej: VET-20260915-0001") }}
+          <button class="btn btn-sm btn-outline-secondary" type="submit">Vincular</button>
+        </div>
+        {% for error in form_venta.numero_factura.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# MODAL DE SUBIDA / CÁMARA DE FOTO #}
+<div class="modal fade" id="modal-subir-foto" tabindex="-1" aria-labelledby="modalFotoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header bg-light border-bottom py-3">
+        <h5 class="modal-title fw-bold text-dark fs-6" id="modalFotoLabel">
+          <i class="bi bi-camera-fill text-danger me-1"></i> <span id="modal-foto-titulo">Subir Foto</span>
+        </h5>
+        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <form method="post" action="{{ url_for('spa.cita_subir_foto', id=cita.id) }}" enctype="multipart/form-data">
+        <div class="modal-body p-4">
+          {{ form_foto.csrf_token }}
+          <input type="hidden" name="tipo" id="input-foto-tipo" value="ingreso">
+
+          <div class="alert alert-success border-0 shadow-xs rounded-3 p-3 mb-3 d-none align-items-center gap-2" id="alerta-auto-listo">
+            <i class="bi bi-magic fs-5 text-success"></i>
+            <div class="small">
+              <strong>Cambio de estado automático:</strong> Al guardar la foto de salida, el turno pasará automáticamente a <strong>"¡Listo para recogida!"</strong> y podrás notificar al tutor por WhatsApp.
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold text-dark small mb-1">Selecciona o toma la fotografía:</label>
+            <input type="file" name="foto" id="foto-input" class="form-control form-control-lg rounded-3" accept="image/*" capture="environment" required>
+            <div class="form-text small mt-1">Puedes tomar la foto directamente con la cámara de tu celular o elegirla de la galería (JPG, PNG, WEBP).</div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-top p-3">
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-sandia rounded-pill px-4 shadow-sm fw-semibold" id="btn-submit-foto">
+            <i class="bi bi-cloud-arrow-up-fill me-1"></i> Guardar Foto
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# MODAL ZOOM / LIGHTBOX #}
+<div class="modal fade" id="modal-zoom-foto" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden bg-dark">
+      <div class="modal-header bg-transparent border-0 text-white p-3">
+        <h6 class="modal-title fw-bold" id="zoom-foto-titulo">Fotografía de Spa</h6>
+        <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body p-0 text-center bg-black d-flex align-items-center justify-content-center" style="min-height: 380px; max-height: 80vh;">
+        <img src="" id="zoom-foto-img" alt="Foto ampliada" class="img-fluid" style="max-height: 80vh; object-fit: contain;">
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-async function marcarNotificado(citaId) {
-  try {
-    const metaCsrf = document.querySelector('meta[name="csrf-token"]');
-    const csrfToken = metaCsrf ? metaCsrf.content : '';
-    await fetch(`/spa/cita/${citaId}/notificado-wa`, {
-      method: 'POST',
-      headers: { 'X-CSRFToken': csrfToken }
-    });
-  } catch (e) {
-    console.error(e);
+  function abrirModalFoto(tipo, titulo) {
+    document.getElementById('input-foto-tipo').value = tipo;
+    document.getElementById('modal-foto-titulo').textContent = titulo;
+    
+    const alertaAuto = document.getElementById('alerta-auto-listo');
+    const btnSubmit = document.getElementById('btn-submit-foto');
+    if (tipo === 'salida') {
+      alertaAuto.classList.remove('d-none');
+      alertaAuto.classList.add('d-flex');
+      btnSubmit.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Guardar Foto y Marcar Listo';
+    } else {
+      alertaAuto.classList.add('d-none');
+      alertaAuto.classList.remove('d-flex');
+      btnSubmit.innerHTML = '<i class="bi bi-cloud-arrow-up-fill me-1"></i> Guardar Foto';
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('modal-subir-foto'));
+    modal.show();
   }
-}
+
+  function verFotoZoom(url, titulo) {
+    document.getElementById('zoom-foto-img').src = url;
+    document.getElementById('zoom-foto-titulo').textContent = titulo || 'Fotografía de Spa';
+    const modal = new bootstrap.Modal(document.getElementById('modal-zoom-foto'));
+    modal.show();
+  }
+
+  async function marcarNotificado(citaId) {
+    try {
+      const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = metaCsrf ? metaCsrf.content : '';
+      await fetch(`/spa/cita/${citaId}/notificado-wa`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken }
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
 </script>
 {% endblock %}

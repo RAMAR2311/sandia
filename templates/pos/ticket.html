@@ -302,8 +302,13 @@
     <div class="toolbar-actions">
       <button onclick="window.print()" class="btn-action btn-print" title="Imprimir en impresora térmica o PDF">
         <i class="bi bi-printer-fill fs-5"></i>
-        <span>Imprimir Recibo (80mm)</span>
+        <span>Imprimir Recibo</span>
       </button>
+
+      <a href="{{ url_for('pos.venta_pdf', id=venta.id) }}" class="btn-action" style="background: #e53935; color: #ffffff;" title="Descargar Factura Oficial en PDF">
+        <i class="bi bi-file-earmark-pdf-fill fs-5"></i>
+        <span>Descargar PDF</span>
+      </a>
 
       {% if venta.enlace_whatsapp %}
       <a href="{{ venta.enlace_whatsapp }}" target="_blank" class="btn-action btn-whatsapp" title="Enviar copia del recibo por WhatsApp al tutor">
@@ -442,7 +447,7 @@
       <div class="thank-you">¡Gracias por confiar en Sandía! 🐾</div>
       <div>Cuidamos a tu mascota con amor y dedicación.</div>
       <div style="margin-top: 4px; font-size: 9px; color: #555;">Conserva este ticket para cualquier consulta o garantía.</div>
-      <div style="margin-top: 6px; font-size: 9px; font-weight: bold; letter-spacing: 0.5px;">*** SISTEMA VETCARE POS ***</div>
+      <div style="margin-top: 6px; font-size: 9px; font-weight: bold; letter-spacing: 0.5px;">*** SANDÍA - MEDICINA Y SPA VETERINARIO ***</div>
     </div>
 
   </div>

@@ -1,107 +1,237 @@
 {% extends "base.html" %}
 {% from "_macros.html" import avatar_mascota, boton_whatsapp %}
-{% block titulo %}{{ tutor.nombre_completo }}{% endblock %}
+{% block titulo %}{{ tutor.nombre_completo }} · Ficha del Tutor · Sandía{% endblock %}
 {% set puede_editar = current_user.rol in ('admin', 'recepcion', 'auxiliar', 'veterinario') %}
 
 {% block contenido %}
-<nav aria-label="Migas de pan" class="small mb-2">
-  <a href="{{ url_for('tutores.lista') }}" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Tutores</a>
-</nav>
+{# Barra Superior de Navegación y Acciones #}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <div>
+    <a href="{{ url_for('tutores.lista') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs">
+      <i class="bi bi-arrow-left me-1"></i> Directorio de Tutores
+    </a>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if tutor.telefono %}
+    <a class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs" href="tel:{{ tutor.telefono }}">
+      <i class="bi bi-telephone-fill text-success me-1"></i> Llamar
+    </a>
+    {% endif %}
+    {{ boton_whatsapp(tutor, "Hola " ~ tutor.nombre_completo.split(' ')[0] ~ ", te escribimos de Sandía Medicina & Spa Veterinario.", texto='WhatsApp', clase='btn-sm btn-success rounded-pill px-3 shadow-xs') }}
+    {% if puede_editar %}
+    <a class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-xs fw-semibold" href="{{ url_for('tutores.editar', tutor_id=tutor.id) }}">
+      <i class="bi bi-pencil me-1"></i> Editar Tutor
+    </a>
+    {% endif %}
+    {% if current_user.es_admin %}
+    <a class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-xs fw-semibold" href="{{ url_for('tutores.cartera', tutor_id=tutor.id) }}">
+      <i class="bi bi-wallet2 me-1"></i> Cartera / Saldo
+    </a>
+    {% endif %}
+  </div>
+</div>
 
-<section class="card mb-3">
-  <div class="card-body">
-    <div class="d-flex align-items-start gap-3">
-      <span class="avatar-usuario avatar-usuario--grande flex-shrink-0" style="{% if not tutor.activo %}background:#9CA3AF{% endif %}">{{ tutor.nombre_completo[:1]|upper }}</span>
-      <div class="flex-grow-1 min-w-0">
-        <h1 class="titulo-pagina">{{ tutor.nombre_completo }}</h1>
-        <div class="d-flex flex-wrap gap-1 mt-1">
-          {% if tutor.documento_texto %}<span class="estado estado--neutro"><i class="bi bi-card-text"></i>{{ tutor.documento_texto }}</span>{% endif %}
-          {% if tutor.activo %}<span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Activo</span>
-          {% else %}<span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>{% endif %}
-          {% if not tutor.acepta_recordatorios %}<span class="estado estado--alerta"><i class="bi bi-bell-slash"></i>Sin recordatorios</span>{% endif %}
+{# Alerta si está inactivo #}
+{% if not tutor.activo %}
+<div class="alert alert-warning border-0 shadow-sm rounded-4 d-flex align-items-center gap-3 mb-3 p-3" role="alert">
+  <span class="fs-4 text-warning">⚠️</span>
+  <div>
+    <div class="fw-bold">Tutor Inactivo</div>
+    <div class="small">Este tutor está desactivado, pero sus mascotas e historial clínico siguen registrados en el sistema.</div>
+  </div>
+</div>
+{% endif %}
+
+{# Banner Hero: Datos Principales del Tutor #}
+<div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden bg-white">
+  <div class="card-body p-4">
+    <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+      <div class="d-flex align-items-center gap-3 min-w-0">
+        <div class="rounded-circle {% if tutor.activo %}bg-danger-subtle text-danger{% else %}bg-secondary-subtle text-secondary{% endif %} fw-bold d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 72px; height: 72px; font-size: 1.8rem;">
+          {{ tutor.nombre_completo[:1]|upper }}
+        </div>
+        <div class="min-w-0">
+          <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+            <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca);">{{ tutor.nombre_completo }}</h1>
+            {% if tutor.activo %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">Activo</span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">Inactivo</span>
+            {% endif %}
+            {% if not tutor.acepta_recordatorios %}
+              <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2 py-1 small">
+                <i class="bi bi-bell-slash me-1"></i>Sin recordatorios
+              </span>
+            {% endif %}
+          </div>
+          <div class="text-secondary small">
+            {% if tutor.documento_texto %}
+              <span class="me-3"><i class="bi bi-card-text text-primary me-1"></i>{{ tutor.documento_texto }}</span>
+            {% endif %}
+            {% if tutor.telefono %}
+              <span class="me-3"><i class="bi bi-telephone text-success me-1"></i>{{ tutor.telefono }}</span>
+            {% endif %}
+            {% if tutor.email %}
+              <span><i class="bi bi-envelope text-muted me-1"></i>{{ tutor.email }}</span>
+            {% endif %}
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="d-flex flex-wrap gap-2 mt-3">
-      {% if tutor.telefono %}
-      <a class="btn btn-outline-primary" href="tel:{{ tutor.telefono }}"><i class="bi bi-telephone-fill me-1"></i>Llamar</a>
-      {% endif %}
-      {{ boton_whatsapp(tutor, "Hola " ~ tutor.nombre_completo.split(' ')[0] ~ ", te escribimos de " ~ clinica.nombre ~ ".") }}
-      {% if puede_editar %}
-      <a class="btn btn-outline-secondary" href="{{ url_for('tutores.editar', tutor_id=tutor.id) }}"><i class="bi bi-pencil me-1"></i>Editar</a>
-      {% endif %}
-      {% if current_user.es_admin %}
-      <a class="btn btn-outline-danger" href="{{ url_for('tutores.cartera', tutor_id=tutor.id) }}"><i class="bi bi-wallet2 me-1"></i>Cartera</a>
+      {% if puede_editar and tutor.activo %}
+      <div>
+        <a class="btn btn-primary rounded-pill px-4 shadow-sm fw-semibold" href="{{ url_for('mascotas.nueva', tutor_id=tutor.id) }}">
+          <i class="bi bi-plus-circle me-1"></i> Registrar Mascota
+        </a>
+      </div>
       {% endif %}
     </div>
   </div>
-</section>
+</div>
 
-<div class="row g-3">
+<div class="row g-4">
+  {# Columna Izquierda: Información de Contacto, Ubicación y Notas #}
   <div class="col-12 col-lg-5">
-    <section class="card h-100">
-      <div class="card-header">Contacto</div>
-      <div class="card-body">
-        <dl class="lista-datos mb-0">
-          <dt>Teléfono</dt><dd>{{ tutor.telefono or '—' }}</dd>
-          <dt>WhatsApp</dt><dd>{{ tutor.whatsapp_efectivo or '—' }}</dd>
-          <dt>Correo</dt><dd>{{ tutor.email or '—' }}</dd>
-          <dt>Dirección</dt><dd>{{ tutor.direccion or '—' }}{% if tutor.barrio %} · {{ tutor.barrio }}{% endif %}</dd>
-          <dt>Registro</dt><dd>{{ tutor.fecha_registro|fecha }}{% if tutor.creado_por %} · {{ tutor.creado_por.nombre }}{% endif %}</dd>
+    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
+      <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">📋</span>
+          <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Información de Contacto</span>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <dl class="row g-2 mb-0 small">
+          <dt class="col-5 text-muted fw-normal">Teléfono:</dt>
+          <dd class="col-7 text-dark fw-semibold mb-2">
+            {% if tutor.telefono %}
+              <a href="tel:{{ tutor.telefono }}" class="text-decoration-none text-dark">{{ tutor.telefono }}</a>
+            {% else %}
+              —
+            {% endif %}
+          </dd>
+
+          <dt class="col-5 text-muted fw-normal">WhatsApp:</dt>
+          <dd class="col-7 text-dark fw-semibold mb-2">
+            {% if tutor.whatsapp_efectivo %}
+              <span class="text-success"><i class="bi bi-whatsapp me-1"></i>{{ tutor.whatsapp_efectivo }}</span>
+            {% else %}
+              —
+            {% endif %}
+          </dd>
+
+          <dt class="col-5 text-muted fw-normal">Correo:</dt>
+          <dd class="col-7 text-dark fw-semibold mb-2">
+            {% if tutor.email %}
+              <a href="mailto:{{ tutor.email }}" class="text-decoration-none text-dark">{{ tutor.email }}</a>
+            {% else %}
+              —
+            {% endif %}
+          </dd>
+
+          <dt class="col-5 text-muted fw-normal">Dirección:</dt>
+          <dd class="col-7 text-dark fw-semibold mb-2">
+            {{ tutor.direccion or '—' }}{% if tutor.barrio %} <span class="text-muted fw-normal">({{ tutor.barrio }})</span>{% endif %}
+          </dd>
+
+          <dt class="col-5 text-muted fw-normal">Registro:</dt>
+          <dd class="col-7 text-dark fw-semibold mb-0">
+            {{ tutor.fecha_registro|fecha }}
+            {% if tutor.creado_por %}<div class="text-muted fw-normal" style="font-size: 0.75rem;">por {{ tutor.creado_por.nombre }}</div>{% endif %}
+          </dd>
         </dl>
+
         {% if tutor.notas %}
-        <hr>
-        <div class="fw-bold small text-secondary text-uppercase mb-1">Notas</div>
-        <p class="mb-0" style="white-space: pre-line;">{{ tutor.notas }}</p>
+        <hr class="my-3">
+        <div class="small fw-bold text-dark text-uppercase mb-1" style="letter-spacing: 0.5px;">Notas / Preferencias:</div>
+        <p class="small text-secondary mb-0 bg-light p-3 rounded-3 border" style="white-space: pre-line;">{{ tutor.notas }}</p>
         {% endif %}
       </div>
-    </section>
+    </div>
+
+    {# Desactivar / Reactivar Tutor #}
+    {% if puede_editar %}
+    <div class="card border-0 shadow-sm rounded-4 bg-white p-3">
+      <form method="post" action="{{ url_for('tutores.cambiar_estado', tutor_id=tutor.id) }}"
+            data-confirmar="{{ '¿Desactivar este tutor? Sus mascotas se conservan en el sistema.' if tutor.activo else '¿Reactivar este tutor?' }}">
+        {{ form_csrf.hidden_tag() }}
+        <button class="btn btn-sm btn-outline-{{ 'danger' if tutor.activo else 'success' }} rounded-pill w-100" type="submit">
+          <i class="bi {{ 'bi-person-x' if tutor.activo else 'bi-person-check' }} me-2"></i>
+          {{ 'Desactivar ficha del tutor' if tutor.activo else 'Reactivar ficha del tutor' }}
+        </button>
+      </form>
+    </div>
+    {% endif %}
   </div>
 
+  {# Columna Derecha: Mascotas del Tutor #}
   <div class="col-12 col-lg-7">
-    <section class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Mascotas <span class="badge text-bg-primary rounded-pill ms-1">{{ tutor.mascotas_activas|length }}</span></span>
+    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
+      <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">🐾</span>
+          <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Mascotas Asociadas</span>
+          <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-0.5 small">{{ tutor.mascotas|length }}</span>
+        </div>
         {% if puede_editar and tutor.activo %}
-        <a class="btn btn-sm btn-primary" href="{{ url_for('mascotas.nueva', tutor_id=tutor.id) }}"><i class="bi bi-plus-lg me-1"></i>Nueva mascota</a>
+        <a class="btn btn-xs btn-outline-danger rounded-pill px-3 fw-semibold" href="{{ url_for('mascotas.nueva', tutor_id=tutor.id) }}">
+          <i class="bi bi-plus-lg me-1"></i>Nueva Mascota
+        </a>
         {% endif %}
       </div>
-      <div class="card-body">
+      <div class="card-body p-4">
         {% if not tutor.mascotas %}
-        <p class="text-secondary text-center my-4 mb-0">Este tutor aún no tiene mascotas registradas.</p>
-        {% else %}
-        <div class="d-flex flex-column gap-2">
-          {% for mascota in tutor.mascotas %}
-          <a class="fila-lista d-flex align-items-center gap-3 text-decoration-none text-body" href="{{ url_for('mascotas.detalle', mascota_id=mascota.id) }}">
-            {{ avatar_mascota(mascota, 52) }}
-            <div class="flex-grow-1 min-w-0">
-              <div class="fw-bold">{{ mascota.nombre }}</div>
-              <div class="small text-secondary">
-                {{ mascota.especie_etiqueta }}{% if mascota.raza %} · {{ mascota.raza.nombre }}{% endif %}{% if mascota.edad %} · {{ mascota.edad }}{% endif %}
-              </div>
-            </div>
-            {% if mascota.fallecido %}<span class="estado estado--neutro">Fallecido</span>
-            {% elif not mascota.activo %}<span class="estado estado--neutro">Inactiva</span>{% endif %}
-            <i class="bi bi-chevron-right text-secondary"></i>
+        <div class="text-center text-muted py-5">
+          <span class="fs-1 d-block mb-2">🐾</span>
+          <h6 class="fw-bold text-dark">Sin mascotas registradas</h6>
+          <p class="small text-muted mb-3">Este tutor todavía no tiene ninguna mascota vinculada.</p>
+          {% if puede_editar and tutor.activo %}
+          <a class="btn btn-sm btn-primary rounded-pill px-4 shadow-sm" href="{{ url_for('mascotas.nueva', tutor_id=tutor.id) }}">
+            <i class="bi bi-plus-circle me-1"></i>Registrar primera mascota
           </a>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="d-flex flex-column gap-3">
+          {% for mascota in tutor.mascotas %}
+          <div class="card border rounded-4 p-3 hover-shadow transition-all bg-light bg-opacity-50">
+            <a class="d-flex align-items-center gap-3 text-decoration-none text-dark" href="{{ url_for('mascotas.detalle', mascota_id=mascota.id) }}">
+              <div class="position-relative flex-shrink-0">
+                {{ avatar_mascota(mascota, 56, 'rounded-circle shadow-xs') }}
+                <span class="position-absolute bottom-0 end-0 bg-white rounded-circle shadow-xs fs-6 d-flex align-items-center justify-content-center border" style="width: 22px; height: 22px; font-size: 0.75rem;">
+                  {{ mascota.especie_emoji }}
+                </span>
+              </div>
+              <div class="flex-grow-1 min-w-0">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+                  <div class="fw-bold text-dark text-truncate" style="font-family: var(--fuente-marca); font-size: 1.05rem;">
+                    {{ mascota.nombre }}
+                  </div>
+                  {% if mascota.fallecido %}
+                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 small">Fallecido</span>
+                  {% elif not mascota.activo %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2 py-0.5 small">Inactiva</span>
+                  {% else %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 small">Activo</span>
+                  {% endif %}
+                </div>
+                <div class="small text-secondary text-truncate">
+                  <strong class="text-dark">{{ mascota.especie_etiqueta }}</strong>
+                  {% if mascota.raza %} · {{ mascota.raza.nombre }}{% endif %}
+                  {% if mascota.edad %} · {{ mascota.edad }}{% endif %}
+                  {% if mascota.peso_actual %} · {{ mascota.peso_actual.peso_kg|kg }}{% endif %}
+                </div>
+              </div>
+              <span class="text-primary fw-semibold small d-flex align-items-center gap-1 ms-2">
+                Ver ficha <i class="bi bi-chevron-right"></i>
+              </span>
+            </a>
+          </div>
           {% endfor %}
         </div>
         {% endif %}
       </div>
-    </section>
+    </div>
   </div>
 </div>
-
-{% if puede_editar %}
-<div class="mt-4 text-end">
-  <form method="post" action="{{ url_for('tutores.cambiar_estado', tutor_id=tutor.id) }}" class="d-inline"
-        data-confirmar="{{ '¿Desactivar este tutor? Sus mascotas se conservan.' if tutor.activo else '¿Reactivar este tutor?' }}">
-    {{ form_csrf.hidden_tag() }}
-    <button class="btn btn-sm btn-outline-{{ 'danger' if tutor.activo else 'success' }}" type="submit">
-      <i class="bi {{ 'bi-person-x' if tutor.activo else 'bi-person-check' }} me-1"></i>{{ 'Desactivar tutor' if tutor.activo else 'Reactivar tutor' }}
-    </button>
-  </form>
-</div>
-{% endif %}
 {% endblock %}
