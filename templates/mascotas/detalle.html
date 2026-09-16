@@ -136,18 +136,6 @@
                   <i class="bi bi-cpu" style="color: #CBD5E1 !important;"></i> Chip: {{ mascota.microchip }}
                 </span>
               {% endif %}
-              
-              {# Accesos Rápidos a Remisiones y Consentimientos en la cabecera #}
-              {% if mascota.remisiones %}
-                <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='remisiones') }}" class="btn btn-xs rounded-pill px-3 py-1 fw-bold text-decoration-none shadow-xs d-inline-flex align-items-center gap-1.5" style="background: #0284C7; color: #FFFFFF; border: 1px solid #38BDF8;">
-                  <i class="bi bi-send-check-fill"></i> Remisiones: {{ mascota.remisiones|length }}
-                </a>
-              {% endif %}
-              {% if mascota.consentimientos %}
-                <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='consentimientos') }}" class="btn btn-xs rounded-pill px-3 py-1 fw-bold text-decoration-none shadow-xs d-inline-flex align-items-center gap-1.5" style="background: #7E22CE; color: #FFFFFF; border: 1px solid #C084FC;">
-                  <i class="bi bi-shield-check"></i> Consentimientos: {{ mascota.consentimientos|length }}
-                </a>
-              {% endif %}
             </div>
           </div>
         </div>
@@ -202,7 +190,9 @@
             </div>
           </div>
         </div>
-</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 {# Alertas Médicas (Alergias o Preexistencias) #}
