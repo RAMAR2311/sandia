@@ -48,14 +48,14 @@
 {% endif %}
 
 {# Banner Hero: Perfil Principal del Paciente y Tutor #}
-<div class="perfil-mascota-hero mb-4">
+<div class="perfil-mascota-hero card border-0 shadow-sm rounded-4 overflow-hidden mb-4" style="background: linear-gradient(145deg, #FFFFFF 0%, #FFF8FA 45%, #FFF0F4 100%) !important; border: 1.5px solid #FECDD3 !important;">
   <div class="p-4 position-relative" style="z-index: 2;">
     <div class="row g-4 align-items-center">
       <div class="col-12 col-md-7 col-xl-8">
         <div class="d-flex align-items-center gap-3.5 flex-wrap flex-sm-nowrap">
           {# Avatar con badge de especie y botón interactivo para cambiar foto #}
           <div class="position-relative flex-shrink-0">
-            <div class="perfil-mascota-avatar-wrapper">
+            <div class="perfil-mascota-avatar-wrapper" style="position: relative; display: inline-block; padding: 4px; background: linear-gradient(135deg, #FDA4AF 0%, #E11D48 60%, #BE123C 100%); border-radius: 50%; box-shadow: 0 10px 25px rgba(225, 29, 72, 0.25);">
               {{ avatar_mascota(mascota, 90, 'rounded-circle') }}
               {% if puede_editar and not mascota.fallecido %}
               <button type="button" class="btn btn-sm btn-danger position-absolute bottom-0 end-0 rounded-circle shadow p-0 d-flex align-items-center justify-content-center border border-2 border-white" 
@@ -72,7 +72,7 @@
 
           <div class="flex-grow-1 min-w-0">
             <div class="d-flex flex-wrap align-items-center gap-2 mb-1.5">
-              <h1 class="perfil-mascota-nombre mb-0">{{ mascota.nombre }}</h1>
+              <h1 class="perfil-mascota-nombre mb-0" style="font-family: var(--fuente-marca, 'Fredoka', 'Nunito', sans-serif); font-size: 2.2rem; font-weight: 800; color: #0F172A !important; letter-spacing: -0.02em; line-height: 1.15;">{{ mascota.nombre }}</h1>
               {% if mascota.fallecido %}
                 <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1 fw-bold">🕊️ Fallecido</span>
               {% elif not mascota.activo %}
@@ -102,27 +102,27 @@
 
             <div class="d-flex flex-wrap gap-2 align-items-center">
               {% if mascota.edad %}
-                <span class="perfil-badge-chip perfil-badge-chip--highlight">
+                <span class="perfil-badge-chip perfil-badge-chip--highlight" style="background: #FFF1F2 !important; border: 1px solid #FECDD3 !important; color: #BE123C !important; font-weight: 700; font-size: 0.8rem; padding: 0.35rem 0.8rem; border-radius: 50rem; display: inline-flex; align-items: center; gap: 0.38rem;">
                   <i class="bi bi-cake2-fill text-danger"></i> {{ mascota.edad }}
                 </span>
               {% endif %}
               {% if mascota.peso_actual %}
-                <span class="perfil-badge-chip">
+                <span class="perfil-badge-chip" style="background: #FFFFFF !important; border: 1px solid #E2E8F0 !important; color: #1E293B !important; font-weight: 700; font-size: 0.8rem; padding: 0.35rem 0.8rem; border-radius: 50rem; display: inline-flex; align-items: center; gap: 0.38rem;">
                   <i class="bi bi-speedometer2 text-danger"></i> {{ mascota.peso_actual.peso_kg|kg }}
                 </span>
               {% endif %}
               {% if mascota.tamano %}
-                <span class="perfil-badge-chip">
+                <span class="perfil-badge-chip" style="background: #FFFFFF !important; border: 1px solid #E2E8F0 !important; color: #1E293B !important; font-weight: 700; font-size: 0.8rem; padding: 0.35rem 0.8rem; border-radius: 50rem; display: inline-flex; align-items: center; gap: 0.38rem;">
                   <i class="bi bi-rulers text-secondary"></i> {{ mascota.tamano_etiqueta }}
                 </span>
               {% endif %}
               {% if mascota.esterilizado %}
-                <span class="perfil-badge-chip perfil-badge-chip--green">
+                <span class="perfil-badge-chip perfil-badge-chip--green" style="background: #ECFDF5 !important; border: 1px solid #A7F3D0 !important; color: #059669 !important; font-weight: 700; font-size: 0.8rem; padding: 0.35rem 0.8rem; border-radius: 50rem; display: inline-flex; align-items: center; gap: 0.38rem;">
                   <i class="bi bi-check2-circle"></i> Esterilizado/a
                 </span>
               {% endif %}
               {% if mascota.microchip %}
-                <span class="perfil-badge-chip">
+                <span class="perfil-badge-chip" style="background: #FFFFFF !important; border: 1px solid #E2E8F0 !important; color: #1E293B !important; font-weight: 700; font-size: 0.8rem; padding: 0.35rem 0.8rem; border-radius: 50rem; display: inline-flex; align-items: center; gap: 0.38rem;">
                   <i class="bi bi-cpu text-muted"></i> Chip: {{ mascota.microchip }}
                 </span>
               {% endif %}
@@ -133,7 +133,7 @@
 
       {# Tarjeta Tutor y Contacto Rápido #}
       <div class="col-12 col-md-5 col-xl-4">
-        <div class="perfil-tutor-card">
+        <div class="perfil-tutor-card card border-0 shadow-2xs rounded-4 p-3 bg-white" style="background: #FFFFFF !important; border: 1.5px solid #FFE4E6 !important; border-radius: 1.15rem; padding: 1rem 1.2rem; box-shadow: 0 8px 24px rgba(225, 29, 72, 0.06) !important;">
           <div class="d-flex align-items-center justify-content-between mb-2">
             <div class="d-flex align-items-center gap-2 min-w-0">
               <div class="perfil-tutor-avatar">
@@ -431,10 +431,10 @@
   {# Columna Secundaria (Derecha): Datos de la Mascota, Curva de Peso & Opciones #}
   <div class="col-12 col-lg-5 col-xl-4">
     {# 1. Ficha de Datos Clínicos #}
-    <div class="tarjeta-lateral-sandia mb-4">
-      <div class="tarjeta-lateral-sandia__header">
-        <div class="tarjeta-lateral-sandia__titulo">
-          <div class="tarjeta-lateral-sandia__icono-badge">📋</div>
+    <div class="tarjeta-lateral-sandia card border-0 shadow-sm rounded-4 bg-white mb-4" style="border: 1.5px solid #FECDD3 !important; overflow: hidden; background: #FFFFFF !important;">
+      <div class="tarjeta-lateral-sandia__header card-header border-bottom py-3 px-4 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #FFFFFF 0%, #FFF9FA 60%, #FFF1F2 100%) !important; border-bottom: 1px solid #FFE4E6 !important;">
+        <div class="tarjeta-lateral-sandia__titulo d-flex align-items-center gap-2 m-0" style="font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #1E293B;">
+          <div class="tarjeta-lateral-sandia__icono-badge" style="width: 26px; height: 26px; border-radius: 7px; background: #FFF1F2; color: #E11D48; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; border: 1px solid #FECDD3;">📋</div>
           <span>Ficha Técnica</span>
         </div>
         {% if puede_editar and not mascota.fallecido %}
@@ -445,9 +445,9 @@
       </div>
       <div class="card-body p-3 p-xl-4">
         <div class="d-flex flex-column">
-          <div class="ficha-dato-item">
-            <span class="ficha-dato-item__label"><i class="bi bi-cake2 text-danger"></i> Nacimiento</span>
-            <span class="ficha-dato-item__valor">
+          <div class="ficha-dato-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0; border-bottom: 1px dashed #F1F5F9; font-size: 0.85rem;">
+            <span class="ficha-dato-item__label" style="color: #64748B; font-weight: 500; display: flex; align-items: center; gap: 0.45rem;"><i class="bi bi-cake2 text-danger"></i> Nacimiento</span>
+            <span class="ficha-dato-item__valor" style="color: #0F172A; font-weight: 700; text-align: right;">
               {% if mascota.fecha_nacimiento %}
                 {{ mascota.fecha_nacimiento|fecha }}{% if mascota.fecha_nacimiento_estimada %} <small class="text-muted fw-normal">(est.)</small>{% endif %}
               {% else %}
@@ -456,30 +456,30 @@
             </span>
           </div>
 
-          <div class="ficha-dato-item">
-            <span class="ficha-dato-item__label"><i class="bi bi-palette text-warning"></i> Color / Capa</span>
-            <span class="ficha-dato-item__valor">{{ mascota.color or '—' }}</span>
+          <div class="ficha-dato-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0; border-bottom: 1px dashed #F1F5F9; font-size: 0.85rem;">
+            <span class="ficha-dato-item__label" style="color: #64748B; font-weight: 500; display: flex; align-items: center; gap: 0.45rem;"><i class="bi bi-palette text-warning"></i> Color / Capa</span>
+            <span class="ficha-dato-item__valor" style="color: #0F172A; font-weight: 700; text-align: right;">{{ mascota.color or '—' }}</span>
           </div>
 
-          <div class="ficha-dato-item">
-            <span class="ficha-dato-item__label"><i class="bi bi-search text-info"></i> Señas particulares</span>
-            <span class="ficha-dato-item__valor text-truncate ms-2" style="max-width: 170px;" title="{{ mascota.senas_particulares or '' }}">{{ mascota.senas_particulares or '—' }}</span>
+          <div class="ficha-dato-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0; border-bottom: 1px dashed #F1F5F9; font-size: 0.85rem;">
+            <span class="ficha-dato-item__label" style="color: #64748B; font-weight: 500; display: flex; align-items: center; gap: 0.45rem;"><i class="bi bi-search text-info"></i> Señas particulares</span>
+            <span class="ficha-dato-item__valor text-truncate ms-2" style="max-width: 170px; color: #0F172A; font-weight: 700; text-align: right;" title="{{ mascota.senas_particulares or '' }}">{{ mascota.senas_particulares or '—' }}</span>
           </div>
 
-          <div class="ficha-dato-item">
-            <span class="ficha-dato-item__label"><i class="bi bi-cpu text-primary"></i> Microchip</span>
-            <span class="ficha-dato-item__valor">{{ mascota.microchip or '—' }}</span>
+          <div class="ficha-dato-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0; border-bottom: 1px dashed #F1F5F9; font-size: 0.85rem;">
+            <span class="ficha-dato-item__label" style="color: #64748B; font-weight: 500; display: flex; align-items: center; gap: 0.45rem;"><i class="bi bi-cpu text-primary"></i> Microchip</span>
+            <span class="ficha-dato-item__valor" style="color: #0F172A; font-weight: 700; text-align: right;">{{ mascota.microchip or '—' }}</span>
           </div>
 
-          <div class="ficha-dato-item">
-            <span class="ficha-dato-item__label"><i class="bi bi-rulers text-secondary"></i> Tamaño</span>
-            <span class="ficha-dato-item__valor">{{ mascota.tamano_etiqueta or '—' }}</span>
+          <div class="ficha-dato-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0; border-bottom: 1px dashed #F1F5F9; font-size: 0.85rem;">
+            <span class="ficha-dato-item__label" style="color: #64748B; font-weight: 500; display: flex; align-items: center; gap: 0.45rem;"><i class="bi bi-rulers text-secondary"></i> Tamaño</span>
+            <span class="ficha-dato-item__valor" style="color: #0F172A; font-weight: 700; text-align: right;">{{ mascota.tamano_etiqueta or '—' }}</span>
           </div>
 
-          <div class="ficha-dato-item">
-            <span class="ficha-dato-item__label"><i class="bi bi-calendar3 text-success"></i> Registro</span>
+          <div class="ficha-dato-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0; border-bottom: none; font-size: 0.85rem;">
+            <span class="ficha-dato-item__label" style="color: #64748B; font-weight: 500; display: flex; align-items: center; gap: 0.45rem;"><i class="bi bi-calendar3 text-success"></i> Registro</span>
             <div class="text-end">
-              <div class="ficha-dato-item__valor">{{ mascota.fecha_registro|fecha }}</div>
+              <div class="ficha-dato-item__valor" style="color: #0F172A; font-weight: 700;">{{ mascota.fecha_registro|fecha }}</div>
               {% if mascota.creado_por %}<div class="text-muted fw-normal" style="font-size: 0.72rem;">por {{ mascota.creado_por.nombre }}</div>{% endif %}
             </div>
           </div>
@@ -488,11 +488,11 @@
     </div>
 
     {# 2. Control y Curva de Peso #}
-    <div class="tarjeta-lateral-sandia mb-4" id="peso">
-      <div class="tarjeta-lateral-sandia__header">
+    <div class="tarjeta-lateral-sandia card border-0 shadow-sm rounded-4 bg-white mb-4" id="peso" style="border: 1.5px solid #FECDD3 !important; overflow: hidden; background: #FFFFFF !important;">
+      <div class="tarjeta-lateral-sandia__header card-header border-bottom py-3 px-4 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #FFFFFF 0%, #FFF9FA 60%, #FFF1F2 100%) !important; border-bottom: 1px solid #FFE4E6 !important;">
         <div class="d-flex align-items-center gap-2">
-          <div class="tarjeta-lateral-sandia__icono-badge">⚖️</div>
-          <div class="tarjeta-lateral-sandia__titulo">Control de Peso</div>
+          <div class="tarjeta-lateral-sandia__icono-badge" style="width: 26px; height: 26px; border-radius: 7px; background: #FFF1F2; color: #E11D48; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; border: 1px solid #FECDD3;">⚖️</div>
+          <div class="tarjeta-lateral-sandia__titulo" style="font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #1E293B;">Control de Peso</div>
           {% if mascota.peso_actual %}
             <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5 small fw-bold" style="font-size: 0.72rem;">
               {{ mascota.peso_actual.peso_kg|kg }}
@@ -563,18 +563,18 @@
 
     {# 3. Opciones y Acciones de Ficha #}
     {% if puede_editar %}
-    <div class="tarjeta-lateral-sandia">
-      <div class="tarjeta-lateral-sandia__header">
-        <div class="tarjeta-lateral-sandia__titulo">
-          <div class="tarjeta-lateral-sandia__icono-badge">⚡</div>
+    <div class="tarjeta-lateral-sandia card border-0 shadow-sm rounded-4 bg-white" style="border: 1.5px solid #FECDD3 !important; overflow: hidden; background: #FFFFFF !important;">
+      <div class="tarjeta-lateral-sandia__header card-header border-bottom py-3 px-4 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #FFFFFF 0%, #FFF9FA 60%, #FFF1F2 100%) !important; border-bottom: 1px solid #FFE4E6 !important;">
+        <div class="tarjeta-lateral-sandia__titulo d-flex align-items-center gap-2 m-0" style="font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #1E293B;">
+          <div class="tarjeta-lateral-sandia__icono-badge" style="width: 26px; height: 26px; border-radius: 7px; background: #FFF1F2; color: #E11D48; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; border: 1px solid #FECDD3;">⚡</div>
           <span>Acciones de Paciente</span>
         </div>
       </div>
       <div class="card-body p-3">
         <div class="d-flex flex-column gap-2">
-          <button class="btn-accion-lateral text-start" type="button" data-bs-toggle="collapse" data-bs-target="#form-foto" aria-expanded="false" aria-controls="form-foto">
-            <div class="btn-accion-lateral__icono text-primary"><i class="bi bi-camera-fill"></i></div>
-            <span>{{ 'Actualizar foto del paciente' if mascota.foto else 'Agregar foto del paciente' }}</span>
+          <button class="btn btn-accion-lateral text-start d-flex align-items-center gap-2.5 p-2.5 rounded-3 w-100 shadow-2xs border" style="background: #FFFFFF !important; border: 1.5px solid #F1F5F9 !important; color: #1E293B !important; font-weight: 600;" type="button" data-bs-toggle="collapse" data-bs-target="#form-foto" aria-expanded="false" aria-controls="form-foto">
+            <div class="btn-accion-lateral__icono rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 30px; height: 30px; background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3;"><i class="bi bi-camera-fill"></i></div>
+            <span class="small fw-semibold">{{ 'Actualizar foto del paciente' if mascota.foto else 'Agregar foto del paciente' }}</span>
           </button>
 
           <div class="collapse" id="form-foto">
@@ -586,9 +586,9 @@
           </div>
 
           {% if not mascota.fallecido %}
-            <button class="btn-accion-lateral text-start" type="button" data-bs-toggle="collapse" data-bs-target="#form-fallecimiento" aria-expanded="false" aria-controls="form-fallecimiento">
-              <div class="btn-accion-lateral__icono text-danger"><i class="bi bi-heart-break-fill"></i></div>
-              <span>Registrar fallecimiento</span>
+            <button class="btn btn-accion-lateral text-start d-flex align-items-center gap-2.5 p-2.5 rounded-3 w-100 shadow-2xs border" style="background: #FFFFFF !important; border: 1.5px solid #F1F5F9 !important; color: #1E293B !important; font-weight: 600;" type="button" data-bs-toggle="collapse" data-bs-target="#form-fallecimiento" aria-expanded="false" aria-controls="form-fallecimiento">
+              <div class="btn-accion-lateral__icono rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 30px; height: 30px; background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3;"><i class="bi bi-heart-break-fill"></i></div>
+              <span class="small fw-semibold">Registrar fallecimiento</span>
             </button>
             <div class="collapse" id="form-fallecimiento">
               <form method="post" action="{{ url_for('mascotas.registrar_fallecimiento', mascota_id=mascota.id) }}" class="p-3 bg-light rounded-3 border" novalidate>
@@ -601,17 +601,17 @@
             <form method="post" action="{{ url_for('mascotas.cambiar_estado', mascota_id=mascota.id) }}"
                   data-confirmar="{{ '¿Desactivar esta ficha? Se conserva todo el historial.' if mascota.activo else '¿Reactivar esta ficha?' }}">
               {{ form_csrf.hidden_tag() }}
-              <button class="btn-accion-lateral text-start w-100" type="submit">
-                <div class="btn-accion-lateral__icono text-warning"><i class="bi {{ 'bi-slash-circle-fill' if mascota.activo else 'bi-check-circle-fill' }}"></i></div>
-                <span>{{ 'Desactivar ficha' if mascota.activo else 'Reactivar ficha' }}</span>
+              <button class="btn btn-accion-lateral text-start d-flex align-items-center gap-2.5 p-2.5 rounded-3 w-100 shadow-2xs border" style="background: #FFFFFF !important; border: 1.5px solid #F1F5F9 !important; color: #1E293B !important; font-weight: 600;" type="submit">
+                <div class="btn-accion-lateral__icono rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 30px; height: 30px; background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A;"><i class="bi {{ 'bi-slash-circle-fill' if mascota.activo else 'bi-check-circle-fill' }}"></i></div>
+                <span class="small fw-semibold">{{ 'Desactivar ficha' if mascota.activo else 'Reactivar ficha' }}</span>
               </button>
             </form>
           {% else %}
             <form method="post" action="{{ url_for('mascotas.deshacer_fallecimiento', mascota_id=mascota.id) }}" data-confirmar="¿Deshacer el registro de fallecimiento?">
               {{ form_csrf.hidden_tag() }}
-              <button class="btn-accion-lateral text-start w-100" type="submit">
-                <div class="btn-accion-lateral__icono text-secondary"><i class="bi bi-arrow-counterclockwise"></i></div>
-                <span>Deshacer fallecimiento</span>
+              <button class="btn btn-accion-lateral text-start d-flex align-items-center gap-2.5 p-2.5 rounded-3 w-100 shadow-2xs border" style="background: #FFFFFF !important; border: 1.5px solid #F1F5F9 !important; color: #1E293B !important; font-weight: 600;" type="submit">
+                <div class="btn-accion-lateral__icono rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 30px; height: 30px; background: #F1F5F9; color: #475569; border: 1px solid #E2E8F0;"><i class="bi bi-arrow-counterclockwise"></i></div>
+                <span class="small fw-semibold">Deshacer fallecimiento</span>
               </button>
             </form>
           {% endif %}
