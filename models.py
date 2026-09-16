@@ -2379,4 +2379,25 @@ class RemisionInterna(BaseModel):
         return f"<RemisionInterna {self.id} mascota={self.mascota_id} especialidad={self.especialidad_destino!r}>"
 
 
+class ServerPayment(db.Model):
+    """Registro de pagos y mensualidades del servidor / licencia de software."""
+
+    __tablename__ = "server_payments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    anio = db.Column(db.Integer, nullable=False)
+    mes = db.Column(db.Integer, nullable=False)
+    estado = db.Column(db.String(20), nullable=False, default="pagado")  # 'pagado', 'pendiente'
+    fecha_pago = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    observacion = db.Column(db.String(255), nullable=True)
+
+    __table_args__ = (
+        db.UniqueConstraint("anio", "mes", name="uq_server_payments_anio_mes"),
+    )
+
+    def __repr__(self):
+        return f"<ServerPayment {self.id} {self.mes}/{self.anio} estado={self.estado!r}>"
+
+
+
 

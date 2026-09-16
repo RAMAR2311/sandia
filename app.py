@@ -100,6 +100,8 @@ def create_app(config_override: dict | None = None) -> Flask:
         # El token CSRF vive lo mismo que la sesión: un POS abierto horas no debe fallar.
         "WTF_CSRF_TIME_LIMIT": None,
         "NOMBRE_APP": "VetCare",
+        "VALOR_MENSUALIDAD_SERVIDOR": os.environ.get("VALOR_MENSUALIDAD_SERVIDOR", "100.000"),
+        "PIN_CONFIRMACION_SERVIDOR": os.environ.get("PIN_CONFIRMACION_SERVIDOR", "9876"),
     }
     if config_override:
         configuracion.update(config_override)
@@ -172,6 +174,7 @@ def _registrar_blueprints(app: Flask) -> None:
     from routes.tutores import bp as tutores_bp
     from routes.consentimientos import bp_consentimientos
     from routes.certificados import bp_certificados
+    from routes.servidor import bp as servidor_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -188,6 +191,9 @@ def _registrar_blueprints(app: Flask) -> None:
     app.register_blueprint(agenda_bp)
     app.register_blueprint(gastos_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(servidor_bp)
+    csrf.exempt(servidor_bp)
+
 
 
 def _registrar_plantillas(app: Flask) -> None:
@@ -240,6 +246,89 @@ def _registrar_plantillas(app: Flask) -> None:
             "TAMANOS": TAMANOS,
             "modulos_menu": modulos_para(rol) if rol else [],
         }
+
+    @app.context_processor
+    def inyectar_pago_servidor():
+        import urllib.parse
+        from itsdangerous import URLSafeTimedSerializer
+        from models import ServerPayment
+
+        try:
+            ahora = utils.obtener_hora_bogota()
+            anio_actual = ahora.year
+            mes_actual = ahora.month
+            dia_actual = ahora.day
+
+            MESES_NOMBRES = [
+                "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+            ]
+            mes_nombre = MESES_NOMBRES[mes_actual - 1] if 1 <= mes_actual <= 12 else str(mes_actual)
+
+            pago_db = ServerPayment.query.filter_by(anio=anio_actual, mes=mes_actual, estado="pagado").first()
+
+            serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
+            token = serializer.dumps({"anio": anio_actual, "mes": mes_actual}, salt="server-payment-salt")
+
+            try:
+                confirmar_url = url_for("servidor.confirmar_pago", token=token, _external=True)
+            except Exception:
+                confirmar_url = f"/servidor/confirmar-pago?token={token}"
+
+            monto = app.config.get("VALOR_MENSUALIDAD_SERVIDOR", "100.000")
+            mensaje_wa = (
+                f"Hola, adjunto el comprobante de pago de la mensualidad del servidor Zenic (${monto} COP) para {mes_nombre} {anio_actual}.\n\n"
+                f"Para confirmar mi pago en el sistema con 1 solo clic, toca aquí:\n{confirmar_url}"
+            )
+            whatsapp_url = f"https://wa.me/573115643557?text={urllib.parse.quote(mensaje_wa)}"
+
+            if pago_db:
+                estado = "pagado"
+                dias_restantes = 0
+                dias_gabela = 0
+            else:
+                if 1 <= dia_actual <= 6:
+                    estado = "al_dia"
+                    dias_restantes = 15 - dia_actual
+                    dias_gabela = 5
+                elif 7 <= dia_actual <= 14:
+                    estado = "preventivo"
+                    dias_restantes = 15 - dia_actual
+                    dias_gabela = 5
+                elif dia_actual == 15:
+                    estado = "hoy"
+                    dias_restantes = 0
+                    dias_gabela = 5
+                elif 16 <= dia_actual <= 20:
+                    estado = "gabela"
+                    dias_restantes = 0
+                    dias_gabela = 20 - dia_actual + 1
+                else:  # Día 21 en adelante
+                    estado = "vencido"
+                    dias_restantes = 0
+                    dias_gabela = 0
+
+            return {
+                "pago_servidor": {
+                    "estado": estado,
+                    "pagado": (estado == "pagado"),
+                    "mes_nombre": mes_nombre,
+                    "mes": mes_actual,
+                    "anio": anio_actual,
+                    "dia": dia_actual,
+                    "monto": monto,
+                    "dias_restantes": dias_restantes,
+                    "dias_gabela": dias_gabela,
+                    "whatsapp_url": whatsapp_url,
+                    "confirmar_url": confirmar_url,
+                    "nu_llave": "@QEI910",
+                    "nequi_num": "3505422186",
+                }
+            }
+        except Exception:
+            app.logger.warning("No se pudo calcular el estado de pago del servidor", exc_info=True)
+            return {"pago_servidor": None}
+
 
 
 def _quiere_json() -> bool:
