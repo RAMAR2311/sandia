@@ -1,0 +1,197 @@
+{# Modal: Crear Nueva Remisión Clínica Interna #}
+<div class="modal fade" id="modalNuevaRemision" tabindex="-1" aria-labelledby="modalNuevaRemisionLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header bg-light border-bottom px-4 py-3">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+            <i class="bi bi-send-check-fill fs-5"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold text-dark fs-6 mb-0" id="modalNuevaRemisionLabel" style="font-family: var(--fuente-marca);">
+              Nueva Remisión Clínica Interna
+            </h5>
+            <div class="small text-muted">Paciente: <strong>{{ mascota.nombre }}</strong> ({{ mascota.especie_etiqueta }})</div>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <form method="post" action="{{ url_for('historias.remision_nueva', mascota_id=mascota.id) }}" novalidate>
+        {{ form_remision.hidden_tag() }}
+        <div class="modal-body p-4">
+          
+          {# BLOQUE 1: Datos de la Remisión #}
+          <div class="card border-0 bg-light rounded-3 p-3 mb-3">
+            <h6 class="fw-bold text-dark small text-uppercase mb-3" style="letter-spacing: 0.05em;">
+              <i class="bi bi-hospital text-info me-1"></i> 1. Destino y Motivo de la Remisión
+            </h6>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold text-dark mb-1">
+                  Especialidad o Servicio Requerido <span class="text-danger">*</span>
+                </label>
+                {{ form_remision.especialidad_destino(class_="form-control bg-white", placeholder="Ej: Cardiología, Oftalmología, Neurología, Ortopedia...", list="datalist-especialidades") }}
+                <datalist id="datalist-especialidades">
+                  <option value="Cardiología Veterinaria">
+                  <option value="Oftalmología Veterinaria">
+                  <option value="Dermatología Avanzada">
+                  <option value="Neurología / Neurocirugía">
+                  <option value="Ortopedia y Traumatología">
+                  <option value="Oncología Veterinaria">
+                  <option value="Gastroenterología / Endoscopia">
+                  <option value="Imagenología / Tomografía / Resonancia">
+                  <option value="Odontología Veterinaria">
+                  <option value="Fisioterapia y Rehabilitación">
+                  <option value="Medicina Interna / Nefrología">
+                </datalist>
+                {% for err in form_remision.especialidad_destino.errors %}
+                  <div class="text-danger small mt-1">{{ err }}</div>
+                {% endfor %}
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold text-dark mb-1">
+                  Centro Médico / Especialista Receptor (Opcional)
+                </label>
+                {{ form_remision.centro_medico_destino(class_="form-control bg-white", placeholder="Nombre de la clínica u hospital de referencia") }}
+              </div>
+
+              <div class="col-12">
+                <label class="form-label small fw-semibold text-dark mb-1">
+                  Motivo Principal de la Remisión <span class="text-danger">*</span>
+                </label>
+                {{ form_remision.motivo_remision(class_="form-control bg-white", rows=2, placeholder="Describe el cuadro clínico, sospecha diagnóstica y objetivo de la derivación...") }}
+                {% for err in form_remision.motivo_remision.errors %}
+                  <div class="text-danger small mt-1">{{ err }}</div>
+                {% endfor %}
+              </div>
+
+              <div class="col-12">
+                <label class="form-label small fw-semibold text-dark mb-1">
+                  Hallazgos Clínicos y Observaciones Relevantes (Opcional)
+                </label>
+                {{ form_remision.observaciones_clinicas(class_="form-control bg-white", rows=2, placeholder="Tratamientos previos instaurados, respuesta terapéutica o exámenes complementarios adjuntos...") }}
+              </div>
+            </div>
+          </div>
+
+          {# BLOQUE 2: Alimentación y Dieta Actual #}
+          <div class="card border-0 bg-light rounded-3 p-3 mb-3">
+            <h6 class="fw-bold text-dark small text-uppercase mb-2" style="letter-spacing: 0.05em;">
+              <i class="bi bi-egg-fried text-warning me-1"></i> 2. Nutrición y Alimentación Actual
+            </h6>
+            <div class="row g-2">
+              <div class="col-12">
+                <label class="form-label small fw-semibold text-dark mb-1">Marca, Tipo de Alimento o Dieta</label>
+                {{ form_remision.dieta_marca_tipo(class_="form-control bg-white", placeholder="Ej: Royal Canin Hypoallergenic, Taste of the Wild, Dieta BARF casera, etc.") }}
+              </div>
+            </div>
+          </div>
+
+          {# BLOQUE 3: Antecedentes Clínicos (Precargados) #}
+          <div class="card border-0 bg-light rounded-3 p-3 mb-3">
+            <h6 class="fw-bold text-dark small text-uppercase mb-2" style="letter-spacing: 0.05em;">
+              <i class="bi bi-clock-history text-danger me-1"></i> 3. Antecedentes Médicos y Quirúrgicos
+            </h6>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold text-dark mb-1">Cirugías y Procedimientos Previos</label>
+                {{ form_remision.antecedentes_cirugias(class_="form-control bg-white", rows=2, placeholder="Cirugías previas registradas...") }}
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold text-dark mb-1">Enfermedades y Preexistencias</label>
+                {{ form_remision.antecedentes_enfermedades(class_="form-control bg-white", rows=2, placeholder="Condiciones preexistentes y alergias conocidas...") }}
+              </div>
+            </div>
+          </div>
+
+          {# BLOQUE 4: Estatus Preventivo (Precargado) #}
+          <div class="card border-0 bg-light rounded-3 p-3">
+            <h6 class="fw-bold text-dark small text-uppercase mb-2" style="letter-spacing: 0.05em;">
+              <i class="bi bi-shield-check text-success me-1"></i> 4. Estatus Preventivo y Sanitario
+            </h6>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold text-dark mb-1">Desparasitación Interna</label>
+                <div class="input-group mb-1">
+                  <span class="input-group-text bg-white small"><i class="bi bi-capsule"></i></span>
+                  {{ form_remision.desparasitacion_interna_producto(class_="form-control bg-white", placeholder="Producto / Antiparasitario") }}
+                </div>
+                {{ form_remision.desparasitacion_interna_fecha(class_="form-control bg-white form-control-sm", type="date") }}
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold text-dark mb-1">Desparasitación Externa</label>
+                <div class="input-group mb-1">
+                  <span class="input-group-text bg-white small"><i class="bi bi-bug"></i></span>
+                  {{ form_remision.desparasitacion_externa_producto(class_="form-control bg-white", placeholder="Antipulgas / Pipeta / Collar") }}
+                </div>
+                {{ form_remision.desparasitacion_externa_fecha(class_="form-control bg-white form-control-sm", type="date") }}
+              </div>
+
+              <div class="col-12 col-md-6">
+                <div class="form-check form-switch mt-2">
+                  {{ form_remision.vacunacion_al_dia(class_="form-check-input", id="switchVacunacionAlDia") }}
+                  <label class="form-check-label fw-bold small text-dark" for="switchVacunacionAlDia">
+                    ¿Plan de vacunación al día?
+                  </label>
+                </div>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold text-dark mb-1">Fecha Última Vacunación</label>
+                {{ form_remision.vacunacion_ultima_fecha(class_="form-control bg-white form-control-sm", type="date") }}
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer bg-light border-top px-4 py-3 d-flex justify-content-between">
+          <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-sm btn-info text-white rounded-pill px-4 shadow-sm fw-semibold" style="background: linear-gradient(135deg, #0284C7, #0EA5E9); border: none;">
+            <i class="bi bi-check2-circle me-1"></i>Guardar Remisión Clínica
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Modal: Visualización Detallada de Remisión Clínica #}
+<div class="modal fade" id="modalDetalleRemision" tabindex="-1" aria-labelledby="modalDetalleRemisionLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header bg-light border-bottom px-4 py-3">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+            <i class="bi bi-file-earmark-medical-fill fs-5"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold text-dark fs-6 mb-0" id="modalDetalleRemisionLabel" style="font-family: var(--fuente-marca);">
+              Detalle de Remisión Clínica
+            </h5>
+            <div class="small text-muted" id="det-fecha-remision">Cargando...</div>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body p-4" id="cuerpo-detalle-remision">
+        <div class="text-center py-4">
+          <div class="spinner-border text-info" role="status"></div>
+          <div class="small text-muted mt-2">Cargando detalles de la remisión...</div>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light border-top px-4 py-3">
+        <button type="button" class="btn btn-sm btn-secondary rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

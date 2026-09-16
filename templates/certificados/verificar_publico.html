@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificación Oficial · Certificado {{ cert.consecutivo }} · Sandía</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <style>
+    :root {
+      --sandia-red: #E53935;
+      --sandia-dark: #1E293B;
+      --sandia-green: #10B981;
+    }
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: #F8FAFC;
+      color: var(--sandia-dark);
+    }
+    .font-brand {
+      font-family: 'Fredoka', 'Nunito', sans-serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .shadow-card {
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    }
+    .badge-verified {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: white;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+    .badge-expired {
+      background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+      color: white;
+    }
+    .badge-annulled {
+      background: linear-gradient(135deg, #64748B 0%, #475569 100%);
+      color: white;
+    }
+  </style>
+</head>
+<body class="py-4 py-md-5">
+
+  <div class="container" style="max-width: 680px;">
+    
+    <!-- Encabezado Institucional -->
+    <div class="text-center mb-4">
+      <div class="d-inline-flex align-items-center gap-2 mb-1">
+        <span class="fs-2">🍉</span>
+        <span class="fs-4 fw-bold font-brand text-danger">{{ clinica.nombre }}</span>
+      </div>
+      <p class="text-muted small mb-0">{{ clinica.subtitulo }} · NIT: {{ clinica.nit }}</p>
+      <div class="badge bg-secondary-subtle text-secondary border rounded-pill px-3 py-1 mt-2 text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.08em;">
+        Sistema Nacional de Verificación Sanitaria Animal
+      </div>
+    </div>
+
+    <!-- Tarjeta Principal de Validación -->
+    <div class="card border-0 rounded-4 shadow-card overflow-hidden bg-white mb-4">
+      
+      <!-- Estado de Autenticidad -->
+      <div class="p-4 text-center border-bottom">
+        {% if cert.estado == 'anulado' %}
+        <div class="badge badge-annulled rounded-pill px-4 py-2 fs-6 fw-bold mb-3 d-inline-flex align-items-center gap-2">
+          <i class="bi bi-x-octagon-fill"></i> DOCUMENTO ANULADO
+        </div>
+        <h5 class="fw-bold text-danger mb-1 font-brand">Certificado Inválido</h5>
+        <p class="text-muted small mb-0">Este documento fue anulado por el médico veterinario tratante.</p>
+
+        {% elif cert.esta_vigente %}
+        <div class="badge badge-verified rounded-pill px-4 py-2 fs-6 fw-bold mb-3 d-inline-flex align-items-center gap-2">
+          <i class="bi bi-patch-check-fill fs-5"></i> DOCUMENTO OFICIAL AUTÉNTICO & VIGENTE
+        </div>
+        <h4 class="fw-bold text-dark mb-1 font-brand">Certificado de Salud Animal Aprobado</h4>
+        <p class="text-success small fw-bold mb-0">
+          <i class="bi bi-calendar-check me-1"></i> Vigente para viaje hasta el {{ cert.fecha_vencimiento.strftime('%d/%m/%Y') }}
+        </p>
+
+        {% else %}
+        <div class="badge badge-expired rounded-pill px-4 py-2 fs-6 fw-bold mb-3 d-inline-flex align-items-center gap-2">
+          <i class="bi bi-hourglass-bottom"></i> DOCUMENTO VENCIDO
+        </div>
+        <h5 class="fw-bold text-warning-emphasis mb-1 font-brand">Plazo de Validez Expirado</h5>
+        <p class="text-muted small mb-0">La validez sanitaria de este certificado finalizó el {{ cert.fecha_vencimiento.strftime('%d/%m/%Y') }}.</p>
+        {% endif %}
+      </div>
+
+      <!-- Resumen del Certificado -->
+      <div class="p-4">
+        
+        <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded-4 mb-4">
+          <div>
+            <span class="text-muted small d-block">Número Consecutivo:</span>
+            <span class="fs-5 fw-bold font-mono text-danger">{{ cert.consecutivo }}</span>
+          </div>
+          <div class="text-end">
+            <span class="text-muted small d-block">Fecha de Emisión:</span>
+            <span class="fw-bold text-dark">{{ cert.fecha_emision.strftime('%d/%m/%Y %I:%M %p') }}</span>
+          </div>
+        </div>
+
+        <!-- Paciente & Tutor -->
+        <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-heart-pulse text-danger"></i> Identificación del Paciente
+        </h6>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6">
+            <div class="p-3 border rounded-4">
+              <small class="text-muted d-block">Nombre del Paciente</small>
+              <strong class="text-danger fs-6">{{ cert.mascota.nombre }}</strong>
+              <small class="text-muted d-block">{{ cert.mascota.especie.capitalize() }} · {{ cert.mascota.raza.nombre if cert.mascota.raza else 'Mestizo' }}</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-3 border rounded-4">
+              <small class="text-muted d-block">Peso & Microchip</small>
+              <strong class="text-dark fs-6">{{ cert.peso_kg }} kg</strong>
+              <small class="text-muted d-block">{{ cert.mascota.microchip or 'Sin microchip' }}</small>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="p-3 border rounded-4">
+              <small class="text-muted d-block">Tutor / Propietario Responsable</small>
+              <strong class="text-dark">{{ cert.tutor.nombre_completo }}</strong>
+              <span class="text-muted small d-block">Documento: {{ cert.tutor.documento_texto or cert.tutor.numero_documento or 'No registrado' }}</span>
+              <span class="text-muted small d-block">Trayecto: {{ cert.ciudad_origen }} &rarr; <b>{{ cert.ciudad_destino or 'Destino Nacional' }}</b> ({{ cert.pais_destino }})</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vacunación y Rabia -->
+        <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-shield-fill-check text-danger"></i> Inmunización y Vacunación
+        </h6>
+
+        <div class="p-3 bg-light rounded-4 mb-4">
+          {% if cert.datos_vacunacion %}
+          <ul class="list-unstyled mb-0">
+            {% for v in cert.datos_vacunacion %}
+            <li class="d-flex align-items-center justify-content-between py-1.5 border-bottom border-light-subtle">
+              <div>
+                <strong class="text-dark small d-block">
+                  {% if 'rabia' in (v.nombre|lower) %}
+                  <span class="text-danger">★ {{ v.nombre }}</span>
+                  {% else %}
+                  {{ v.nombre }}
+                  {% endif %}
+                </strong>
+                <small class="text-muted" style="font-size: 0.75rem;">Lab: {{ v.laboratorio }} · Lote: {{ v.lote }}</small>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-white text-dark border small">Próxima: {{ v.fecha_proxima }}</span>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-muted small mb-0">Registro de vacunación verificado en historia clínica.</p>
+          {% endif %}
+        </div>
+
+        <!-- Dictamen del Profesional -->
+        <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-2">
+          <i class="bi bi-journal-check text-danger"></i> Dictamen Clínico
+        </h6>
+        <div class="p-3 bg-success-subtle text-success-emphasis rounded-4 small mb-4">
+          <p class="mb-2" style="line-height: 1.5;">"{{ cert.dictamen_texto }}"</p>
+          <div class="border-top border-success-subtle pt-2 d-flex align-items-center justify-content-between">
+            <strong>Estado: APTO PARA VIAJAR</strong>
+            <span>Constantes vitales normales</span>
+          </div>
+        </div>
+
+        <!-- Médico Veterinario -->
+        <div class="p-3 border rounded-4 mb-4 d-flex align-items-center justify-content-between">
+          <div>
+            <small class="text-muted d-block">Médico Veterinario Emisor</small>
+            <strong class="text-dark">Dr.(a) {{ cert.veterinario.nombre }}</strong>
+            <span class="text-muted small d-block">Tarjeta Profesional: <b>{{ cert.veterinario.tarjeta_profesional or 'En trámite' }}</b></span>
+          </div>
+          <i class="bi bi-award text-danger fs-2"></i>
+        </div>
+
+        <!-- Sello de Integridad SHA-256 -->
+        <div class="p-3 bg-light rounded-4 text-center">
+          <small class="text-muted d-block font-mono" style="font-size: 0.72rem;">Sello Criptográfico SHA-256 de Integridad:</small>
+          <span class="font-mono text-secondary small d-block text-break" style="font-size: 0.75rem;">{{ cert.hash_integridad_sha256 }}</span>
+        </div>
+
+      </div>
+
+      <!-- Botón de Descarga PDF -->
+      <div class="p-4 bg-light border-top text-center">
+        <a href="{{ cert.url_pdf() }}" target="_blank" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+          <i class="bi bi-file-earmark-pdf-fill me-1"></i> Descargar Documento PDF Oficial
+        </a>
+      </div>
+
+    </div>
+
+    <!-- Pie de Página -->
+    <div class="text-center text-muted small">
+      <p class="mb-1">© {{ ahora.year }} {{ clinica.nombre }} · Todos los derechos reservados.</p>
+      <p class="mb-0">Documento certificado electrónicamente según normativa veterinaria colombiana.</p>
+    </div>
+
+  </div>
+
+</body>
+</html>

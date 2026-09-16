@@ -44,6 +44,10 @@ def _generar_url_segura(endpoint: str, **values) -> str:
         return f"/consentimientos/firmar/{values.get('token')}"
     elif endpoint == "consentimientos.documento_publico":
         return f"/consentimientos/{values.get('id')}/documento"
+    elif endpoint == "certificados.vista_verificacion_publica":
+        return f"/certificados/verificar/{values.get('token')}"
+    elif endpoint == "certificados.certificado_pdf":
+        return f"/certificados/{values.get('id')}/pdf"
     return "/"
 
 
@@ -2186,4 +2190,193 @@ class FirmaConsentimiento(BaseModel):
 
     def __repr__(self):
         return f"<FirmaConsentimiento {self.id} doc={self.documento_firmante} consent={self.consentimiento_id}>"
+
+
+# ---------------------------------------------------------------------------
+# Certificados Nacionales de Salud Animal / Viajes
+# ---------------------------------------------------------------------------
+
+FINALIDADES_CERTIFICADO = {
+    "viaje_nacional": "Viaje Nacional (Aéreo / Terrestre)",
+    "viaje_internacional": "Viaje Internacional / Exportación",
+    "tramite_ica": "Trámite Sanitario ICA",
+    "convivencia": "Convivencia / Escolar / Residencia",
+    "otro": "Otro Trámite Médico Legal",
+}
+
+ESTADOS_CERTIFICADO = {
+    "vigente": "Vigente",
+    "vencido": "Vencido",
+    "anulado": "Anulado",
+}
+
+
+class CertificadoSaludAnimal(BaseModel):
+    __tablename__ = "certificados_salud"
+
+    id = db.Column(db.Integer, primary_key=True)
+    consecutivo = db.Column(db.String(30), unique=True, nullable=False, index=True)
+    token_verificacion = db.Column(
+        db.String(64), unique=True, nullable=False, index=True, default=lambda: uuid.uuid4().hex
+    )
+
+    mascota_id = db.Column(db.Integer, db.ForeignKey("mascotas.id", ondelete="RESTRICT"), nullable=False, index=True)
+    tutor_id = db.Column(db.Integer, db.ForeignKey("tutores.id", ondelete="RESTRICT"), nullable=False, index=True)
+    veterinario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False)
+    consulta_id = db.Column(db.Integer, db.ForeignKey("consultas_medicas.id", ondelete="SET NULL"))
+
+    finalidad = db.Column(db.String(50), nullable=False, default="viaje_nacional")
+    ciudad_origen = db.Column(db.String(100), default="Bogotá D.C.")
+    ciudad_destino = db.Column(db.String(100))
+    pais_destino = db.Column(db.String(100), default="Colombia")
+
+    peso_kg = db.Column(db.Numeric(6, 2), nullable=False)
+    temperatura_c = db.Column(db.Numeric(4, 1))
+    frecuencia_cardiaca = db.Column(db.Integer)
+    frecuencia_respiratoria = db.Column(db.Integer)
+
+    dictamen_texto = db.Column(db.Text, nullable=False)
+    apto_para_viajar = db.Column(db.Boolean, default=True, nullable=False)
+    observaciones = db.Column(db.Text)
+
+    datos_vacunacion = db.Column(db.JSON, nullable=False)
+    datos_desparasitacion = db.Column(db.JSON, nullable=False)
+
+    estado = db.Column(db.String(20), default="vigente", nullable=False, index=True)
+    dias_vigencia = db.Column(db.Integer, default=5, nullable=False)
+    fecha_emision = db.Column(db.DateTime(timezone=True), default=obtener_hora_bogota, nullable=False)
+    fecha_vencimiento = db.Column(db.Date, nullable=False)
+    hash_integridad_sha256 = db.Column(db.String(64), nullable=False)
+
+    mascota = db.relationship("Mascota", backref=db.backref("certificados_salud", order_by="desc(CertificadoSaludAnimal.fecha_emision)"))
+    tutor = db.relationship("Tutor")
+    veterinario = db.relationship("Usuario", foreign_keys=[veterinario_id])
+    consulta = db.relationship("ConsultaMedica", foreign_keys=[consulta_id])
+
+    @property
+    def finalidad_etiqueta(self) -> str:
+        return FINALIDADES_CERTIFICADO.get(self.finalidad, self.finalidad)
+
+    @property
+    def estado_efectivo(self) -> str:
+        if self.estado == "anulado":
+            return "anulado"
+        if self.fecha_vencimiento < hoy_bogota():
+            return "vencido"
+        return "vigente"
+
+    @property
+    def esta_vigente(self) -> bool:
+        return self.estado_efectivo == "vigente"
+
+    def calcular_hash_integridad(self) -> str:
+        cadena = f"{self.id}|{self.consecutivo}|{self.token_verificacion}|{self.mascota_id}|{self.tutor_id}|{self.fecha_vencimiento}"
+        return hashlib.sha256(cadena.encode("utf-8")).hexdigest()
+
+    def url_verificacion_publica(self) -> str:
+        return _generar_url_segura("certificados.vista_verificacion_publica", token=self.token_verificacion)
+
+    def url_pdf(self) -> str:
+        return _generar_url_segura("certificados.certificado_pdf", id=self.id)
+
+    def enlace_whatsapp(self) -> str:
+        url_verif = self.url_verificacion_publica()
+        url_doc_pdf = self.url_pdf()
+        nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
+        nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
+        fecha_venc_str = self.fecha_vencimiento.strftime('%d/%m/%Y')
+        destino_str = f" con destino a *{self.ciudad_destino}*" if self.ciudad_destino else ""
+
+        mensaje = (
+            f"🐾 *Sandía · Medicina & Spa Veterinario* 🍉\n"
+            f"📋 *CERTIFICADO MÉDICO DE SALUD ANIMAL / VIAJE*\n\n"
+            f"Hola *{nombre_tutor}*, le compartimos el Certificado Oficial No. *{self.consecutivo}* correspondiente a *{nombre_mascota}*{destino_str}.\n\n"
+            f"• *Estado:* Apto para viaje (Vigente hasta el {fecha_venc_str})\n"
+            f"• *Médico Emisor:* Dr.(a) {self.veterinario.nombre} (T.P. {self.veterinario.tarjeta_profesional or 'En trámite'})\n\n"
+            f"📄 *Descargar Certificado en PDF Oficial:*\n{url_doc_pdf}\n\n"
+            f"🔍 *Validación Oficial con Código QR para Aerolíneas/Autoridades:*\n{url_verif}\n\n"
+            f"¡Buen viaje y muchas gracias por confiar en Sandía! 🐾✈️"
+        )
+        return self.tutor.enlace_whatsapp(mensaje)
+
+    def __repr__(self):
+        return f"<CertificadoSaludAnimal {self.consecutivo} mascota={self.mascota_id}>"
+
+
+# ---------------------------------------------------------------------------
+# Remisiones Clínicas Internas
+# ---------------------------------------------------------------------------
+
+
+class RemisionInterna(BaseModel):
+    """Registro de remisión clínica interna dentro del expediente de la mascota.
+    Diseñado para consulta rápida de antecedentes, preventivos, dieta y motivo de derivación."""
+
+    __tablename__ = "remisiones_internas"
+    __table_args__ = (
+        db.Index("ix_remisiones_internas_mascota_fecha", "mascota_id", "fecha_remision"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    mascota_id = db.Column(db.Integer, db.ForeignKey("mascotas.id", ondelete="CASCADE"), nullable=False, index=True)
+    tutor_id = db.Column(db.Integer, db.ForeignKey("tutores.id", ondelete="RESTRICT"), nullable=False, index=True)
+    veterinario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False)
+    creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id", ondelete="SET NULL"))
+
+    fecha_remision = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    # 1. Alimentación y Nutrición
+    dieta_marca_tipo = db.Column(db.String(255))
+
+    # 2. Antecedentes Clínicos
+    antecedentes_cirugias = db.Column(db.Text)
+    antecedentes_enfermedades = db.Column(db.Text)
+
+    # 3. Estatus Preventivo
+    desparasitacion_interna_producto = db.Column(db.String(120))
+    desparasitacion_interna_fecha = db.Column(db.Date)
+    desparasitacion_externa_producto = db.Column(db.String(120))
+    desparasitacion_externa_fecha = db.Column(db.Date)
+    vacunacion_al_dia = db.Column(db.Boolean, nullable=False, default=True)
+    vacunacion_ultima_fecha = db.Column(db.Date)
+
+    # 4. Datos de la Remisión
+    especialidad_destino = db.Column(db.String(150), nullable=False)
+    centro_medico_destino = db.Column(db.String(180))
+    motivo_remision = db.Column(db.Text, nullable=False)
+    observaciones_clinicas = db.Column(db.Text)
+
+    # Metadatos
+    fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    mascota = db.relationship("Mascota", backref=db.backref("remisiones", order_by="desc(RemisionInterna.fecha_remision)"))
+    tutor = db.relationship("Tutor")
+    veterinario = db.relationship("Usuario", foreign_keys=[veterinario_id])
+    creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
+
+    def to_dict(self) -> dict:
+        """Serializa los datos de la remisión para consultas AJAX/modales."""
+        return {
+            "id": self.id,
+            "fecha_remision": self.fecha_remision.strftime("%d/%m/%Y %I:%M %p") if self.fecha_remision else "",
+            "fecha_corta": self.fecha_remision.strftime("%d/%m/%Y") if self.fecha_remision else "",
+            "especialidad_destino": self.especialidad_destino or "",
+            "centro_medico_destino": self.centro_medico_destino or "",
+            "motivo_remision": self.motivo_remision or "",
+            "observaciones_clinicas": self.observaciones_clinicas or "",
+            "dieta_marca_tipo": self.dieta_marca_tipo or "No especificada",
+            "antecedentes_cirugias": self.antecedentes_cirugias or "Ninguna registrada",
+            "antecedentes_enfermedades": self.antecedentes_enfermedades or "Ninguna registrada",
+            "desparasitacion_interna": f"{self.desparasitacion_interna_producto or 'N/A'} ({self.desparasitacion_interna_fecha.strftime('%d/%m/%Y') if self.desparasitacion_interna_fecha else 'Sin fecha'})" if (self.desparasitacion_interna_producto or self.desparasitacion_interna_fecha) else "Sin registro",
+            "desparasitacion_externa": f"{self.desparasitacion_externa_producto or 'N/A'} ({self.desparasitacion_externa_fecha.strftime('%d/%m/%Y') if self.desparasitacion_externa_fecha else 'Sin fecha'})" if (self.desparasitacion_externa_producto or self.desparasitacion_externa_fecha) else "Sin registro",
+            "vacunacion_al_dia": "Al día" if self.vacunacion_al_dia else "Incompleta / Pendiente",
+            "vacunacion_ultima_fecha": self.vacunacion_ultima_fecha.strftime("%d/%m/%Y") if self.vacunacion_ultima_fecha else "No registrada",
+            "veterinario_nombre": self.veterinario.nombre if self.veterinario else "Médico Veterinario",
+            "veterinario_tp": (self.veterinario.tarjeta_profesional or "") if self.veterinario else "",
+        }
+
+    def __repr__(self):
+        return f"<RemisionInterna {self.id} mascota={self.mascota_id} especialidad={self.especialidad_destino!r}>"
+
+
 

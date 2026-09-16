@@ -21,6 +21,7 @@ from forms import (
     NotasPostquirurgicasForm,
     ResultadoExamenForm,
     VacunaMascotaForm,
+    RemisionInternaForm,
 )
 from models import (
     Cirugia,
@@ -32,6 +33,7 @@ from models import (
     Hospitalizacion,
     Mascota,
     RegistroPeso,
+    RemisionInterna,
     Tutor,
     VacunaMascota,
     db,
@@ -122,6 +124,43 @@ def ficha_medica(mascota_id: int):
     examenes = db.session.execute(
         select(ExamenLaboratorio).filter_by(mascota_id=mascota.id).order_by(ExamenLaboratorio.fecha_toma.desc())
     ).scalars().all()
+    remisiones = db.session.execute(
+        select(RemisionInterna)
+        .filter_by(mascota_id=mascota.id)
+        .options(selectinload(RemisionInterna.veterinario))
+        .order_by(RemisionInterna.fecha_remision.desc())
+    ).scalars().all()
+
+    # Pre-cargar formulario de nueva remisión con antecedentes existentes del paciente
+    form_remision = RemisionInternaForm()
+    if request.method == "GET":
+        # Antecedentes de enfermedades y alergias
+        enfermedades = mascota.condiciones_preexistentes or ""
+        if mascota.alergias:
+            enfermedades = f"{enfermedades} | Alergias: {mascota.alergias}".strip(" |")
+        form_remision.antecedentes_enfermedades.data = enfermedades
+
+        # Antecedentes de cirugías
+        if cirugias:
+            form_remision.antecedentes_cirugias.data = ", ".join(
+                [f"{c.tipo_procedimiento} ({c.fecha.strftime('%d/%m/%Y') if c.fecha else 'Sin fecha'})" for c in cirugias]
+            )
+
+        # Última vacuna
+        if mascota.vacunas:
+            ult_vac = mascota.vacunas[0]
+            form_remision.vacunacion_ultima_fecha.data = ult_vac.fecha_aplicacion
+            form_remision.vacunacion_al_dia.data = (ult_vac.estado_vencimiento == "al_dia")
+
+        # Últimas desparasitaciones interna y externa
+        if mascota.desparasitaciones:
+            for d in mascota.desparasitaciones:
+                if d.tipo in ("interna", "mixta") and not form_remision.desparasitacion_interna_producto.data:
+                    form_remision.desparasitacion_interna_producto.data = d.producto
+                    form_remision.desparasitacion_interna_fecha.data = d.fecha_aplicacion
+                if d.tipo in ("externa", "mixta") and not form_remision.desparasitacion_externa_producto.data:
+                    form_remision.desparasitacion_externa_producto.data = d.producto
+                    form_remision.desparasitacion_externa_fecha.data = d.fecha_aplicacion
 
     datos_peso = [
         {
@@ -131,13 +170,18 @@ def ficha_medica(mascota_id: int):
         for r in mascota.registros_peso
     ]
 
+    tab_activa = request.args.get("tab", "soap")
+
     return render_template(
         "historias/ficha_medica.html",
         mascota=mascota,
         hospitalizaciones=hospitalizaciones,
         cirugias=cirugias,
         examenes=examenes,
+        remisiones=remisiones,
+        form_remision=form_remision,
         datos_peso=datos_peso,
+        tab_activa=tab_activa,
     )
 
 
@@ -887,3 +931,70 @@ def examen_eliminar(id: int):
         flash("No se pudo eliminar el examen.", "danger")
 
     return redirect(url_for("historias.ficha_medica", mascota_id=mascota_id))
+
+
+# ---------------------------------------------------------------------------
+# Remisiones Clínicas Internas
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/remisiones/nueva/<int:mascota_id>", methods=["POST"])
+@login_required
+@clinico_required
+def remision_nueva(mascota_id: int):
+    mascota = db.session.get(Mascota, mascota_id)
+    if not mascota:
+        flash("La mascota no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    form = RemisionInternaForm()
+    if form.validate_on_submit():
+        remision = RemisionInterna(
+            mascota_id=mascota.id,
+            tutor_id=mascota.tutor_id,
+            veterinario_id=current_user.id,
+            creado_por_id=current_user.id,
+            fecha_remision=obtener_hora_bogota(),
+            dieta_marca_tipo=(form.dieta_marca_tipo.data or "").strip() or None,
+            antecedentes_cirugias=(form.antecedentes_cirugias.data or "").strip() or None,
+            antecedentes_enfermedades=(form.antecedentes_enfermedades.data or "").strip() or None,
+            desparasitacion_interna_producto=(form.desparasitacion_interna_producto.data or "").strip() or None,
+            desparasitacion_interna_fecha=form.desparasitacion_interna_fecha.data,
+            desparasitacion_externa_producto=(form.desparasitacion_externa_producto.data or "").strip() or None,
+            desparasitacion_externa_fecha=form.desparasitacion_externa_fecha.data,
+            vacunacion_al_dia=bool(form.vacunacion_al_dia.data),
+            vacunacion_ultima_fecha=form.vacunacion_ultima_fecha.data,
+            especialidad_destino=form.especialidad_destino.data.strip(),
+            centro_medico_destino=(form.centro_medico_destino.data or "").strip() or None,
+            motivo_remision=form.motivo_remision.data.strip(),
+            observaciones_clinicas=(form.observaciones_clinicas.data or "").strip() or None,
+            fecha_registro=obtener_hora_bogota(),
+        )
+        db.session.add(remision)
+        db.session.commit()
+        flash(f"Remisión para {remision.especialidad_destino} guardada exitosamente en el expediente.", "success")
+        return redirect(url_for("historias.ficha_medica", mascota_id=mascota.id, tab="remisiones"))
+
+    for campo, errores in form.errors.items():
+        for error in errores:
+            flash(f"Error en {campo}: {error}", "danger")
+    return redirect(url_for("historias.ficha_medica", mascota_id=mascota.id, tab="remisiones"))
+
+
+@bp.route("/remisiones/<int:id>/json", methods=["GET"])
+@login_required
+@clinico_required
+def remision_detalle_json(id: int):
+    remision = db.session.execute(
+        select(RemisionInterna).filter_by(id=id).options(
+            selectinload(RemisionInterna.veterinario),
+            selectinload(RemisionInterna.mascota),
+            selectinload(RemisionInterna.tutor),
+        )
+    ).scalar_one_or_none()
+
+    if not remision:
+        return {"ok": False, "error": "Remisión no encontrada."}, 404
+
+    return {"ok": True, "remision": remision.to_dict()}
+

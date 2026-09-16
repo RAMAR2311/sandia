@@ -2158,3 +2158,949 @@ body.pagina-login { background: var(--sandia-crema) radial-gradient(circle at 20
   color: #DC2626;
 }
 
+/* --- Pestañas Modernas de Ficha Médica y Vistas Clínicas -------------------- */
+.ficha-tabs-header {
+  background: #F8FAFC;
+  border-bottom: 1.5px solid #E2E8F0;
+  padding: 0.65rem 0.85rem;
+}
+
+.ficha-tabs-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ficha-tab-btn {
+  background: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #475569 !important;
+  font-weight: 700 !important;
+  font-size: 0.82rem !important;
+  padding: 0.42rem 0.85rem !important;
+  border-radius: 50px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  white-space: nowrap !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: pointer;
+  text-decoration: none !important;
+}
+
+.ficha-tab-btn i {
+  font-size: 0.92rem;
+  color: #64748B;
+  transition: color 0.18s ease;
+}
+
+.ficha-tab-btn:hover {
+  background: #FFF1F2 !important;
+  border-color: #FECDD3 !important;
+  color: #E53935 !important;
+  transform: translateY(-1px);
+}
+
+.ficha-tab-btn:hover i {
+  color: #E53935;
+}
+
+.ficha-tab-btn.active {
+  background: linear-gradient(135deg, #E53935 0%, #E11D48 100%) !important;
+  color: #FFFFFF !important;
+  border-color: #E53935 !important;
+  box-shadow: 0 3px 10px rgba(229, 57, 53, 0.28) !important;
+  transform: translateY(-1px);
+}
+
+.ficha-tab-btn.active i {
+  color: #FFFFFF !important;
+}
+
+.ficha-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: #E2E8F0;
+  color: #475569;
+  transition: all 0.18s ease;
+  line-height: 1;
+}
+
+.ficha-tab-btn:hover .ficha-tab-badge {
+  background: #FFE4E6;
+  color: #E53935;
+}
+
+.ficha-tab-btn.active .ficha-tab-badge {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: #FFFFFF !important;
+}
+
+/* ==========================================================================
+   Botones de Acción Clínica Modernos (Ficha Médica)
+   ========================================================================== */
+.btn-accion-clinica {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 0.65rem !important;
+  padding: 0.45rem 0.75rem !important;
+  border-radius: 0.85rem !important;
+  font-weight: 700 !important;
+  font-size: 0.83rem !important;
+  text-decoration: none !important;
+  border: 1.5px solid transparent !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  width: 100%;
+  text-align: left;
+}
+
+.btn-accion-clinica:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.07);
+}
+
+.btn-accion-clinica:active {
+  transform: translateY(0);
+}
+
+.btn-accion-clinica__icono {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.btn-accion-clinica:hover .btn-accion-clinica__icono {
+  transform: scale(1.1);
+}
+
+.btn-accion-clinica__texto {
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-accion-clinica__flecha {
+  margin-left: auto;
+  font-size: 0.78rem;
+  opacity: 0.4;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.btn-accion-clinica:hover .btn-accion-clinica__flecha {
+  transform: translateX(3px);
+  opacity: 0.85;
+}
+
+/* 1. Primario (Nueva Consulta SOAP) */
+.btn-accion-clinica--soap {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #be123c 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(190, 18, 60, 0.4) !important;
+  box-shadow: 0 4px 14px -2px rgba(225, 29, 72, 0.35) !important;
+  padding: 0.65rem 0.85rem !important;
+}
+.btn-accion-clinica--soap .btn-accion-clinica__icono {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+.btn-accion-clinica--soap .btn-accion-clinica__flecha {
+  color: #ffffff;
+  opacity: 0.7;
+}
+.btn-accion-clinica--soap:hover {
+  box-shadow: 0 8px 20px -2px rgba(225, 29, 72, 0.45) !important;
+  color: #ffffff !important;
+}
+
+/* 2. Vacuna (Verde Esmeralda) */
+.btn-accion-clinica--vacuna {
+  background: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+  color: #15803d !important;
+}
+.btn-accion-clinica--vacuna .btn-accion-clinica__icono {
+  background: #dcfce7;
+  color: #16a34a;
+}
+.btn-accion-clinica--vacuna:hover {
+  background: #dcfce7 !important;
+  border-color: #86efac !important;
+  color: #14532d !important;
+}
+
+/* 3. Desparasitar (Cian / Turquesa) */
+.btn-accion-clinica--desparasitacion {
+  background: #ecfeff !important;
+  border-color: #a5f3fc !important;
+  color: #0e7490 !important;
+}
+.btn-accion-clinica--desparasitacion .btn-accion-clinica__icono {
+  background: #cffafe;
+  color: #0891b2;
+}
+.btn-accion-clinica--desparasitacion:hover {
+  background: #cffafe !important;
+  border-color: #67e8f9 !important;
+  color: #155e75 !important;
+}
+
+/* 4. Hospitalizar (Coral / Carmín) */
+.btn-accion-clinica--hospital {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #be123c !important;
+}
+.btn-accion-clinica--hospital .btn-accion-clinica__icono {
+  background: #ffe4e6;
+  color: #e11d48;
+}
+.btn-accion-clinica--hospital:hover {
+  background: #ffe4e6 !important;
+  border-color: #fda4af !important;
+  color: #9f1239 !important;
+}
+
+/* 5. Cirugía (Slate / Índigo quirúrgico) */
+.btn-accion-clinica--cirugia {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+.btn-accion-clinica--cirugia .btn-accion-clinica__icono {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+.btn-accion-clinica--cirugia:hover {
+  background: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+/* 6. Consentimiento (Violeta / Púrpura médico legal) */
+.btn-accion-clinica--consentimiento {
+  background: #faf5ff !important;
+  border-color: #e9d5ff !important;
+  color: #7e22ce !important;
+}
+.btn-accion-clinica--consentimiento .btn-accion-clinica__icono {
+  background: #f3e8ff;
+  color: #9333ea;
+}
+.btn-accion-clinica--consentimiento:hover {
+  background: #f3e8ff !important;
+  border-color: #d8b4fe !important;
+  color: #581c87 !important;
+}
+
+/* 7. Certificado de Salud (Ámbar / Oro oficial) */
+.btn-accion-clinica--certificado {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #b45309 !important;
+}
+.btn-accion-clinica--certificado .btn-accion-clinica__icono {
+  background: #fef3c7;
+  color: #d97706;
+}
+.btn-accion-clinica--certificado:hover {
+  background: #fef3c7 !important;
+  border-color: #fcd34d !important;
+  color: #92400e !important;
+}
+
+/* 8. Ayuda Diagnóstica (Azul Royal) */
+.btn-accion-clinica--diagnostica {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+.btn-accion-clinica--diagnostica .btn-accion-clinica__icono {
+  background: #dbeafe;
+  color: #2563eb;
+}
+.btn-accion-clinica--diagnostica:hover,
+.btn-accion-clinica--diagnostica.show {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+  color: #1e40af !important;
+}
+
+/* ==========================================================================
+   Tarjetas de Resumen de Eventos (Perfil Mascota) con Destellos Rosados
+   ========================================================================== */
+.tarjeta-resumen-evento {
+  background: linear-gradient(145deg, #FFFFFF 0%, #FFF8F9 55%, #FFF0F3 100%) !important;
+  border: 1.5px solid #FECDD3 !important;
+  border-radius: 1.15rem !important;
+  padding: 1.1rem 1.15rem !important;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(225, 29, 72, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Efecto Destello / Shimmer Rosado */
+.tarjeta-resumen-evento::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -70%;
+  width: 60%;
+  height: 200%;
+  background: linear-gradient(
+    90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.65), 
+    rgba(254, 205, 211, 0.45), 
+    transparent
+  );
+  transform: rotate(25deg);
+  transition: all 0.65s ease;
+  pointer-events: none;
+}
+
+/* Resplandor superior derecho con brillo rosa */
+.tarjeta-resumen-evento::after {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 75px;
+  height: 75px;
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.16) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.tarjeta-resumen-evento:hover {
+  transform: translateY(-3px);
+  border-color: #FDA4AF !important;
+  box-shadow: 0 10px 24px -4px rgba(225, 29, 72, 0.16), 0 4px 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+.tarjeta-resumen-evento:hover::before {
+  left: 140%;
+}
+
+.tarjeta-resumen-evento:hover::after {
+  transform: scale(1.4);
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.28) 0%, transparent 70%);
+}
+
+.tarjeta-resumen-evento__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.tarjeta-resumen-evento__icono-circulo {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  background: #FFF1F2;
+  border: 1px solid #FECDD3;
+  box-shadow: 0 2px 6px rgba(225, 29, 72, 0.08);
+  transition: transform 0.2s ease;
+}
+
+.tarjeta-resumen-evento:hover .tarjeta-resumen-evento__icono-circulo {
+  transform: scale(1.1) rotate(4deg);
+}
+
+.tarjeta-resumen-evento__titulo {
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: #1E293B;
+  margin-bottom: 0.25rem;
+  line-height: 1.25;
+}
+
+.tarjeta-resumen-evento__meta {
+  font-size: 0.76rem;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.tarjeta-resumen-evento__link {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+.btn-accion-clinica--hospital {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #be123c !important;
+}
+.btn-accion-clinica--hospital .btn-accion-clinica__icono {
+  background: #ffe4e6;
+  color: #e11d48;
+}
+.btn-accion-clinica--hospital:hover {
+  background: #ffe4e6 !important;
+  border-color: #fda4af !important;
+  color: #9f1239 !important;
+}
+
+/* 5. Cirugía (Slate / Índigo quirúrgico) */
+.btn-accion-clinica--cirugia {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+.btn-accion-clinica--cirugia .btn-accion-clinica__icono {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+.btn-accion-clinica--cirugia:hover {
+  background: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+/* 6. Consentimiento (Violeta / Púrpura médico legal) */
+.btn-accion-clinica--consentimiento {
+  background: #faf5ff !important;
+  border-color: #e9d5ff !important;
+  color: #7e22ce !important;
+}
+.btn-accion-clinica--consentimiento .btn-accion-clinica__icono {
+  background: #f3e8ff;
+  color: #9333ea;
+}
+.btn-accion-clinica--consentimiento:hover {
+  background: #f3e8ff !important;
+  border-color: #d8b4fe !important;
+  color: #581c87 !important;
+}
+
+/* 7. Certificado de Salud (Ámbar / Oro oficial) */
+.btn-accion-clinica--certificado {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #b45309 !important;
+}
+.btn-accion-clinica--certificado .btn-accion-clinica__icono {
+  background: #fef3c7;
+  color: #d97706;
+}
+.btn-accion-clinica--certificado:hover {
+  background: #fef3c7 !important;
+  border-color: #fcd34d !important;
+  color: #92400e !important;
+}
+
+/* 8. Remisión Clínica (Cian / Celeste Clínico) */
+.btn-accion-clinica--remision {
+  background: #f0f9ff !important;
+  border-color: #bae6fd !important;
+  color: #0369a1 !important;
+}
+.btn-accion-clinica--remision .btn-accion-clinica__icono {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+.btn-accion-clinica--remision:hover {
+  background: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+  color: #075985 !important;
+}
+
+/* 9. Ayuda Diagnóstica (Azul Royal) */
+.btn-accion-clinica--diagnostica {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+.btn-accion-clinica--diagnostica .btn-accion-clinica__icono {
+  background: #dbeafe;
+  color: #2563eb;
+}
+.btn-accion-clinica--diagnostica:hover,
+.btn-accion-clinica--diagnostica.show {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+  color: #1e40af !important;
+}
+
+/* ==========================================================================
+   Tarjetas de Resumen de Eventos (Perfil Mascota) con Destellos Rosados
+   ========================================================================== */
+.tarjeta-resumen-evento {
+  background: linear-gradient(145deg, #FFFFFF 0%, #FFF8F9 55%, #FFF0F3 100%) !important;
+  border: 1.5px solid #FECDD3 !important;
+  border-radius: 1.15rem !important;
+  padding: 1.1rem 1.15rem !important;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(225, 29, 72, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Efecto Destello / Shimmer Rosado */
+.tarjeta-resumen-evento::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -70%;
+  width: 60%;
+  height: 200%;
+  background: linear-gradient(
+    90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.65), 
+    rgba(254, 205, 211, 0.45), 
+    transparent
+  );
+  transform: rotate(25deg);
+  transition: all 0.65s ease;
+  pointer-events: none;
+}
+
+/* Resplandor superior derecho con brillo rosa */
+.tarjeta-resumen-evento::after {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 75px;
+  height: 75px;
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.16) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.tarjeta-resumen-evento:hover {
+  transform: translateY(-3px);
+  border-color: #FDA4AF !important;
+  box-shadow: 0 10px 24px -4px rgba(225, 29, 72, 0.16), 0 4px 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+.tarjeta-resumen-evento:hover::before {
+  left: 140%;
+}
+
+.tarjeta-resumen-evento:hover::after {
+  transform: scale(1.4);
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.28) 0%, transparent 70%);
+}
+
+.tarjeta-resumen-evento__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.tarjeta-resumen-evento__icono-circulo {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  background: #FFF1F2;
+  border: 1px solid #FECDD3;
+  box-shadow: 0 2px 6px rgba(225, 29, 72, 0.08);
+  transition: transform 0.2s ease;
+}
+
+.tarjeta-resumen-evento:hover .tarjeta-resumen-evento__icono-circulo {
+  transform: scale(1.1) rotate(4deg);
+}
+
+.tarjeta-resumen-evento__titulo {
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: #1E293B;
+  margin-bottom: 0.25rem;
+  line-height: 1.25;
+}
+
+.tarjeta-resumen-evento__meta {
+  font-size: 0.76rem;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+
+.tarjeta-resumen-evento__link {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.18s ease;
+}
+
+.tarjeta-resumen-evento__link i {
+  transition: transform 0.18s ease;
+}
+
+.tarjeta-resumen-evento:hover .tarjeta-resumen-evento__link i {
+  transform: translateX(3px);
+}
+
+/* ==========================================================================
+   Banner Hero Perfil Mascota + Tutor (Deep Luxury Dark & Rose Glow)
+   ========================================================================== */
+.perfil-mascota-hero {
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 55%, #18181B 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 1.35rem !important;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 16px 36px -10px rgba(15, 23, 42, 0.45), 0 0 0 1px rgba(244, 63, 94, 0.15) !important;
+  transition: all 0.3s ease;
+}
+
+.perfil-mascota-hero::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -30px;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(225, 29, 72, 0.32) 0%, rgba(244, 63, 94, 0.12) 45%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.perfil-mascota-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  left: 20px;
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.18) 0%, transparent 65%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.perfil-mascota-avatar-wrapper {
+  position: relative;
+  display: inline-block;
+  padding: 4px;
+  background: linear-gradient(135deg, #FDA4AF 0%, #E11D48 60%, #BE123C 100%);
+  border-radius: 50%;
+  box-shadow: 0 10px 25px rgba(225, 29, 72, 0.4), 0 0 0 2px rgba(255, 255, 255, 0.15);
+  transition: transform 0.25s ease;
+}
+
+.perfil-mascota-avatar-wrapper:hover {
+  transform: scale(1.04);
+}
+
+.perfil-mascota-avatar-wrapper img, 
+.perfil-mascota-avatar-wrapper .avatar-placeholder {
+  border: 3px solid #0F172A !important;
+}
+
+.perfil-mascota-nombre {
+  font-family: var(--fuente-marca, 'Fredoka', 'Nunito', sans-serif);
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #FFFFFF !important;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.perfil-badge-chip {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #F1F5F9 !important;
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 50rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.perfil-badge-chip:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px);
+  color: #FFFFFF !important;
+}
+
+.perfil-badge-chip--highlight {
+  background: rgba(225, 29, 72, 0.28) !important;
+  border-color: rgba(251, 113, 133, 0.5) !important;
+  color: #FFE4E6 !important;
+  font-weight: 700;
+}
+
+.perfil-badge-chip--highlight i {
+  color: #FDA4AF !important;
+}
+
+/* Tarjeta de Tutor Flotante */
+.perfil-tutor-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 1rem;
+  padding: 0.85rem 1.1rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.perfil-tutor-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28) !important;
+}
+
+.perfil-tutor-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #FFF1F2;
+  color: #E11D48;
+  font-weight: 800;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #FECDD3;
+  flex-shrink: 0;
+}
+
+.perfil-tutor-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #E11D48;
+  margin-bottom: 0.1rem;
+  line-height: 1.1;
+}
+
+.perfil-tutor-nombre {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #0F172A;
+  text-decoration: none;
+  line-height: 1.2;
+  transition: color 0.15s ease;
+}
+
+.perfil-tutor-nombre:hover {
+  color: #E11D48;
+}
+
+/* Botones de Contacto Rápido Compactos */
+.btn-contacto-tutor {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  text-decoration: none;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.btn-contacto-tutor--tel {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #E2E8F0;
+}
+
+.btn-contacto-tutor--tel:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+  transform: scale(1.1);
+}
+
+.btn-contacto-tutor--wsp {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #BBF7D0;
+}
+
+.btn-contacto-tutor--wsp:hover {
+  background: #22C55E;
+  color: #FFFFFF;
+  border-color: #22C55E;
+  transform: scale(1.1);
+}
+
+/* ==========================================================================
+   Tarjetas Laterales Sandía (Ficha Técnica, Control de Peso, Acciones)
+   ========================================================================== */
+.tarjeta-lateral-sandia {
+  background: #FFFFFF !important;
+  border: 1.5px solid #F1F5F9 !important;
+  border-radius: 1.15rem !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(225, 29, 72, 0.03) !important;
+  transition: all 0.22s ease !important;
+  overflow: hidden;
+}
+
+.tarjeta-lateral-sandia:hover {
+  border-color: #FECDD3 !important;
+  box-shadow: 0 8px 24px rgba(225, 29, 72, 0.08), 0 2px 6px rgba(0, 0, 0, 0.02) !important;
+}
+
+.tarjeta-lateral-sandia__header {
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFF9FA 100%) !important;
+  border-bottom: 1px solid #FFE4E6 !important;
+  padding: 0.9rem 1.15rem !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tarjeta-lateral-sandia__titulo {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #1E293B;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.tarjeta-lateral-sandia__icono-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #FFF1F2;
+  color: #E11D48;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #FECDD3;
+}
+
+.ficha-dato-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed #F1F5F9;
+  font-size: 0.84rem;
+}
+
+.ficha-dato-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.ficha-dato-item__label {
+  color: #64748B;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ficha-dato-item__valor {
+  color: #0F172A;
+  font-weight: 700;
+  text-align: right;
+}
+
+.btn-accion-lateral {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  background: #FFFFFF;
+  border: 1.5px solid #F1F5F9;
+  border-radius: 0.85rem;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.84rem;
+  text-decoration: none;
+  transition: all 0.18s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.btn-accion-lateral:hover {
+  background: #FFF8F9;
+  border-color: #FDA4AF;
+  color: #E11D48;
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.08);
+}
+
+.btn-accion-lateral__icono {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  background: #F8FAFC;
+  color: #64748B;
+  border: 1px solid #E2E8F0;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.btn-accion-lateral:hover .btn-accion-lateral__icono {
+  background: #FFF1F2;
+  color: #E11D48;
+  border-color: #FECDD3;
+}
+

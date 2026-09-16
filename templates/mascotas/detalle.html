@@ -48,18 +48,18 @@
 {% endif %}
 
 {# Banner Hero: Perfil Principal del Paciente y Tutor #}
-<div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden bg-white">
-  <div class="card-body p-4">
+<div class="perfil-mascota-hero mb-4">
+  <div class="p-4 p-md-4 position-relative" style="z-index: 2;">
     <div class="row g-4 align-items-center">
       <div class="col-12 col-md-7 col-xl-8">
         <div class="d-flex align-items-start gap-3">
           {# Avatar con badge de especie y botón interactivo para cambiar foto #}
           <div class="position-relative flex-shrink-0">
-            <div class="position-relative d-inline-block">
-              {{ avatar_mascota(mascota, 84, 'rounded-circle shadow-xs') }}
+            <div class="perfil-mascota-avatar-wrapper">
+              {{ avatar_mascota(mascota, 88, 'rounded-circle') }}
               {% if puede_editar and not mascota.fallecido %}
-              <button type="button" class="btn btn-sm btn-danger position-absolute bottom-0 end-0 rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center border border-2 border-white" 
-                      style="width: 28px; height: 28px;" data-bs-toggle="modal" data-bs-target="#modal-foto" title="{{ 'Cambiar foto' if mascota.foto else 'Agregar foto' }}">
+              <button type="button" class="btn btn-sm btn-danger position-absolute bottom-0 end-0 rounded-circle shadow p-0 d-flex align-items-center justify-content-center border border-2 border-white" 
+                      style="width: 28px; height: 28px; background: #E11D48;" data-bs-toggle="modal" data-bs-target="#modal-foto" title="{{ 'Cambiar foto' if mascota.foto else 'Agregar foto' }}">
                 <i class="bi bi-camera-fill" style="font-size: 0.75rem;"></i>
               </button>
               {% else %}
@@ -72,52 +72,58 @@
 
           <div class="flex-grow-1 min-w-0">
             <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-              <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca);">{{ mascota.nombre }}</h1>
+              <h1 class="perfil-mascota-nombre mb-0">{{ mascota.nombre }}</h1>
               {% if mascota.fallecido %}
-                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">Fallecido</span>
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1.5 fw-bold">🕊️ Fallecido</span>
               {% elif not mascota.activo %}
-                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1">Inactiva</span>
+                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1.5 fw-bold">Inactiva</span>
               {% else %}
-                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">Activo</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1">
+                  <span class="spinner-grow spinner-grow-sm text-success" style="width: 6px; height: 6px;" role="status"></span> Activo
+                </span>
               {% endif %}
 
               {% if puede_editar and not mascota.fallecido %}
-              <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1 shadow-xs fw-semibold" data-bs-toggle="modal" data-bs-target="#modal-foto">
+              <button type="button" class="btn btn-xs btn-outline-light rounded-pill px-2.5 py-1 shadow-xs fw-semibold bg-white bg-opacity-10 border-white border-opacity-25 text-white" data-bs-toggle="modal" data-bs-target="#modal-foto">
                 <i class="bi bi-camera me-1"></i>{{ 'Cambiar foto' if mascota.foto else 'Agregar foto' }}
               </button>
               {% endif %}
             </div>
 
-            <div class="text-secondary small mb-2">
-              <strong class="text-dark">{{ mascota.especie_etiqueta }}</strong>
-              {% if mascota.raza %} · {{ mascota.raza.nombre }}{% endif %}
-              · {{ mascota.sexo_etiqueta }}
+            <div class="small mb-2.5 d-flex align-items-center flex-wrap gap-1" style="color: #94a3b8;">
+              <span class="fw-bold text-white fs-6">{{ mascota.especie_etiqueta }}</span>
+              {% if mascota.raza %}
+                <span style="color: #64748b;">·</span>
+                <span class="fw-semibold" style="color: #e2e8f0;">{{ mascota.raza.nombre }}</span>
+              {% endif %}
+              <span style="color: #64748b;">·</span>
+              <span>{{ mascota.sexo_etiqueta }}</span>
             </div>
 
-            <div class="d-flex flex-wrap gap-1 align-items-center">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
               {% if mascota.edad %}
-                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small">
-                  <i class="bi bi-cake2 me-1"></i>{{ mascota.edad }}
-                </span>
-              {% endif %}
-              {% if mascota.tamano %}
-                <span class="badge bg-light text-secondary border rounded-pill px-2 py-1 small">
-                  <i class="bi bi-rulers me-1"></i>{{ mascota.tamano_etiqueta }}
+                <span class="perfil-badge-chip perfil-badge-chip--highlight">
+                  <i class="bi bi-cake2-fill text-danger"></i> {{ mascota.edad }}
                 </span>
               {% endif %}
               {% if mascota.peso_actual %}
-                <span class="badge bg-light text-dark border rounded-pill px-2 py-1 small fw-semibold">
-                  <i class="bi bi-speedometer2 text-primary me-1"></i>{{ mascota.peso_actual.peso_kg|kg }}
+                <span class="perfil-badge-chip">
+                  <i class="bi bi-speedometer2 text-danger"></i> {{ mascota.peso_actual.peso_kg|kg }}
+                </span>
+              {% endif %}
+              {% if mascota.tamano %}
+                <span class="perfil-badge-chip">
+                  <i class="bi bi-rulers text-secondary"></i> {{ mascota.tamano_etiqueta }}
                 </span>
               {% endif %}
               {% if mascota.esterilizado %}
-                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small">
-                  <i class="bi bi-check2-circle me-1"></i>Esterilizado/a
+                <span class="perfil-badge-chip" style="color: #059669; border-color: #A7F3D0; background: #ECFDF5;">
+                  <i class="bi bi-check2-circle"></i> Esterilizado/a
                 </span>
               {% endif %}
               {% if mascota.microchip %}
-                <span class="badge bg-light text-muted border rounded-pill px-2 py-1 small">
-                  <i class="bi bi-cpu me-1"></i>Chip: {{ mascota.microchip }}
+                <span class="perfil-badge-chip">
+                  <i class="bi bi-cpu text-muted"></i> Chip: {{ mascota.microchip }}
                 </span>
               {% endif %}
             </div>
@@ -127,36 +133,50 @@
 
       {# Tarjeta Tutor y Contacto Rápido #}
       <div class="col-12 col-md-5 col-xl-4">
-        <div class="p-3 rounded-4 bg-light border border-light-subtle">
+        <div class="perfil-tutor-card">
           <div class="d-flex align-items-center justify-content-between mb-2">
             <div class="d-flex align-items-center gap-2 min-w-0">
-              <div class="rounded-circle bg-danger-subtle text-danger fw-bold d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
-                {{ tutor.nombre_completo[:1]|upper }}
+              <div class="perfil-tutor-avatar">
+                <i class="bi bi-person-fill"></i>
               </div>
               <div class="min-w-0">
-                <div class="small text-muted" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Tutor Responsable</div>
-                <a class="fw-bold text-dark text-decoration-none text-truncate d-block small" href="{{ url_for('tutores.detalle', tutor_id=tutor.id) }}">
+                <div class="perfil-tutor-label">
+                  <i class="bi bi-person-heart me-1"></i>Tutor Responsable
+                </div>
+                <a class="perfil-tutor-nombre text-truncate d-block" href="{{ url_for('tutores.detalle', tutor_id=tutor.id) }}" title="{{ tutor.nombre_completo }}">
                   {{ tutor.nombre_completo }}
                 </a>
               </div>
             </div>
+            {% if tutor.documento_numero %}
+              <span class="badge bg-light text-secondary border px-2 py-0.5 small" style="font-size: 0.68rem;">
+                {{ tutor.documento_tipo or 'CC' }} {{ tutor.documento_numero }}
+              </span>
+            {% endif %}
           </div>
 
           <div class="d-flex align-items-center justify-content-between pt-2 border-top gap-2">
-            <div class="small text-muted text-truncate">
+            <div class="small text-muted text-truncate d-flex align-items-center gap-1.5" style="font-size: 0.8rem;">
               {% if tutor.telefono %}
-                <i class="bi bi-telephone text-success me-1"></i>{{ tutor.telefono }}
+                <i class="bi bi-telephone-fill text-muted" style="font-size: 0.72rem;"></i>
+                <span class="fw-semibold text-dark">{{ tutor.telefono }}</span>
               {% else %}
-                <span class="text-muted">Sin teléfono</span>
+                <span class="text-muted fst-italic">Sin teléfono</span>
               {% endif %}
             </div>
-            <div class="d-flex gap-1 flex-shrink-0">
+            <div class="d-flex align-items-center gap-1.5 flex-shrink-0">
               {% if tutor.telefono %}
-                <a class="btn btn-sm btn-outline-secondary rounded-circle" href="tel:{{ tutor.telefono }}" title="Llamar" style="width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center;">
+                <a class="btn-contacto-tutor btn-contacto-tutor--tel" href="tel:{{ tutor.telefono }}" title="Llamar al tutor">
                   <i class="bi bi-telephone-fill"></i>
                 </a>
+                {% set msg_wsp = "Hola " ~ tutor.nombre_completo.split(' ')[0] ~ ", te escribimos de Sandía Medicina & Spa Veterinario sobre " ~ mascota.nombre ~ "." %}
+                {% set link_wsp = tutor.enlace_whatsapp(msg_wsp) %}
+                {% if link_wsp %}
+                  <a class="btn-contacto-tutor btn-contacto-tutor--wsp" href="{{ link_wsp }}" target="_blank" rel="noopener" title="Enviar WhatsApp">
+                    <i class="bi bi-whatsapp"></i>
+                  </a>
+                {% endif %}
               {% endif %}
-              {{ boton_whatsapp(tutor, "Hola " ~ tutor.nombre_completo.split(' ')[0] ~ ", te escribimos de Sandía Medicina & Spa Veterinario sobre " ~ mascota.nombre ~ ".", texto='', clase='btn-success rounded-circle') }}
             </div>
           </div>
         </div>
@@ -185,27 +205,27 @@
 <div class="row g-3 mb-4">
   {# 1. Última Consulta Médica #}
   <div class="col-6 col-lg-3">
-    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3">
-      <div class="d-flex align-items-center justify-content-between mb-2">
-        <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-1 small fw-semibold">
+    <div class="tarjeta-resumen-evento">
+      <div class="tarjeta-resumen-evento__header">
+        <span class="badge bg-danger-subtle text-danger rounded-pill px-2.5 py-1 small fw-semibold border border-danger-subtle">
           <i class="bi bi-journal-medical me-1"></i>Consulta Médica
         </span>
-        <span class="fs-5">🩺</span>
+        <div class="tarjeta-resumen-evento__icono-circulo">🩺</div>
       </div>
       {% if resumen.ultima_consulta %}
-        <div class="fw-bold text-dark small text-truncate">
+        <div class="tarjeta-resumen-evento__titulo text-truncate" title="{{ resumen.ultima_consulta.diagnostico or resumen.ultima_consulta.motivo_consulta or 'Atención SOAP' }}">
           {{ resumen.ultima_consulta.diagnostico or resumen.ultima_consulta.motivo_consulta or 'Atención SOAP' }}
         </div>
-        <div class="small text-muted mt-1">
-          <i class="bi bi-calendar3 me-1"></i>{{ resumen.ultima_consulta.fecha_hora|fecha }}
+        <div class="tarjeta-resumen-evento__meta">
+          <i class="bi bi-calendar3"></i> {{ resumen.ultima_consulta.fecha_hora|fecha }}
         </div>
-        <a href="{{ url_for('historias.consulta_detalle', id=resumen.ultima_consulta.id) }}" class="btn btn-xs btn-link text-danger p-0 mt-2 text-decoration-none small fw-semibold">
+        <a href="{{ url_for('historias.consulta_detalle', id=resumen.ultima_consulta.id) }}" class="tarjeta-resumen-evento__link text-danger">
           Ver consulta <i class="bi bi-arrow-right"></i>
         </a>
       {% else %}
-        <div class="text-muted small my-2">Sin consultas registradas</div>
-        <a href="{{ url_for('historias.consulta_nueva', mascota_id=mascota.id) }}" class="btn btn-xs btn-link text-danger p-0 text-decoration-none small">
-          + Iniciar consulta
+        <div class="text-muted small my-auto py-2">Sin consultas registradas</div>
+        <a href="{{ url_for('historias.consulta_nueva', mascota_id=mascota.id) }}" class="tarjeta-resumen-evento__link text-danger">
+          + Iniciar consulta <i class="bi bi-arrow-right"></i>
         </a>
       {% endif %}
     </div>
@@ -213,27 +233,27 @@
 
   {# 2. Último Spa & Peluquería #}
   <div class="col-6 col-lg-3">
-    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3">
-      <div class="d-flex align-items-center justify-content-between mb-2">
-        <span class="badge bg-warning-subtle text-dark rounded-pill px-2 py-1 small fw-semibold">
+    <div class="tarjeta-resumen-evento">
+      <div class="tarjeta-resumen-evento__header">
+        <span class="badge bg-warning-subtle text-dark rounded-pill px-2.5 py-1 small fw-semibold border border-warning-subtle">
           <i class="bi bi-scissors me-1"></i>Spa & Peluquería
         </span>
-        <span class="fs-5">✂️</span>
+        <div class="tarjeta-resumen-evento__icono-circulo">✂️</div>
       </div>
       {% if resumen.ultimo_spa %}
-        <div class="fw-bold text-dark small text-truncate">
+        <div class="tarjeta-resumen-evento__titulo text-truncate" title="{{ resumen.ultimo_spa.servicio_spa.nombre if resumen.ultimo_spa.servicio_spa else 'Servicio Spa' }}">
           {{ resumen.ultimo_spa.servicio_spa.nombre if resumen.ultimo_spa.servicio_spa else 'Servicio Spa' }}
         </div>
-        <div class="small text-muted mt-1">
-          <i class="bi bi-calendar3 me-1"></i>{{ resumen.ultimo_spa.fecha_hora|fecha }} · <span class="badge bg-light text-secondary border">{{ resumen.ultimo_spa.estado_etiqueta }}</span>
+        <div class="tarjeta-resumen-evento__meta">
+          <i class="bi bi-calendar3"></i> {{ resumen.ultimo_spa.fecha_hora|fecha }} · <span class="badge bg-light text-secondary border px-1.5 py-0.5" style="font-size: 0.7rem;">{{ resumen.ultimo_spa.estado_etiqueta }}</span>
         </div>
-        <a href="{{ url_for('spa.cita_detalle', id=resumen.ultimo_spa.id) }}" class="btn btn-xs btn-link text-warning text-dark p-0 mt-2 text-decoration-none small fw-semibold">
+        <a href="{{ url_for('spa.cita_detalle', id=resumen.ultimo_spa.id) }}" class="tarjeta-resumen-evento__link text-dark">
           Ver turno spa <i class="bi bi-arrow-right"></i>
         </a>
       {% else %}
-        <div class="text-muted small my-2">Sin servicios de spa</div>
-        <a href="{{ url_for('spa.cita_nueva', mascota_id=mascota.id) }}" class="btn btn-xs btn-link text-warning text-dark p-0 text-decoration-none small">
-          + Agendar spa
+        <div class="text-muted small my-auto py-2">Sin servicios de spa</div>
+        <a href="{{ url_for('spa.cita_nueva', mascota_id=mascota.id) }}" class="tarjeta-resumen-evento__link text-dark">
+          + Agendar spa <i class="bi bi-arrow-right"></i>
         </a>
       {% endif %}
     </div>
@@ -241,30 +261,32 @@
 
   {# 3. Última Vacunación #}
   <div class="col-6 col-lg-3">
-    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3">
-      <div class="d-flex align-items-center justify-content-between mb-2">
-        <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1 small fw-semibold">
+    <div class="tarjeta-resumen-evento">
+      <div class="tarjeta-resumen-evento__header">
+        <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-1 small fw-semibold border border-success-subtle">
           <i class="bi bi-shield-check me-1"></i>Vacunación
         </span>
-        <span class="fs-5">💉</span>
+        <div class="tarjeta-resumen-evento__icono-circulo">💉</div>
       </div>
       {% if resumen.ultima_vacuna %}
-        <div class="fw-bold text-dark small text-truncate">
+        <div class="tarjeta-resumen-evento__titulo text-truncate" title="{{ resumen.ultima_vacuna.nombre_vacuna }}">
           {{ resumen.ultima_vacuna.nombre_vacuna }}
         </div>
-        <div class="small text-muted mt-1">
-          <i class="bi bi-calendar3 me-1"></i>{{ resumen.ultima_vacuna.fecha_aplicacion|fecha }}
-          {% if resumen.ultima_vacuna.fecha_proxima %}
-            <div class="text-success small fw-semibold">Próx: {{ resumen.ultima_vacuna.fecha_proxima|fecha }}</div>
-          {% endif %}
+        <div class="tarjeta-resumen-evento__meta">
+          <i class="bi bi-calendar3"></i> {{ resumen.ultima_vacuna.fecha_aplicacion|fecha }}
         </div>
-        <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="btn btn-xs btn-link text-success p-0 mt-2 text-decoration-none small fw-semibold">
+        {% if resumen.ultima_vacuna.fecha_proxima %}
+          <div class="text-success small fw-semibold mt-1" style="font-size: 0.75rem;">
+            <i class="bi bi-bell me-1"></i>Próx: {{ resumen.ultima_vacuna.fecha_proxima|fecha }}
+          </div>
+        {% endif %}
+        <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="tarjeta-resumen-evento__link text-success">
           Ver plan vacunas <i class="bi bi-arrow-right"></i>
         </a>
       {% else %}
-        <div class="text-muted small my-2">Sin vacunas registradas</div>
-        <a href="{{ url_for('historias.vacuna_nueva', mascota_id=mascota.id) }}" class="btn btn-xs btn-link text-success p-0 text-decoration-none small">
-          + Registrar vacuna
+        <div class="text-muted small my-auto py-2">Sin vacunas registradas</div>
+        <a href="{{ url_for('historias.vacuna_nueva', mascota_id=mascota.id) }}" class="tarjeta-resumen-evento__link text-success">
+          + Registrar vacuna <i class="bi bi-arrow-right"></i>
         </a>
       {% endif %}
     </div>
@@ -272,28 +294,32 @@
 
   {# 4. Cita Médica / Total de Visitas #}
   <div class="col-6 col-lg-3">
-    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3">
-      <div class="d-flex align-items-center justify-content-between mb-2">
-        <span class="badge bg-info-subtle text-primary rounded-pill px-2 py-1 small fw-semibold">
+    <div class="tarjeta-resumen-evento">
+      <div class="tarjeta-resumen-evento__header">
+        <span class="badge bg-info-subtle text-primary rounded-pill px-2.5 py-1 small fw-semibold border border-info-subtle">
           <i class="bi bi-calendar-check me-1"></i>Cita / Actividad
         </span>
-        <span class="fs-5">📅</span>
+        <div class="tarjeta-resumen-evento__icono-circulo">📅</div>
       </div>
       {% if resumen.ultima_cita %}
-        <div class="fw-bold text-dark small text-truncate">
-          {{ resumen.ultima_cita.tipo_etiqueta }} ({{ resumen.ultima_cita.estado.capitalize() }})
+        <div class="tarjeta-resumen-evento__titulo text-truncate">
+          {{ resumen.ultima_cita.tipo_etiqueta }} <span class="badge bg-light text-primary border" style="font-size: 0.7rem;">{{ resumen.ultima_cita.estado.capitalize() }}</span>
         </div>
-        <div class="small text-muted mt-1">
-          <i class="bi bi-calendar3 me-1"></i>{{ resumen.ultima_cita.fecha_hora|fecha_hora }}
+        <div class="tarjeta-resumen-evento__meta">
+          <i class="bi bi-calendar3"></i> {{ resumen.ultima_cita.fecha_hora|fecha_hora }}
         </div>
-        <a href="{{ url_for('agenda.detalle', id=resumen.ultima_cita.id) }}" class="btn btn-xs btn-link text-primary p-0 mt-2 text-decoration-none small fw-semibold">
+        <a href="{{ url_for('agenda.detalle', id=resumen.ultima_cita.id) }}" class="tarjeta-resumen-evento__link text-primary">
           Gestionar cita <i class="bi bi-arrow-right"></i>
         </a>
       {% else %}
-        <div class="fw-bold text-dark fs-5 mt-1">{{ resumen.total_visitas }}</div>
-        <div class="small text-muted">Visitas totales a la clínica</div>
-        <a href="{{ url_for('agenda.nueva', mascota_id=mascota.id) }}" class="btn btn-xs btn-link text-primary p-0 mt-2 text-decoration-none small">
-          + Agendar cita
+        <div class="tarjeta-resumen-evento__titulo fs-5 text-dark mt-1">
+          {{ resumen.total_visitas }}
+        </div>
+        <div class="tarjeta-resumen-evento__meta">
+          Visitas registradas en clínica
+        </div>
+        <a href="{{ url_for('agenda.nueva', mascota_id=mascota.id) }}" class="tarjeta-resumen-evento__link text-primary">
+          + Agendar cita <i class="bi bi-arrow-right"></i>
         </a>
       {% endif %}
     </div>
@@ -402,61 +428,79 @@
     </div>
   </div>
 
-  {# Columna Secundaria (Derecha): Datos de la Mascota, Curva de Peso (Segundo Plano) & Opciones #}
+  {# Columna Secundaria (Derecha): Datos de la Mascota, Curva de Peso & Opciones #}
   <div class="col-12 col-lg-5 col-xl-4">
     {# 1. Ficha de Datos Clínicos #}
-    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
-      <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
-        <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Ficha Técnica</span>
+    <div class="tarjeta-lateral-sandia mb-4">
+      <div class="tarjeta-lateral-sandia__header">
+        <div class="tarjeta-lateral-sandia__titulo">
+          <div class="tarjeta-lateral-sandia__icono-badge">📋</div>
+          <span>Ficha Técnica</span>
+        </div>
         {% if puede_editar and not mascota.fallecido %}
-          <a href="{{ url_for('mascotas.editar', mascota_id=mascota.id) }}" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1 small">
+          <a href="{{ url_for('mascotas.editar', mascota_id=mascota.id) }}" class="btn btn-xs btn-outline-danger rounded-pill px-2.5 py-1 small fw-semibold">
             <i class="bi bi-pencil me-1"></i>Editar
           </a>
         {% endif %}
       </div>
-      <div class="card-body p-4">
-        <dl class="row g-2 mb-0 small">
-          <dt class="col-5 text-muted fw-normal">Nacimiento:</dt>
-          <dd class="col-7 text-dark fw-semibold mb-2">
-            {% if mascota.fecha_nacimiento %}
-              {{ mascota.fecha_nacimiento|fecha }}{% if mascota.fecha_nacimiento_estimada %} <span class="text-muted fw-normal">(estimada)</span>{% endif %}
-            {% else %}
-              —
-            {% endif %}
-          </dd>
+      <div class="card-body p-3 p-xl-4">
+        <div class="d-flex flex-column">
+          <div class="ficha-dato-item">
+            <span class="ficha-dato-item__label"><i class="bi bi-cake2 text-danger"></i> Nacimiento</span>
+            <span class="ficha-dato-item__valor">
+              {% if mascota.fecha_nacimiento %}
+                {{ mascota.fecha_nacimiento|fecha }}{% if mascota.fecha_nacimiento_estimada %} <small class="text-muted fw-normal">(est.)</small>{% endif %}
+              {% else %}
+                <span class="text-muted fw-normal">—</span>
+              {% endif %}
+            </span>
+          </div>
 
-          <dt class="col-5 text-muted fw-normal">Color / Capa:</dt>
-          <dd class="col-7 text-dark fw-semibold mb-2">{{ mascota.color or '—' }}</dd>
+          <div class="ficha-dato-item">
+            <span class="ficha-dato-item__label"><i class="bi bi-palette text-warning"></i> Color / Capa</span>
+            <span class="ficha-dato-item__valor">{{ mascota.color or '—' }}</span>
+          </div>
 
-          <dt class="col-5 text-muted fw-normal">Señas particulares:</dt>
-          <dd class="col-7 text-dark fw-semibold mb-2">{{ mascota.senas_particulares or '—' }}</dd>
+          <div class="ficha-dato-item">
+            <span class="ficha-dato-item__label"><i class="bi bi-search text-info"></i> Señas particulares</span>
+            <span class="ficha-dato-item__valor text-truncate ms-2" style="max-width: 170px;" title="{{ mascota.senas_particulares or '' }}">{{ mascota.senas_particulares or '—' }}</span>
+          </div>
 
-          <dt class="col-5 text-muted fw-normal">Microchip:</dt>
-          <dd class="col-7 text-dark fw-semibold mb-2">{{ mascota.microchip or '—' }}</dd>
+          <div class="ficha-dato-item">
+            <span class="ficha-dato-item__label"><i class="bi bi-cpu text-primary"></i> Microchip</span>
+            <span class="ficha-dato-item__valor">{{ mascota.microchip or '—' }}</span>
+          </div>
 
-          <dt class="col-5 text-muted fw-normal">Tamaño:</dt>
-          <dd class="col-7 text-dark fw-semibold mb-2">{{ mascota.tamano_etiqueta or '—' }}</dd>
+          <div class="ficha-dato-item">
+            <span class="ficha-dato-item__label"><i class="bi bi-rulers text-secondary"></i> Tamaño</span>
+            <span class="ficha-dato-item__valor">{{ mascota.tamano_etiqueta or '—' }}</span>
+          </div>
 
-          <dt class="col-5 text-muted fw-normal">Registro:</dt>
-          <dd class="col-7 text-dark fw-semibold mb-0">
-            {{ mascota.fecha_registro|fecha }}
-            {% if mascota.creado_por %}<div class="text-muted fw-normal" style="font-size: 0.75rem;">por {{ mascota.creado_por.nombre }}</div>{% endif %}
-          </dd>
-        </dl>
+          <div class="ficha-dato-item">
+            <span class="ficha-dato-item__label"><i class="bi bi-calendar3 text-success"></i> Registro</span>
+            <div class="text-end">
+              <div class="ficha-dato-item__valor">{{ mascota.fecha_registro|fecha }}</div>
+              {% if mascota.creado_por %}<div class="text-muted fw-normal" style="font-size: 0.72rem;">por {{ mascota.creado_por.nombre }}</div>{% endif %}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    {# 2. Control y Curva de Peso (En Segundo Plano / Compacto) #}
-    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4" id="peso">
-      <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
-        <div>
-          <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Control de Peso</span>
+    {# 2. Control y Curva de Peso #}
+    <div class="tarjeta-lateral-sandia mb-4" id="peso">
+      <div class="tarjeta-lateral-sandia__header">
+        <div class="d-flex align-items-center gap-2">
+          <div class="tarjeta-lateral-sandia__icono-badge">⚖️</div>
+          <div class="tarjeta-lateral-sandia__titulo">Control de Peso</div>
           {% if mascota.peso_actual %}
-            <span class="badge bg-primary-subtle text-primary ms-1 small">{{ mascota.peso_actual.peso_kg|kg }}</span>
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5 small fw-bold" style="font-size: 0.72rem;">
+              {{ mascota.peso_actual.peso_kg|kg }}
+            </span>
           {% endif %}
         </div>
         {% if puede_editar and not mascota.fallecido %}
-          <button class="btn btn-xs btn-outline-primary rounded-pill px-2 py-1 small" type="button" data-bs-toggle="collapse" data-bs-target="#form-peso" aria-expanded="false" aria-controls="form-peso">
+          <button class="btn btn-xs btn-outline-danger rounded-pill px-2.5 py-1 small fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#form-peso" aria-expanded="false" aria-controls="form-peso">
             <i class="bi bi-plus-lg me-1"></i>Nuevo
           </button>
         {% endif %}
@@ -478,28 +522,28 @@
         {% endif %}
 
         {# Gráfica compacta de peso #}
-        <div id="grafica-peso" class="grafica-peso mb-3" style="max-height: 160px;" data-puntos='{{ datos_peso|tojson }}' aria-label="Gráfica de peso"></div>
+        <div id="grafica-peso" class="grafica-peso mb-3 border rounded-3 p-2 bg-light bg-opacity-50" style="max-height: 160px;" data-puntos='{{ datos_peso|tojson }}' aria-label="Gráfica de peso"></div>
 
         {# Tabla compacta de pesos #}
         {% if mascota.registros_peso %}
-        <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
-          <table class="table table-sm align-middle mb-0 small">
+        <div class="table-responsive rounded-3 border" style="max-height: 180px; overflow-y: auto;">
+          <table class="table table-sm table-hover align-middle mb-0 small">
             <thead class="table-light">
               <tr>
-                <th>Fecha</th>
-                <th>Peso</th>
-                <th>Registró</th>
+                <th class="ps-3 py-2 text-muted fw-bold">Fecha</th>
+                <th class="py-2 text-muted fw-bold">Peso</th>
+                <th class="py-2 text-muted fw-bold">Registró</th>
                 {% if current_user.es_admin %}<th></th>{% endif %}
               </tr>
             </thead>
             <tbody>
               {% for peso in mascota.registros_peso|reverse %}
               <tr>
-                <td class="text-muted">{{ peso.fecha|fecha }}</td>
+                <td class="ps-3 text-muted">{{ peso.fecha|fecha }}</td>
                 <td class="fw-bold text-dark">{{ peso.peso_kg|kg }}</td>
                 <td class="text-secondary small">{{ peso.registrado_por.nombre if peso.registrado_por else '—' }}</td>
                 {% if current_user.es_admin %}
-                <td class="text-end">
+                <td class="text-end pe-2">
                   <form method="post" action="{{ url_for('mascotas.eliminar_peso', mascota_id=mascota.id, peso_id=peso.id) }}" data-confirmar="¿Eliminar este registro de peso?">
                     {{ form_csrf.hidden_tag() }}
                     <button class="btn btn-xs text-danger p-0 border-0" type="submit" title="Eliminar"><i class="bi bi-trash"></i></button>
@@ -519,48 +563,59 @@
 
     {# 3. Opciones y Acciones de Ficha #}
     {% if puede_editar %}
-    <div class="card border-0 shadow-sm rounded-4 bg-white p-3">
-      <div class="fw-bold text-dark small text-uppercase mb-2" style="letter-spacing: 0.5px;">Acciones de Paciente</div>
-      <div class="d-flex flex-column gap-2">
-        <button class="btn btn-sm btn-outline-secondary rounded-pill text-start" type="button" data-bs-toggle="collapse" data-bs-target="#form-foto" aria-expanded="false" aria-controls="form-foto">
-          <i class="bi bi-camera me-2 text-primary"></i>{{ 'Actualizar foto del paciente' if mascota.foto else 'Agregar foto del paciente' }}
-        </button>
-
-        <div class="collapse" id="form-foto">
-          <form method="post" action="{{ url_for('mascotas.subir_foto', mascota_id=mascota.id) }}" enctype="multipart/form-data" class="p-3 bg-light rounded-3 border" novalidate>
-            {{ form_foto.hidden_tag() }}
-            {{ campo_archivo(form_foto.foto, clase_extra="mb-2", capture="environment") }}
-            {{ form_foto.enviar(class_="btn btn-sm btn-primary rounded-pill w-100") }}
-          </form>
+    <div class="tarjeta-lateral-sandia">
+      <div class="tarjeta-lateral-sandia__header">
+        <div class="tarjeta-lateral-sandia__titulo">
+          <div class="tarjeta-lateral-sandia__icono-badge">⚡</div>
+          <span>Acciones de Paciente</span>
         </div>
-
-        {% if not mascota.fallecido %}
-          <button class="btn btn-sm btn-outline-secondary rounded-pill text-start" type="button" data-bs-toggle="collapse" data-bs-target="#form-fallecimiento" aria-expanded="false" aria-controls="form-fallecimiento">
-            <i class="bi bi-heart me-2 text-danger"></i>Registrar fallecimiento
+      </div>
+      <div class="card-body p-3">
+        <div class="d-flex flex-column gap-2">
+          <button class="btn-accion-lateral text-start" type="button" data-bs-toggle="collapse" data-bs-target="#form-foto" aria-expanded="false" aria-controls="form-foto">
+            <div class="btn-accion-lateral__icono text-primary"><i class="bi bi-camera-fill"></i></div>
+            <span>{{ 'Actualizar foto del paciente' if mascota.foto else 'Agregar foto del paciente' }}</span>
           </button>
-          <div class="collapse" id="form-fallecimiento">
-            <form method="post" action="{{ url_for('mascotas.registrar_fallecimiento', mascota_id=mascota.id) }}" class="p-3 bg-light rounded-3 border" novalidate>
-              {{ form_fallecimiento.hidden_tag() }}
-              {{ campo(form_fallecimiento.fecha_fallecimiento, type="date", clase_extra="mb-2") }}
-              {{ form_fallecimiento.enviar(class_="btn btn-sm btn-outline-danger rounded-pill w-100") }}
+
+          <div class="collapse" id="form-foto">
+            <form method="post" action="{{ url_for('mascotas.subir_foto', mascota_id=mascota.id) }}" enctype="multipart/form-data" class="p-3 bg-light rounded-3 border" novalidate>
+              {{ form_foto.hidden_tag() }}
+              {{ campo_archivo(form_foto.foto, clase_extra="mb-2", capture="environment") }}
+              {{ form_foto.enviar(class_="btn btn-sm btn-primary rounded-pill w-100") }}
             </form>
           </div>
 
-          <form method="post" action="{{ url_for('mascotas.cambiar_estado', mascota_id=mascota.id) }}"
-                data-confirmar="{{ '¿Desactivar esta ficha? Se conserva todo el historial.' if mascota.activo else '¿Reactivar esta ficha?' }}">
-            {{ form_csrf.hidden_tag() }}
-            <button class="btn btn-sm btn-outline-{{ 'warning text-dark' if mascota.activo else 'success' }} rounded-pill text-start w-100" type="submit">
-              <i class="bi {{ 'bi-slash-circle text-warning' if mascota.activo else 'bi-check-circle text-success' }} me-2"></i>{{ 'Desactivar ficha' if mascota.activo else 'Reactivar ficha' }}
+          {% if not mascota.fallecido %}
+            <button class="btn-accion-lateral text-start" type="button" data-bs-toggle="collapse" data-bs-target="#form-fallecimiento" aria-expanded="false" aria-controls="form-fallecimiento">
+              <div class="btn-accion-lateral__icono text-danger"><i class="bi bi-heart-break-fill"></i></div>
+              <span>Registrar fallecimiento</span>
             </button>
-          </form>
-        {% else %}
-          <form method="post" action="{{ url_for('mascotas.deshacer_fallecimiento', mascota_id=mascota.id) }}" data-confirmar="¿Deshacer el registro de fallecimiento?">
-            {{ form_csrf.hidden_tag() }}
-            <button class="btn btn-sm btn-outline-secondary rounded-pill text-start w-100" type="submit">
-              <i class="bi bi-arrow-counterclockwise me-2"></i>Deshacer fallecimiento
-            </button>
-          </form>
-        {% endif %}
+            <div class="collapse" id="form-fallecimiento">
+              <form method="post" action="{{ url_for('mascotas.registrar_fallecimiento', mascota_id=mascota.id) }}" class="p-3 bg-light rounded-3 border" novalidate>
+                {{ form_fallecimiento.hidden_tag() }}
+                {{ campo(form_fallecimiento.fecha_fallecimiento, type="date", clase_extra="mb-2") }}
+                {{ form_fallecimiento.enviar(class_="btn btn-sm btn-outline-danger rounded-pill w-100") }}
+              </form>
+            </div>
+
+            <form method="post" action="{{ url_for('mascotas.cambiar_estado', mascota_id=mascota.id) }}"
+                  data-confirmar="{{ '¿Desactivar esta ficha? Se conserva todo el historial.' if mascota.activo else '¿Reactivar esta ficha?' }}">
+              {{ form_csrf.hidden_tag() }}
+              <button class="btn-accion-lateral text-start w-100" type="submit">
+                <div class="btn-accion-lateral__icono text-warning"><i class="bi {{ 'bi-slash-circle-fill' if mascota.activo else 'bi-check-circle-fill' }}"></i></div>
+                <span>{{ 'Desactivar ficha' if mascota.activo else 'Reactivar ficha' }}</span>
+              </button>
+            </form>
+          {% else %}
+            <form method="post" action="{{ url_for('mascotas.deshacer_fallecimiento', mascota_id=mascota.id) }}" data-confirmar="¿Deshacer el registro de fallecimiento?">
+              {{ form_csrf.hidden_tag() }}
+              <button class="btn-accion-lateral text-start w-100" type="submit">
+                <div class="btn-accion-lateral__icono text-secondary"><i class="bi bi-arrow-counterclockwise"></i></div>
+                <span>Deshacer fallecimiento</span>
+              </button>
+            </form>
+          {% endif %}
+        </div>
       </div>
     </div>
     {% endif %}

@@ -13,6 +13,7 @@ from models import (
     Cirugia,
     Cita,
     CitaSpa,
+    ConsentimientoEmitido,
     ConsultaMedica,
     DesparasitacionMascota,
     ExamenLaboratorio,
@@ -20,6 +21,7 @@ from models import (
     Mascota,
     Raza,
     RegistroPeso,
+    RemisionInterna,
     Tutor,
     VacunaMascota,
     db,
@@ -285,6 +287,38 @@ def construir_linea_tiempo(mascota: Mascota) -> list[dict]:
             "titulo": f"Examen: {ex.tipo_examen}",
             "detalle": f"Estado: {ex.estado.capitalize()}{(' · Lab: ' + ex.laboratorio_externo) if ex.laboratorio_externo else ''}",
             "url": url_for("historias.examen_detalle", id=ex.id),
+        })
+
+    # 10. Remisiones Clínicas Internas
+    remisiones = db.session.execute(
+        select(RemisionInterna).where(RemisionInterna.mascota_id == mascota.id).order_by(RemisionInterna.fecha_remision.desc())
+    ).scalars().all()
+    for rem in remisiones:
+        vet_nom = rem.veterinario.nombre if rem.veterinario else "Veterinario"
+        dest = f" a {rem.centro_medico_destino}" if rem.centro_medico_destino else ""
+        eventos.append({
+            "fecha": rem.fecha_remision,
+            "tipo": "remision",
+            "categoria": "Remisión",
+            "icono": "bi-send-check-fill",
+            "color": "info",
+            "titulo": f"Remisión: {rem.especialidad_destino}{dest}",
+            "detalle": f"Motivo: {rem.motivo_remision[:70]} · Remitido por: {vet_nom}",
+            "url": url_for("historias.ficha_medica", mascota_id=mascota.id, tab="remisiones"),
+        })
+
+    # 11. Consentimientos Informados Digitales
+    for cons in mascota.consentimientos:
+        estado_badge = "Firmado" if cons.esta_firmado else "Pendiente de firma"
+        eventos.append({
+            "fecha": cons.creado_en,
+            "tipo": "consentimiento",
+            "categoria": "Consentimiento",
+            "icono": "bi-shield-check" if cons.esta_firmado else "bi-file-earmark-medical",
+            "color": "danger",
+            "titulo": f"Consentimiento: {cons.titulo}",
+            "detalle": f"Estado: {estado_badge} · Tipo: {cons.tipo_etiqueta}",
+            "url": url_for("historias.ficha_medica", mascota_id=mascota.id, tab="consentimientos"),
         })
 
     if mascota.fallecido and mascota.fecha_fallecimiento:

@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block titulo %}Certificados Nacionales de Salud Animal · Sandía{% endblock %}
+
+{% block contenido %}
+<div class="container-fluid py-3 px-md-4">
+  
+  <!-- Encabezado de Sección -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1 small">
+          <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}" class="text-decoration-none">Inicio</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Certificados de Salud Animal</li>
+        </ol>
+      </nav>
+      <h3 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style="font-family: 'Fredoka', 'Quicksand', sans-serif;">
+        <i class="bi bi-award-fill text-danger"></i> Certificados de Salud Animal & Viajes
+      </h3>
+      <p class="text-muted small mb-0">Emisión médico-legal de certificados de aptitud física, movilización nacional/internacional y verificación QR anti-fraude</p>
+    </div>
+  </div>
+
+  <!-- Barra de Búsqueda y Filtros -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
+    <form method="get" action="{{ url_for('certificados.lista') }}" class="row g-2 align-items-center">
+      <div class="col-12 col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-light border-end-0 rounded-start-pill text-muted"><i class="bi bi-search"></i></span>
+          <input type="text" name="q" class="form-control bg-light border-start-0 rounded-end-pill" placeholder="Buscar por consecutivo, paciente, tutor o destino..." value="{{ q }}">
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <select name="finalidad" class="form-select rounded-pill" onchange="this.form.submit()">
+          <option value="">Todas las finalidades</option>
+          {% for k, v in finalidades.items() %}
+          <option value="{{ k }}" {% if finalidad_filtro == k %}selected{% endif %}>{{ v }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <select name="estado" class="form-select rounded-pill" onchange="this.form.submit()">
+          <option value="">Todos los estados</option>
+          {% for k, v in estados.items() %}
+          <option value="{{ k }}" {% if estado_filtro == k %}selected{% endif %}>{{ v }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-2 d-flex gap-1">
+        <button type="submit" class="btn btn-danger rounded-pill fw-bold w-100 shadow-xs">Filtrar</button>
+        {% if q or finalidad_filtro or estado_filtro %}
+        <a href="{{ url_for('certificados.lista') }}" class="btn btn-outline-secondary rounded-pill" title="Limpiar filtros">
+          <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Listado de Certificados Emitidos -->
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 bg-white">
+    <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+      <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+        <i class="bi bi-file-earmark-medical-fill text-danger"></i> Certificados Expedidos 
+        <span class="badge bg-danger-subtle text-danger rounded-pill">{{ certificados|length }}</span>
+      </h6>
+    </div>
+
+    {% if certificados %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light text-muted small text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+          <tr>
+            <th class="ps-4">No. Consecutivo / Emisión</th>
+            <th>Paciente & Tutor</th>
+            <th>Finalidad & Trayecto</th>
+            <th>Vigencia Sanitaria</th>
+            <th>Médico Veterinario</th>
+            <th>Estado</th>
+            <th class="text-end pe-4">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="border-top-0">
+          {% for c in certificados %}
+          <tr>
+            <td class="ps-4">
+              <span class="fw-bold text-danger d-block font-monospace">{{ c.consecutivo }}</span>
+              <small class="text-muted">{{ c.fecha_emision.strftime('%d/%m/%Y %I:%M %p') }}</small>
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span class="fs-5">🐾</span>
+                <div>
+                  <a href="{{ url_for('historias.ficha_medica', mascota_id=c.mascota_id) }}" class="fw-bold text-dark text-decoration-none hover-link">
+                    {{ c.mascota.nombre }}
+                  </a>
+                  <div class="small text-muted text-truncate" style="max-width: 170px;">
+                    {{ c.tutor.nombre_completo }}
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="fw-semibold text-dark d-block">{{ c.finalidad_etiqueta }}</span>
+              <small class="text-muted">
+                {{ c.ciudad_origen }} &rarr; <b>{{ c.ciudad_destino or 'Nacional' }}</b> ({{ c.pais_destino }})
+              </small>
+            </td>
+            <td>
+              <span class="small fw-semibold text-dark d-block">Hasta: {{ c.fecha_vencimiento.strftime('%d/%m/%Y') }}</span>
+              <small class="text-muted">({{ c.dias_vigencia }} días validez)</small>
+            </td>
+            <td>
+              <span class="small fw-semibold text-dark">Dr.(a) {{ c.veterinario.nombre }}</span>
+              <small class="text-muted d-block" style="font-size: 0.72rem;">T.P. {{ c.veterinario.tarjeta_profesional or 'En trámite' }}</small>
+            </td>
+            <td>
+              {% if c.estado == 'anulado' %}
+              <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2.5 py-1">
+                <i class="bi bi-x-circle me-1"></i> Anulado
+              </span>
+              {% elif c.esta_vigente %}
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1">
+                <i class="bi bi-shield-check me-1"></i> Vigente
+              </span>
+              {% else %}
+              <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 text-dark">
+                <i class="bi bi-hourglass-bottom me-1"></i> Vencido
+              </span>
+              {% endif %}
+            </td>
+            <td class="text-end pe-4">
+              <div class="btn-group">
+                <a href="{{ c.url_pdf() }}" target="_blank" class="btn btn-sm btn-light border rounded-pill shadow-2xs me-1" title="Descargar PDF Oficial">
+                  <i class="bi bi-file-earmark-pdf-fill text-danger"></i> PDF
+                </a>
+                <a href="{{ c.url_verificacion_publica() }}" target="_blank" class="btn btn-sm btn-light border rounded-pill shadow-2xs me-1" title="Verificar Certificado QR">
+                  <i class="bi bi-qr-code-scan text-primary"></i>
+                </a>
+                {% if c.tutor and (c.tutor.whatsapp or c.tutor.telefono) %}
+                <a href="{{ c.enlace_whatsapp() }}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill shadow-2xs me-1" title="Compartir por WhatsApp al tutor">
+                  <i class="bi bi-whatsapp"></i>
+                </a>
+                {% endif %}
+                {% if c.estado != 'anulado' and current_user.rol in ('admin', 'veterinario') %}
+                <form method="post" action="{{ url_for('certificados.anular', id=c.id) }}" class="d-inline" onsubmit="return confirm('¿Está seguro de anular el Certificado {{ c.consecutivo }}?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill shadow-2xs" title="Anular certificado">
+                    <i class="bi bi-slash-circle"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <i class="bi bi-award display-4 text-muted opacity-50 mb-3 d-block"></i>
+      <h6 class="fw-bold text-dark">No se encontraron certificados expedidos</h6>
+      <p class="text-muted small">Puedes emitir nuevos certificados médicos directamente desde la Ficha Médica de cualquier paciente.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Tarjeta Informativa de Normativa Sanitaria -->
+  <div class="card border-0 bg-primary-subtle text-primary-emphasis rounded-4 p-4 shadow-2xs">
+    <div class="d-flex align-items-start gap-3">
+      <div class="bg-primary text-white p-2.5 rounded-4 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+        <i class="bi bi-info-circle-fill fs-5"></i>
+      </div>
+      <div>
+        <h6 class="fw-bold mb-1">Normativa Sanitaria para Movilización Animal (ICA / Aerolíneas)</h6>
+        <p class="small mb-0 text-secondary" style="font-size: 0.85rem; line-height: 1.5;">
+          • Todo certificado de salud para viaje aéreo nacional o terrestre tiene una validez habitual de <b>5 a 8 días calendario</b> desde la fecha de expedición.<br/>
+          • Es obligatorio que la <b>vacunación Antirrábica</b> esté vigente (aplicada en los últimos 12 meses) y que los registros de <b>desparasitación interna y externa</b> no superen los 30 a 60 días.<br/>
+          • Cada certificado emitido en Sandía incluye un <b>código QR único y hash criptográfico SHA-256</b> para verificación instantánea por parte de aerolíneas e inspectores del ICA.
+        </p>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

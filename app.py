@@ -171,6 +171,7 @@ def _registrar_blueprints(app: Flask) -> None:
     from routes.spa import bp as spa_bp
     from routes.tutores import bp as tutores_bp
     from routes.consentimientos import bp_consentimientos
+    from routes.certificados import bp_certificados
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -178,6 +179,7 @@ def _registrar_blueprints(app: Flask) -> None:
     app.register_blueprint(mascotas_bp)
     app.register_blueprint(historias_bp)
     app.register_blueprint(bp_consentimientos)
+    app.register_blueprint(bp_certificados)
     app.register_blueprint(inventario_bp)
     app.register_blueprint(pos_bp)
     app.register_blueprint(spa_bp)

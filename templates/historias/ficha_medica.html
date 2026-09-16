@@ -79,36 +79,95 @@
 
       <!-- Barra Vertical de Acciones Clínicas -->
       <div class="p-3 bg-white d-grid gap-2">
-        <h6 class="fw-bold text-uppercase small text-muted mb-1" style="letter-spacing: 0.05em;">Acciones Médicas</h6>
-        <a href="{{ url_for('historias.consulta_nueva', mascota_id=mascota.id) }}" class="btn btn-sandia w-100 py-2 fw-bold">
-          <i class="bi bi-plus-circle-fill"></i> Nueva Consulta SOAP
+        <h6 class="fw-bold text-uppercase small text-muted mb-1" style="letter-spacing: 0.05em; font-size: 0.72rem;">Acciones Médicas</h6>
+        
+        <!-- 1. SOAP Hero Button -->
+        <a href="{{ url_for('historias.consulta_nueva', mascota_id=mascota.id) }}" class="btn-accion-clinica btn-accion-clinica--soap">
+          <div class="btn-accion-clinica__icono">
+            <i class="bi bi-plus-lg"></i>
+          </div>
+          <span class="btn-accion-clinica__texto">Nueva Consulta SOAP</span>
+          <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
         </a>
-        <a href="{{ url_for('historias.vacuna_nueva', mascota_id=mascota.id) }}" class="btn btn-outline-success btn-sm w-100 fw-bold">
-          <i class="bi bi-shield-plus me-1"></i> Registrar Vacuna
+
+        <!-- 2. Vacunación -->
+        <a href="{{ url_for('historias.vacuna_nueva', mascota_id=mascota.id) }}" class="btn-accion-clinica btn-accion-clinica--vacuna">
+          <div class="btn-accion-clinica__icono">
+            <i class="bi bi-shield-fill-plus"></i>
+          </div>
+          <span class="btn-accion-clinica__texto">Registrar Vacuna</span>
+          <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
         </a>
-        <a href="{{ url_for('historias.desparasitacion_nueva', mascota_id=mascota.id) }}" class="btn btn-outline-info btn-sm w-100 fw-bold">
-          <i class="bi bi-bug me-1"></i> Desparasitar
+
+        <!-- 3. Desparasitación -->
+        <a href="{{ url_for('historias.desparasitacion_nueva', mascota_id=mascota.id) }}" class="btn-accion-clinica btn-accion-clinica--desparasitacion">
+          <div class="btn-accion-clinica__icono">
+            <i class="bi bi-capsule"></i>
+          </div>
+          <span class="btn-accion-clinica__texto">Desparasitar</span>
+          <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
         </a>
-        <a href="{{ url_for('historias.hospitalizacion_nueva', mascota_id=mascota.id) }}" class="btn btn-outline-danger btn-sm w-100 fw-bold">
-          <i class="bi bi-hospital me-1"></i> Hospitalizar
+
+        <!-- 4. Hospitalización -->
+        <a href="{{ url_for('historias.hospitalizacion_nueva', mascota_id=mascota.id) }}" class="btn-accion-clinica btn-accion-clinica--hospital">
+          <div class="btn-accion-clinica__icono">
+            <i class="bi bi-hospital"></i>
+          </div>
+          <span class="btn-accion-clinica__texto">Hospitalizar</span>
+          <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
         </a>
-        <a href="{{ url_for('historias.cirugia_nueva', mascota_id=mascota.id) }}" class="btn btn-outline-dark btn-sm w-100 fw-bold">
-          <i class="bi bi-scissors me-1"></i> Registrar Cirugía
+
+        <!-- 5. Cirugía -->
+        <a href="{{ url_for('historias.cirugia_nueva', mascota_id=mascota.id) }}" class="btn-accion-clinica btn-accion-clinica--cirugia">
+          <div class="btn-accion-clinica__icono">
+            <i class="bi bi-scissors"></i>
+          </div>
+          <span class="btn-accion-clinica__texto">Registrar Cirugía</span>
+          <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
         </a>
-        <button type="button" class="btn btn-outline-danger btn-sm w-100 fw-bold d-flex align-items-center justify-content-center gap-1 shadow-2xs" data-bs-toggle="modal" data-bs-target="#modalEmitirConsentimiento">
-          <i class="bi bi-file-earmark-medical me-1"></i> + Emitir Consentimiento
+
+        <!-- 6. Consentimiento Informado -->
+        <button type="button" class="btn-accion-clinica btn-accion-clinica--consentimiento" data-bs-toggle="modal" data-bs-target="#modalEmitirConsentimiento">
+          <div class="btn-accion-clinica__icono">
+            <i class="bi bi-file-earmark-medical-fill"></i>
+          </div>
+          <span class="btn-accion-clinica__texto">Emitir Consentimiento</span>
+          <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
         </button>
+
+        <!-- 7. Certificado de Salud -->
+        <a href="{{ url_for('certificados.form_emision', mascota_id=mascota.id) }}" class="btn-accion-clinica btn-accion-clinica--certificado">
+          <div class="btn-accion-clinica__icono">
+            <i class="bi bi-award-fill"></i>
+          </div>
+          <span class="btn-accion-clinica__texto">Certificado de Salud</span>
+          <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
+        </a>
+
+        <!-- 8. Remisión Clínica Interna -->
+        <button type="button" class="btn-accion-clinica btn-accion-clinica--remision" data-bs-toggle="modal" data-bs-target="#modalNuevaRemision">
+          <div class="btn-accion-clinica__icono">
+            <i class="bi bi-send-check-fill"></i>
+          </div>
+          <span class="btn-accion-clinica__texto">Nueva Remisión</span>
+          <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
+        </button>
+
+        <!-- 8. Ayuda Diagnóstica Dropdown -->
         <div class="dropdown">
-          <button class="btn btn-outline-primary btn-sm w-100 fw-bold dropdown-toggle text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <span><i class="bi bi-clipboard2-pulse me-1"></i> + Ayuda Diagnóstica</span>
+          <button class="btn-accion-clinica btn-accion-clinica--diagnostica dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <div class="btn-accion-clinica__icono">
+              <i class="bi bi-clipboard2-pulse-fill"></i>
+            </div>
+            <span class="btn-accion-clinica__texto">+ Ayuda Diagnóstica</span>
           </button>
-          <ul class="dropdown-menu shadow-sm w-100">
-            <li><a class="dropdown-item py-2 small" href="{{ url_for('historias.examen_nuevo', mascota_id=mascota.id, categoria='radiografia') }}"><i class="bi bi-film text-warning me-2"></i> Radiografía (Rayos X)</a></li>
-            <li><a class="dropdown-item py-2 small" href="{{ url_for('historias.examen_nuevo', mascota_id=mascota.id, categoria='laboratorio') }}"><i class="bi bi-clipboard2-pulse text-primary me-2"></i> Examen de Laboratorio</a></li>
-            <li><a class="dropdown-item py-2 small" href="{{ url_for('historias.examen_nuevo', mascota_id=mascota.id, categoria='ecografia') }}"><i class="bi bi-soundwave text-info me-2"></i> Ecografía / Ultrasonido</a></li>
-            <li><a class="dropdown-item py-2 small" href="{{ url_for('historias.examen_nuevo', mascota_id=mascota.id, categoria='cardiologia') }}"><i class="bi bi-heart-pulse text-danger me-2"></i> Reporte Cardiológico</a></li>
+          <ul class="dropdown-menu shadow-sm w-100 rounded-4 border-0 p-2">
+            <li><a class="dropdown-item rounded-3 py-2 small fw-semibold" href="{{ url_for('historias.examen_nuevo', mascota_id=mascota.id, categoria='radiografia') }}"><i class="bi bi-film text-warning me-2"></i> Radiografía (Rayos X)</a></li>
+            <li><a class="dropdown-item rounded-3 py-2 small fw-semibold" href="{{ url_for('historias.examen_nuevo', mascota_id=mascota.id, categoria='laboratorio') }}"><i class="bi bi-clipboard2-pulse text-primary me-2"></i> Examen de Laboratorio</a></li>
+            <li><a class="dropdown-item rounded-3 py-2 small fw-semibold" href="{{ url_for('historias.examen_nuevo', mascota_id=mascota.id, categoria='ecografia') }}"><i class="bi bi-soundwave text-info me-2"></i> Ecografía / Ultrasonido</a></li>
+            <li><a class="dropdown-item rounded-3 py-2 small fw-semibold" href="{{ url_for('historias.examen_nuevo', mascota_id=mascota.id, categoria='cardiologia') }}"><i class="bi bi-heart-pulse text-danger me-2"></i> Reporte Cardiológico</a></li>
             <li><hr class="dropdown-divider my-1"></li>
-            <li><a class="dropdown-item py-2 small text-muted" href="{{ url_for('historias.examen_nuevo', mascota_id=mascota.id) }}"><i class="bi bi-plus-circle me-2"></i> Otra Ayuda Diagnóstica</a></li>
+            <li><a class="dropdown-item rounded-3 py-2 small text-muted fw-semibold" href="{{ url_for('historias.examen_nuevo', mascota_id=mascota.id) }}"><i class="bi bi-plus-circle me-2"></i> Otra Ayuda Diagnóstica</a></li>
           </ul>
         </div>
       </div>
@@ -118,42 +177,69 @@
   <!-- COLUMNA DERECHA: Detalle de Historias Clínicas y Pestañas Dinámicas -->
   <div class="col-12 col-lg-8">
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
-      <!-- Navegación por Pestañas -->
-      <div class="card-header bg-white border-bottom p-3">
-        <ul class="nav nav-pills card-header-pills fw-bold" id="fichaTabs" role="tablist">
+      <!-- Navegación por Pestañas Moderna -->
+      <div class="ficha-tabs-header">
+        <ul class="ficha-tabs-nav" id="fichaTabs" role="tablist">
           <li class="nav-item" role="presentation">
-            <button class="nav-link active rounded-pill px-3" id="soap-tab" data-bs-toggle="tab" data-bs-target="#soap" type="button" role="tab">
-              <i class="bi bi-journal-medical me-1"></i> Consultas SOAP <span class="badge bg-danger text-white rounded-pill ms-1">{{ mascota.consultas|length }}</span>
+            <button class="ficha-tab-btn active" id="soap-tab" data-bs-toggle="tab" data-bs-target="#soap" type="button" role="tab">
+              <i class="bi bi-journal-medical"></i>
+              <span>Consultas SOAP</span>
+              <span class="ficha-tab-badge">{{ mascota.consultas|length }}</span>
             </button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link rounded-pill px-3" id="examenes-tab" data-bs-toggle="tab" data-bs-target="#examenes" type="button" role="tab">
-              <i class="bi bi-clipboard2-pulse me-1"></i> Exámenes & Rayos X <span class="badge bg-primary text-white rounded-pill ms-1">{{ examenes|length }}</span>
+            <button class="ficha-tab-btn" id="examenes-tab" data-bs-toggle="tab" data-bs-target="#examenes" type="button" role="tab">
+              <i class="bi bi-clipboard2-pulse"></i>
+              <span>Exámenes & Rx</span>
+              <span class="ficha-tab-badge">{{ examenes|length }}</span>
             </button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link rounded-pill px-3" id="vacunas-tab" data-bs-toggle="tab" data-bs-target="#vacunas" type="button" role="tab">
-              <i class="bi bi-shield-check me-1"></i> Vacunas <span class="badge bg-success text-white rounded-pill ms-1">{{ mascota.vacunas|length }}</span>
+            <button class="ficha-tab-btn" id="vacunas-tab" data-bs-toggle="tab" data-bs-target="#vacunas" type="button" role="tab">
+              <i class="bi bi-shield-check"></i>
+              <span>Vacunas</span>
+              <span class="ficha-tab-badge">{{ mascota.vacunas|length }}</span>
             </button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link rounded-pill px-3" id="desparasitaciones-tab" data-bs-toggle="tab" data-bs-target="#desparasitaciones" type="button" role="tab">
-              <i class="bi bi-capsule me-1"></i> Desparasitaciones <span class="badge bg-info text-white rounded-pill ms-1">{{ mascota.desparasitaciones|length }}</span>
+            <button class="ficha-tab-btn" id="desparasitaciones-tab" data-bs-toggle="tab" data-bs-target="#desparasitaciones" type="button" role="tab">
+              <i class="bi bi-capsule"></i>
+              <span>Desparasitaciones</span>
+              <span class="ficha-tab-badge">{{ mascota.desparasitaciones|length }}</span>
             </button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link rounded-pill px-3" id="avanzada-tab" data-bs-toggle="tab" data-bs-target="#avanzada" type="button" role="tab">
-              <i class="bi bi-hospital me-1"></i> Hosp. & Cirugías <span class="badge bg-secondary text-white rounded-pill ms-1">{{ (hospitalizaciones|length) + (cirugias|length) }}</span>
+            <button class="ficha-tab-btn" id="avanzada-tab" data-bs-toggle="tab" data-bs-target="#avanzada" type="button" role="tab">
+              <i class="bi bi-hospital"></i>
+              <span>Hosp. & Cirugías</span>
+              <span class="ficha-tab-badge">{{ (hospitalizaciones|length) + (cirugias|length) }}</span>
             </button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link rounded-pill px-3" id="peso-tab-btn" data-bs-toggle="tab" data-bs-target="#peso" type="button" role="tab">
-              <i class="bi bi-graph-up me-1"></i> Peso
+            <button class="ficha-tab-btn" id="peso-tab-btn" data-bs-toggle="tab" data-bs-target="#peso" type="button" role="tab">
+              <i class="bi bi-graph-up"></i>
+              <span>Peso</span>
             </button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link rounded-pill px-3" id="consentimientos-tab" data-bs-toggle="tab" data-bs-target="#consentimientos" type="button" role="tab">
-              <i class="bi bi-file-earmark-medical me-1"></i> Consentimientos <span class="badge bg-danger text-white rounded-pill ms-1">{{ mascota.consentimientos|length }}</span>
+            <button class="ficha-tab-btn" id="consentimientos-tab" data-bs-toggle="tab" data-bs-target="#consentimientos" type="button" role="tab">
+              <i class="bi bi-file-earmark-medical"></i>
+              <span>Consentimientos</span>
+              <span class="ficha-tab-badge">{{ mascota.consentimientos|length }}</span>
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="ficha-tab-btn {% if tab_activa == 'certificados' %}active{% endif %}" id="certificados-tab" data-bs-toggle="tab" data-bs-target="#certificados" type="button" role="tab">
+              <i class="bi bi-award-fill"></i>
+              <span>Certificados</span>
+              <span class="ficha-tab-badge">{{ mascota.certificados_salud|length if mascota.certificados_salud else 0 }}</span>
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="ficha-tab-btn {% if tab_activa == 'remisiones' %}active{% endif %}" id="remisiones-tab" data-bs-toggle="tab" data-bs-target="#remisiones" type="button" role="tab">
+              <i class="bi bi-send-check-fill"></i>
+              <span>Remisiones</span>
+              <span class="ficha-tab-badge">{{ remisiones|length }}</span>
             </button>
           </li>
         </ul>
@@ -163,7 +249,7 @@
         <div class="tab-content" id="fichaTabsContent">
 
           <!-- Pestaña 1: Consultas SOAP -->
-          <div class="tab-pane fade show active" id="soap" role="tabpanel">
+          <div class="tab-pane fade {% if not tab_activa or tab_activa == 'soap' %}show active{% endif %}" id="soap" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-journal-medical text-danger me-1"></i> Historial de Consultas SOAP</h5>
               {% if mascota.consultas and mascota.tutor.whatsapp_efectivo %}
@@ -723,6 +809,172 @@
             {% endif %}
           </div>
 
+          <!-- Pestaña 7: Certificados Nacionales de Salud Animal -->
+          <div class="tab-pane fade" id="certificados" role="tabpanel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-award-fill text-danger me-1"></i> Certificados de Salud Animal & Viajes</h5>
+              <a href="{{ url_for('certificados.form_emision', mascota_id=mascota.id) }}" class="btn btn-sm btn-danger fw-bold rounded-pill shadow-xs">
+                <i class="bi bi-plus-circle me-1"></i> + Expedir Certificado Oficial
+              </a>
+            </div>
+
+            {% if mascota.certificados_salud %}
+            <div class="row g-3">
+              {% for cert in mascota.certificados_salud %}
+              <div class="col-12">
+                <div class="card border rounded-4 p-3 shadow-2xs bg-white hover-shadow transition">
+                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="badge bg-light text-danger border px-2.5 py-1 font-monospace fw-bold">{{ cert.consecutivo }}</span>
+                      <span class="badge bg-danger-subtle text-danger fw-bold rounded-pill px-2.5 py-1">{{ cert.finalidad_etiqueta }}</span>
+                      <small class="text-muted"><i class="bi bi-calendar-event me-1"></i>{{ cert.fecha_emision.strftime('%d/%m/%Y %I:%M %p') }}</small>
+                    </div>
+                    <div>
+                      {% if cert.estado == 'anulado' %}
+                      <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-3 py-1.5">
+                        <i class="bi bi-x-circle me-1"></i> Anulado
+                      </span>
+                      {% elif cert.esta_vigente %}
+                      <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5 fw-bold">
+                        <i class="bi bi-shield-check me-1"></i> Vigente hasta {{ cert.fecha_vencimiento.strftime('%d/%m/%Y') }}
+                      </span>
+                      {% else %}
+                      <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1.5 text-dark">
+                        <i class="bi bi-hourglass-bottom me-1"></i> Vencido el {{ cert.fecha_vencimiento.strftime('%d/%m/%Y') }}
+                      </span>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <div class="row g-2 mb-2">
+                    <div class="col-md-6 small text-muted">
+                      <strong>Trayecto:</strong> {{ cert.ciudad_origen }} &rarr; <b>{{ cert.ciudad_destino or 'Nacional' }}</b> ({{ cert.pais_destino }})
+                    </div>
+                    <div class="col-md-6 small text-muted text-md-end">
+                      <strong>Constantes:</strong> Peso: {{ cert.peso_kg }} kg · Temp: {{ cert.temperatura_c or '--' }}°C
+                    </div>
+                  </div>
+
+                  <div class="p-2.5 bg-light rounded-3 small text-secondary mb-2 font-monospace" style="font-size: 0.78rem;">
+                    "{{ cert.dictamen_texto|truncate(160) }}"
+                  </div>
+
+                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top pt-2 mt-2">
+                    <div class="small text-muted">
+                      <i class="bi bi-person-badge text-danger me-1"></i>Dr.(a) {{ cert.veterinario.nombre }} (T.P. {{ cert.veterinario.tarjeta_profesional or 'En trámite' }})
+                    </div>
+                    <div class="d-flex flex-wrap gap-1">
+                      <a href="{{ cert.url_pdf() }}" target="_blank" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold" title="Descargar PDF">
+                        <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i> PDF Oficial
+                      </a>
+                      <a href="{{ cert.url_verificacion_publica() }}" target="_blank" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold" title="Verificación Pública QR">
+                        <i class="bi bi-qr-code-scan text-primary me-1"></i> Verificación QR
+                      </a>
+                      {% if cert.tutor and (cert.tutor.whatsapp or cert.tutor.telefono) %}
+                      <a href="{{ cert.enlace_whatsapp() }}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold" title="Compartir enlace al tutor">
+                        <i class="bi bi-whatsapp me-1"></i> WhatsApp
+                      </a>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="card border-0 bg-light rounded-4 text-center py-5">
+              <i class="bi bi-award display-5 text-muted opacity-50 mb-2"></i>
+              <h6 class="fw-bold text-dark mb-1">Sin certificados de salud expedidos</h6>
+              <p class="small text-muted mb-3">Expida certificados oficiales para vuelos nacionales, trámites ICA o certificados de aptitud física.</p>
+              <div>
+                <a href="{{ url_for('certificados.form_emision', mascota_id=mascota.id) }}" class="btn btn-danger btn-sm rounded-pill px-4 fw-bold shadow-xs">
+                  <i class="bi bi-plus-circle me-1"></i> Expedir Primer Certificado
+                </a>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Pestaña 8: Remisiones Clínicas Internas -->
+          <div class="tab-pane fade {% if tab_activa == 'remisiones' %}show active{% endif %}" id="remisiones" role="tabpanel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div>
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-send-check-fill text-info me-1"></i> Historial de Remisiones Clínicas</h5>
+                <div class="small text-muted">Registro interno de derivaciones a especialistas y antecedentes del paciente</div>
+              </div>
+              <button type="button" class="btn btn-sm btn-info text-white fw-bold rounded-pill shadow-xs" data-bs-toggle="modal" data-bs-target="#modalNuevaRemision" style="background: linear-gradient(135deg, #0284C7, #0EA5E9); border: none;">
+                <i class="bi bi-plus-circle me-1"></i> + Nueva Remisión
+              </button>
+            </div>
+
+            {% if remisiones %}
+            <div class="row g-3">
+              {% for r in remisiones %}
+              <div class="col-12">
+                <div class="card border rounded-4 p-3 shadow-2xs bg-white hover-shadow transition">
+                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle fw-bold rounded-pill px-3 py-1.5 fs-7">
+                        <i class="bi bi-hospital me-1"></i>{{ r.especialidad_destino }}
+                      </span>
+                      {% if r.centro_medico_destino %}
+                        <span class="badge bg-light text-dark border rounded-pill px-2.5 py-1 small">
+                          <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ r.centro_medico_destino }}
+                        </span>
+                      {% endif %}
+                      <small class="text-muted"><i class="bi bi-calendar-event me-1"></i>{{ r.fecha_remision.strftime('%d/%m/%Y %I:%M %p') }}</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold btn-ver-detalle-remision" data-id="{{ r.id }}">
+                      <i class="bi bi-eye-fill me-1"></i> Ver Detalle Completo
+                    </button>
+                  </div>
+
+                  <div class="mb-2">
+                    <strong class="text-dark small d-block">Motivo Principal:</strong>
+                    <div class="text-secondary small">{{ r.motivo_remision }}</div>
+                  </div>
+
+                  <div class="row g-2 p-2.5 bg-light rounded-3 small text-muted mb-2">
+                    <div class="col-12 col-md-4">
+                      <strong><i class="bi bi-egg-fried me-1 text-warning"></i>Dieta:</strong> {{ r.dieta_marca_tipo or 'No especificada' }}
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <strong><i class="bi bi-shield-check me-1 text-success"></i>Vacunas:</strong> {{ 'Al día' if r.vacunacion_al_dia else 'Incompleta / Pendiente' }}
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <strong><i class="bi bi-capsule me-1 text-primary"></i>Desparasitación:</strong> {{ r.desparasitacion_interna_producto or 'Sin reg.' }}
+                    </div>
+                  </div>
+
+                  {% if r.observaciones_clinicas %}
+                  <div class="small text-muted mb-2">
+                    <strong>Hallazgos / Observaciones:</strong> <span class="text-dark">{{ r.observaciones_clinicas|truncate(150) }}</span>
+                  </div>
+                  {% endif %}
+
+                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top pt-2 mt-1">
+                    <div class="small text-muted">
+                      <i class="bi bi-person-badge text-info me-1"></i>Dr.(a) {{ r.veterinario.nombre if r.veterinario else 'Médico Veterinario' }} {% if r.veterinario and r.veterinario.tarjeta_profesional %}(T.P. {{ r.veterinario.tarjeta_profesional }}){% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="card border-0 bg-light rounded-4 text-center py-5">
+              <i class="bi bi-send-check display-5 text-muted opacity-50 mb-2"></i>
+              <h6 class="fw-bold text-dark mb-1">Sin remisiones clínicas registradas</h6>
+              <p class="small text-muted mb-3">Registra derivaciones a especialistas externos o centros de referencia con el historial preventivo y nutricional del paciente.</p>
+              <div>
+                <button type="button" class="btn btn-info text-white btn-sm rounded-pill px-4 fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalNuevaRemision" style="background: linear-gradient(135deg, #0284C7, #0EA5E9); border: none;">
+                  <i class="bi bi-plus-circle me-1"></i> Registrar Primera Remisión
+                </button>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+
         </div>
       </div>
     </div>
@@ -730,10 +982,114 @@
 </div>
 
 {% include "consentimientos/modal_emision.html" %}
+{% include "historias/modal_remision.html" %}
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ static_url('js/grafica_peso.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // Manejo de visualización dinámica de detalles de remisión
+  const botonesDetalle = document.querySelectorAll(".btn-ver-detalle-remision");
+  const modalDetalleEl = document.getElementById("modalDetalleRemision");
+  const cuerpoDetalle = document.getElementById("cuerpo-detalle-remision");
+  const fechaDetalle = document.getElementById("det-fecha-remision");
+
+  if (modalDetalleEl && botonesDetalle.length > 0) {
+    const modalDetalle = new bootstrap.Modal(modalDetalleEl);
+
+    botonesDetalle.forEach(btn => {
+      btn.addEventListener("click", function() {
+        const remisionId = this.getAttribute("data-id");
+        cuerpoDetalle.innerHTML = `
+          <div class="text-center py-4">
+            <div class="spinner-border text-info" role="status"></div>
+            <div class="small text-muted mt-2">Cargando detalles de la remisión...</div>
+          </div>
+        `;
+        modalDetalle.show();
+
+        fetch(`/historias/remisiones/${remisionId}/json`)
+          .then(res => res.json())
+          .then(data => {
+            if (!data.ok || !data.remision) {
+              cuerpoDetalle.innerHTML = `<div class="alert alert-danger mb-0">No se pudieron cargar los datos de la remisión.</div>`;
+              return;
+            }
+            const r = data.remision;
+            fechaDetalle.textContent = `Fecha de emisión: ${r.fecha_remision} · Por Dr.(a) ${r.veterinario_nombre}`;
+
+            cuerpoDetalle.innerHTML = `
+              <div class="d-flex flex-column gap-3">
+                <div class="p-3 bg-info-subtle border border-info-subtle rounded-3">
+                  <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
+                    <span class="badge bg-info text-white fs-6 px-3 py-1.5 rounded-pill"><i class="bi bi-hospital me-1"></i>${r.especialidad_destino}</span>
+                    ${r.centro_medico_destino ? `<span class="badge bg-light text-dark border px-2.5 py-1.5"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${r.centro_medico_destino}</span>` : ''}
+                  </div>
+                  <div class="mt-2">
+                    <strong class="text-dark small d-block">Motivo Principal:</strong>
+                    <div class="text-dark fw-semibold mt-0.5">${r.motivo_remision}</div>
+                  </div>
+                  ${r.observaciones_clinicas ? `
+                    <div class="mt-2.5 pt-2 border-top border-info-subtle">
+                      <strong class="text-dark small d-block">Hallazgos y Observaciones Clínicas:</strong>
+                      <div class="text-secondary small mt-0.5">${r.observaciones_clinicas}</div>
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div class="card border rounded-3 p-3 bg-light">
+                  <h6 class="fw-bold text-dark small text-uppercase mb-2"><i class="bi bi-egg-fried text-warning me-1"></i> Alimentación y Dieta</h6>
+                  <div class="small text-dark fw-semibold">${r.dieta_marca_tipo}</div>
+                </div>
+
+                <div class="card border rounded-3 p-3 bg-light">
+                  <h6 class="fw-bold text-dark small text-uppercase mb-2"><i class="bi bi-clock-history text-danger me-1"></i> Antecedentes Médicos y Quirúrgicos</h6>
+                  <div class="row g-2 small">
+                    <div class="col-md-6">
+                      <span class="text-muted d-block">Cirugías previas:</span>
+                      <span class="text-dark fw-semibold">${r.antecedentes_cirugias}</span>
+                    </div>
+                    <div class="col-md-6">
+                      <span class="text-muted d-block">Enfermedades / Preexistencias:</span>
+                      <span class="text-dark fw-semibold">${r.antecedentes_enfermedades}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card border rounded-3 p-3 bg-light">
+                  <h6 class="fw-bold text-dark small text-uppercase mb-2"><i class="bi bi-shield-check text-success me-1"></i> Estatus Preventivo</h6>
+                  <div class="row g-2 small">
+                    <div class="col-md-6">
+                      <span class="text-muted d-block">Desparasitación Interna:</span>
+                      <span class="text-dark fw-semibold">${r.desparasitacion_interna}</span>
+                    </div>
+                    <div class="col-md-6">
+                      <span class="text-muted d-block">Desparasitación Externa:</span>
+                      <span class="text-dark fw-semibold">${r.desparasitacion_externa}</span>
+                    </div>
+                    <div class="col-md-6">
+                      <span class="text-muted d-block">Plan de Vacunación:</span>
+                      <span class="badge ${r.vacunacion_al_dia === 'Al día' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning border border-warning-subtle'}">${r.vacunacion_al_dia}</span>
+                    </div>
+                    <div class="col-md-6">
+                      <span class="text-muted d-block">Última Vacunación:</span>
+                      <span class="text-dark fw-semibold">${r.vacunacion_ultima_fecha}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+          })
+          .catch(err => {
+            cuerpoDetalle.innerHTML = `<div class="alert alert-danger mb-0">Error al consultar el servidor.</div>`;
+          });
+      });
+    });
+  }
+});
+</script>
 {% endblock %}
+
 
 

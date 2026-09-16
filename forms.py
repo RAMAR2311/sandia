@@ -741,3 +741,73 @@ class AbonoCuentaTutorForm(FlaskForm):
     )
     notas = TextAreaField("Notas (opcional)", validators=[Optional(), Length(max=500)])
     enviar = SubmitField("Registrar abono")
+
+
+# ---------------------------------------------------------------------------
+# Remisiones Clínicas Internas
+# ---------------------------------------------------------------------------
+
+
+class RemisionInternaForm(FlaskForm):
+    # 1. Datos de Remisión
+    especialidad_destino = StringField(
+        "Especialidad o Servicio Requerido",
+        validators=[DataRequired("Indica la especialidad o servicio de destino."), Length(max=150)],
+    )
+    centro_medico_destino = StringField(
+        "Centro Médico / Especialista Receptor (Opcional)",
+        validators=[Optional(), Length(max=180)],
+    )
+    motivo_remision = TextAreaField(
+        "Motivo Principal de la Remisión",
+        validators=[DataRequired("Describe el motivo clínico de la remisión.")],
+    )
+    observaciones_clinicas = TextAreaField(
+        "Hallazgos Clínicos, Sospecha y Observaciones (Opcional)",
+        validators=[Optional()],
+    )
+
+    # 2. Alimentación y Nutrición
+    dieta_marca_tipo = StringField(
+        "Alimentación y Dieta Actual",
+        validators=[Optional(), Length(max=255)],
+    )
+
+    # 3. Antecedentes
+    antecedentes_cirugias = TextAreaField(
+        "Cirugías y Procedimientos Previos",
+        validators=[Optional()],
+    )
+    antecedentes_enfermedades = TextAreaField(
+        "Enfermedades Diagnosticadas y Preexistencias",
+        validators=[Optional()],
+    )
+
+    # 4. Estatus Preventivo
+    desparasitacion_interna_producto = StringField(
+        "Desparasitación Interna (Producto)",
+        validators=[Optional(), Length(max=120)],
+    )
+    desparasitacion_interna_fecha = DateField(
+        "Fecha Desparasitación Interna",
+        validators=[Optional()],
+    )
+    desparasitacion_externa_producto = StringField(
+        "Desparasitación Externa (Antipulgas/Garrapatas)",
+        validators=[Optional(), Length(max=120)],
+    )
+    desparasitacion_externa_fecha = DateField(
+        "Fecha Desparasitación Externa",
+        validators=[Optional()],
+    )
+    vacunacion_al_dia = BooleanField(
+        "¿Plan de vacunación al día?",
+        default=True,
+    )
+    vacunacion_ultima_fecha = DateField(
+        "Fecha Última Vacunación",
+        validators=[Optional()],
+    )
+
+    enviar = SubmitField("Guardar Remisión Clínica")
+

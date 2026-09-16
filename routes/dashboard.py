@@ -80,6 +80,16 @@ MODULOS = [
         "esencial": True,
     },
     {
+        "clave": "certificados",
+        "nombre": "Certificados de Salud",
+        "descripcion": "Certificado nacional de salud animal, viajes y dictamen",
+        "icono": "bi-award-fill",
+        "endpoint": "certificados.lista",
+        "roles": ("admin", "veterinario", "auxiliar", "recepcion"),
+        "en_barra": False,
+        "esencial": True,
+    },
+    {
         "clave": "spa",
         "nombre": "Spa & Grooming",
         "descripcion": "Agenda de peluquería y notificaciones por WhatsApp",
