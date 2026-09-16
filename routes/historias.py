@@ -195,6 +195,21 @@ SISTEMAS_MEDICOS_CATALOGO = [
         "sugerencias": ["Sin dolor a la palpación", "Tono muscular adecuado", "Claudicación en extremidad", "Dolor articular leve", "Crepitación articular"],
     },
     {
+        "id": "tegumentario",
+        "nombre": "Tegumentario",
+        "icono": "bi-shield-shaded",
+        "badge_color": "success",
+        "descripcion": "Piel, pelaje, uñas, ectoparásitos, prurito, pioderma y alopecias",
+        "sugerencias": [
+            "Piel íntegra y pelaje brillante sin ectoparásitos",
+            "Sin lesiones alopécicas, eritema ni prurito",
+            "Prurito moderado / Lesiones por rascado",
+            "Eritema y descamación cutánea",
+            "Presencia de pulgas / garrapatas / ectoparásitos",
+            "Pioderma superficial / Alopecia focal",
+        ],
+    },
+    {
         "id": "gastrointestinal",
         "nombre": "Gastrointestinal",
         "icono": "bi-egg-fried",
@@ -430,7 +445,8 @@ def consulta_documento_publico(id: int):
         flash("El documento solicitado no está disponible.", "danger")
         return redirect(url_for("auth.login"))
 
-    return render_template("historias/documento_consulta.html", consulta=consulta)
+    clinica_datos = ConfiguracionSistema.datos_clinica()
+    return render_template("historias/documento_consulta.html", consulta=consulta, clinica=clinica_datos)
 
 
 # ---------------------------------------------------------------------------

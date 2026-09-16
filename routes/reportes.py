@@ -125,8 +125,10 @@ def dashboard():
     consultas_total = db.session.execute(consultas_q).scalar_one()
 
     # 5. Valoración de Stock en Inventario
-    productos = db.session.execute(select(Producto).filter_by(activo=True)).scalars().all()
-    valoracion_inventario = sum((p.cantidad_stock * p.precio_costo for p in productos if p.tipo == "producto"), Decimal("0.00"))
+    productos = db.session.execute(
+        select(Producto).filter_by(activo=True).options(selectinload(Producto.variantes))
+    ).scalars().all()
+    valoracion_inventario = sum((p.stock_total * p.precio_costo for p in productos if p.tipo == "producto"), Decimal("0.00"))
     productos_stock_bajo = len([p for p in productos if p.stock_bajo])
 
     return render_template(
@@ -197,17 +199,18 @@ def ventas():
 @admin_required
 def inventario():
     productos = db.session.execute(
-        select(Producto).filter_by(activo=True).order_by(Producto.nombre.asc())
+        select(Producto).filter_by(activo=True).options(selectinload(Producto.variantes)).order_by(Producto.nombre.asc())
     ).scalars().all()
 
     hoy = hoy_bogota()
     lotes_proximos = db.session.execute(
         select(Lote)
         .filter(Lote.cantidad_disponible > 0, Lote.fecha_vencimiento <= hoy + timedelta(days=30))
+        .options(selectinload(Lote.producto))
         .order_by(Lote.fecha_vencimiento.asc())
     ).scalars().all()
 
-    valoracion_total = sum((p.cantidad_stock * p.precio_costo for p in productos if p.tipo == "producto"), Decimal("0.00"))
+    valoracion_total = sum((p.stock_total * p.precio_costo for p in productos if p.tipo == "producto"), Decimal("0.00"))
 
     return render_template(
         "reportes/inventario.html",

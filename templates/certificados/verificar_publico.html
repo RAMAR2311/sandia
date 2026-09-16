@@ -52,7 +52,7 @@
     <!-- Encabezado Institucional -->
     <div class="text-center mb-4">
       <div class="d-inline-flex align-items-center gap-2 mb-1">
-        <span class="fs-2">🍉</span>
+        <img src="{{ static_url('img/dog_icon.png') }}" alt="Logo Sandía Spa" style="height: 48px; width: auto;" class="d-inline-block">
         <span class="fs-4 fw-bold font-brand text-danger">{{ clinica.nombre }}</span>
       </div>
       <p class="text-muted small mb-0">{{ clinica.subtitulo }} · NIT: {{ clinica.nit }}</p>
@@ -182,10 +182,15 @@
         <div class="p-3 border rounded-4 mb-4 d-flex align-items-center justify-content-between">
           <div>
             <small class="text-muted d-block">Médico Veterinario Emisor</small>
-            <strong class="text-dark">Dr.(a) {{ cert.veterinario.nombre }}</strong>
-            <span class="text-muted small d-block">Tarjeta Profesional: <b>{{ cert.veterinario.tarjeta_profesional or 'En trámite' }}</b></span>
+            <strong class="text-dark">{{ cert.veterinario.nombre }}</strong>
+            <span class="text-secondary small d-block">{{ cert.veterinario.titulo_profesional or 'Médica veterinaria' }} · <span class="text-danger fw-semibold">{{ cert.veterinario.especialidad or 'Dpl. Dermatología de pequeñas especies' }}</span></span>
+            <span class="text-muted small d-block">Tarjeta Profesional: <b>{{ cert.veterinario.tarjeta_profesional or '53214' }}</b></span>
           </div>
+          {% if cert.veterinario.url_firma %}
+          <img src="{{ cert.veterinario.url_firma }}" alt="Firma Oficial" style="max-height: 55px; max-width: 120px; object-fit: contain;">
+          {% else %}
           <i class="bi bi-award text-danger fs-2"></i>
+          {% endif %}
         </div>
 
         <!-- Sello de Integridad SHA-256 -->

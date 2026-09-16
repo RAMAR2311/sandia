@@ -34,7 +34,7 @@
 </div>
 
 {# 2. KPIs de Valoración y Control de Stock #}
-{% set total_items_stock = productos|selectattr('tipo', 'equalto', 'producto')|map(attribute='cantidad_stock')|sum %}
+{% set total_items_stock = productos|selectattr('tipo', 'equalto', 'producto')|map(attribute='stock_total')|sum %}
 {% set total_productos_stock_bajo = productos|selectattr('tipo', 'equalto', 'producto')|selectattr('stock_bajo')|list|length %}
 
 <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
@@ -213,7 +213,7 @@
           {# Nombre #}
           <td class="py-3">
             <div class="fw-bold text-dark">{{ p.nombre }}</div>
-            {% if p.control_lotes %}
+            {% if p.controla_lote %}
               <span class="badge bg-info-subtle text-info-emphasis rounded-pill px-2 py-0.2 small" style="font-size: 0.7rem;">
                 <i class="bi bi-layers me-0.5"></i>FEFO Activo
               </span>
@@ -240,14 +240,14 @@
           {# Stock Actual #}
           <td class="text-center py-3">
             <span class="badge {% if p.stock_bajo %}bg-danger{% else %}bg-success-subtle text-success border border-success-subtle{% endif %} rounded-pill px-3 py-1 font-monospace fw-bold fs-6">
-              {{ p.cantidad_stock }}
+              {{ p.stock_total }}
             </span>
           </td>
 
           {# Valor Total Stock #}
           <td class="text-end py-3">
             <span class="fw-bold font-monospace fs-6 text-dark" style="color: #BE123C !important;">
-              {{ (p.cantidad_stock * p.precio_costo)|cop }}
+              {{ (p.stock_total * p.precio_costo)|cop }}
             </span>
           </td>
 

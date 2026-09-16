@@ -85,6 +85,16 @@
           </li>
 
           <!-- Opciones de menú -->
+          {% if current_user.rol in ('admin', 'veterinario') %}
+          <li>
+            <a class="dropdown-usuario-item" href="{{ url_for('admin.medico_principal') }}">
+              <span class="dropdown-item-icono" style="background: #FFF1F2; color: #E11D48;">
+                <i class="bi bi-person-badge-fill"></i>
+              </span>
+              <span>Médico Principal & Firma</span>
+            </a>
+          </li>
+          {% endif %}
           <li>
             <a class="dropdown-usuario-item" href="{{ url_for('auth.cambiar_password') }}">
               <span class="dropdown-item-icono dropdown-item-icono--config">

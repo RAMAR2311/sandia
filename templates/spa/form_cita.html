@@ -160,6 +160,60 @@
 
 {% block scripts %}
 <script>
+  const mascotasData = {{ (mascotas_data or [])|tojson }};
+  const selectTutor = document.getElementById('{{ form.tutor_id.id }}');
+  const selectMascota = document.getElementById('{{ form.mascota_id.id }}');
+
+  // Filtrado dinámico de mascotas al cambiar de tutor
+  if (selectTutor && selectMascota && mascotasData.length > 0) {
+    function actualizarOpcionesMascota() {
+      const tutorIdSeleccionado = parseInt(selectTutor.value, 10);
+      const valorMascotaActual = parseInt(selectMascota.value, 10);
+
+      // Limpiar opciones
+      selectMascota.innerHTML = '';
+      
+      const opcionVacia = document.createElement('option');
+      opcionVacia.value = '';
+      opcionVacia.textContent = '-- Seleccionar mascota --';
+      selectMascota.appendChild(opcionVacia);
+
+      const mascotasFiltradas = tutorIdSeleccionado
+        ? mascotasData.filter(m => m.tutor_id === tutorIdSeleccionado)
+        : mascotasData;
+
+      mascotasFiltradas.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = `${m.emoji} ${m.nombre} (${m.especie})`;
+        if (m.id === valorMascotaActual) {
+          opt.selected = true;
+        }
+        selectMascota.appendChild(opt);
+      });
+
+      if (mascotasFiltradas.length === 1 && tutorIdSeleccionado) {
+        selectMascota.value = mascotasFiltradas[0].id;
+      }
+    }
+
+    selectTutor.addEventListener('change', actualizarOpcionesMascota);
+
+    selectMascota.addEventListener('change', function() {
+      const mascotaId = parseInt(this.value, 10);
+      const mascotaObj = mascotasData.find(m => m.id === mascotaId);
+      if (mascotaObj && mascotaObj.tutor_id && (!selectTutor.value || parseInt(selectTutor.value, 10) !== mascotaObj.tutor_id)) {
+        selectTutor.value = mascotaObj.tutor_id;
+      }
+    });
+
+    // Si ya hay un tutor preseleccionado
+    if (selectTutor.value && !selectMascota.value) {
+      actualizarOpcionesMascota();
+    }
+  }
+
+  // Chips de duración rápida
   document.querySelectorAll('.btn-duracion-spa').forEach(btn => {
     btn.addEventListener('click', function() {
       const input = document.getElementById('inputDuracionSpa');

@@ -82,6 +82,9 @@ class UsuarioForm(FlaskForm):
     nombre = StringField("Nombre completo", validators=[DataRequired("El nombre es obligatorio."), Length(max=120)])
     email = StringField("Correo electrónico", validators=[DataRequired("El correo es obligatorio."), CORREO_VALIDO, Length(max=120)])
     telefono = StringField("Teléfono", validators=[Optional(), Length(max=20)])
+    tarjeta_profesional = StringField("Tarjeta profesional", validators=[Optional(), Length(max=50)])
+    titulo_profesional = StringField("Título profesional (ej. Médica veterinaria)", validators=[Optional(), Length(max=150)])
+    especialidad = StringField("Especialidad / Diplomado", validators=[Optional(), Length(max=150)])
     rol = SelectField("Rol", choices=list(ROLES.items()), validators=[DataRequired()])
     activo = BooleanField("Usuario activo", default=True)
     password = PasswordField(
@@ -104,6 +107,37 @@ class UsuarioCrearForm(UsuarioForm):
             Length(min=LONGITUD_MINIMA_PASSWORD, message=f"Mínimo {LONGITUD_MINIMA_PASSWORD} caracteres."),
         ],
     )
+
+
+class PerfilMedicoForm(FlaskForm):
+    """Formulario especializado para la configuración del Médico Veterinario Principal y su firma."""
+
+    nombre = StringField(
+        "Nombre de la doctora / profesional",
+        validators=[DataRequired("El nombre es obligatorio."), Length(max=120)],
+        default="Dra. Daniela Pulido",
+    )
+    titulo_profesional = StringField(
+        "Título profesional",
+        validators=[DataRequired("El título profesional es obligatorio."), Length(max=150)],
+        default="Médica veterinaria",
+    )
+    tarjeta_profesional = StringField(
+        "Tarjeta Profesional (T.P.)",
+        validators=[DataRequired("La tarjeta profesional es obligatoria."), Length(max=50)],
+        default="53214",
+    )
+    especialidad = StringField(
+        "Especialidad / Diplomado",
+        validators=[Optional(), Length(max=150)],
+        default="Dpl. Dermatología de pequeñas especies",
+    )
+    telefono = StringField("Teléfono / WhatsApp", validators=[Optional(), Length(max=20)])
+    email = StringField("Correo electrónico", validators=[Optional(), CORREO_VALIDO, Length(max=120)])
+    firma_archivo = FileField("Subir imagen de firma (PNG transparente, JPG o WEBP)", validators=[Optional()])
+    firma_canvas = HiddenField("Trazo de firma canvas")
+    enviar = SubmitField("Guardar información y firma")
+
 
 
 # ---------------------------------------------------------------------------
@@ -499,7 +533,7 @@ class ConsultaMedicaForm(FlaskForm):
     condicion_corporal = SelectField("Condición Corporal", choices=[("", "-- Seleccionar --"), ("1/5", "1/5 - Muy delgado"), ("2/5", "2/5 - Delgado"), ("3/5", "3/5 - Ideal"), ("4/5", "4/5 - Sobrepeso"), ("5/5", "5/5 - Obeso")], validators=[Optional()])
     examen_sistemas = TextAreaField("Examen por sistemas (Objetivo - O)", validators=[Optional(), Length(max=2000)])
 
-    diagnostico = TextAreaField("Diagnóstico / Evaluación (Avalúo - A)", validators=[DataRequired("El diagnóstico es obligatorio."), Length(max=2000)])
+    diagnostico = TextAreaField("Diagnóstico Presuntivo (Avalúo - A)", validators=[DataRequired("El diagnóstico presuntivo es obligatorio."), Length(max=2000)])
     plan_tratamiento = TextAreaField("Plan de Tratamiento / Indicaciones (Plan - P)", validators=[DataRequired("El plan de tratamiento es obligatorio."), Length(max=2000)])
     receta_medica = TextAreaField("Fórmula Médica / Prescripción", validators=[Optional(), Length(max=2000)])
     observaciones = TextAreaField("Observaciones adicionales", validators=[Optional(), Length(max=1000)])

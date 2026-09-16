@@ -77,21 +77,37 @@ def sembrar():
         # -------------------------------------------------------------------
         print("  -> Creando usuarios para todos los roles...")
         usuarios_data = [
-            ("Administrador Principal", "admin@sandia.com", "admin", "3105550001"),
-            ("Dra. Camila Morales", "veterinario@sandia.com", "veterinario", "3105550002"),
-            ("Andrés Castro", "auxiliar@sandia.com", "auxiliar", "3105550003"),
-            ("Valentina Ríos", "groomer@sandia.com", "groomer", "3105550004"),
-            ("Mateo Gómez", "cajero@sandia.com", "cajero", "3105550005"),
-            ("Sofía Herrera", "recepcion@sandia.com", "recepcion", "3105550006"),
+            ("Administrador Principal", "admin@sandia.com", "admin", "3105550001", None, None, None),
+            ("Dra. Daniela Pulido", "veterinario@sandia.com", "veterinario", "3105550002", "53214", "Médica veterinaria", "Dpl. Dermatología de pequeñas especies"),
+            ("Andrés Castro", "auxiliar@sandia.com", "auxiliar", "3105550003", None, None, None),
+            ("Valentina Ríos", "groomer@sandia.com", "groomer", "3105550004", None, None, None),
+            ("Mateo Gómez", "cajero@sandia.com", "cajero", "3105550005", None, None, None),
+            ("Sofía Herrera", "recepcion@sandia.com", "recepcion", "3105550006", None, None, None),
         ]
         usuarios_dict = {}
-        for nombre, email, rol, tel in usuarios_data:
+        for nombre, email, rol, tel, tp, titulo, esp in usuarios_data:
             u = db.session.execute(db.select(Usuario).filter_by(email=email)).scalar_one_or_none()
             if not u:
-                u = Usuario(nombre=nombre, email=email, rol=rol, telefono=tel, activo=True)
+                u = Usuario(
+                    nombre=nombre,
+                    email=email,
+                    rol=rol,
+                    telefono=tel,
+                    tarjeta_profesional=tp,
+                    titulo_profesional=titulo,
+                    especialidad=esp,
+                    activo=True,
+                )
                 u.establecer_password("Sandia2026*")
                 db.session.add(u)
                 db.session.flush()
+            else:
+                if rol == "veterinario":
+                    u.nombre = nombre
+                    u.tarjeta_profesional = tp
+                    u.titulo_profesional = titulo
+                    u.especialidad = esp
+                    db.session.flush()
             usuarios_dict[rol] = u
 
         admin = usuarios_dict["admin"]

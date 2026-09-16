@@ -1,96 +1,261 @@
 {% extends "base.html" %}
-{% from "_macros.html" import encabezado %}
-{% block titulo %}Usuarios{% endblock %}
+{% block titulo %}Gestión de Usuarios & Personal · Sandía{% endblock %}
 
 {% block contenido %}
-{% call encabezado("Usuarios", "Cuentas y roles del personal") %}
-  <a class="btn btn-sandia" href="{{ url_for('admin.usuario_nuevo') }}">
-    <i class="bi bi-person-plus-fill"></i>Nuevo usuario
-  </a>
-{% endcall %}
+{# 1. Cabecera Principal con Identidad Sandía #}
+<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1 fw-bold" style="font-size: 0.76rem;">
+        <i class="bi bi-shield-lock-fill me-1"></i> Control de Acceso & Seguridad
+      </span>
+    </div>
+    <h1 class="h3 fw-bold text-dark mb-1" style="font-family: var(--fuente-marca); color: #BE123C;">
+      Gestión de Usuarios & Personal
+    </h1>
+    <p class="text-secondary small mb-0">
+      Directorio de colaboradores, administración de accesos, perfiles de rol y credenciales
+    </p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <a href="{{ url_for('admin.usuario_nuevo') }}" class="btn btn-sandia-coral rounded-pill px-4 py-2 shadow-sm d-flex align-items-center gap-2 fw-bold">
+      <i class="bi bi-person-plus-fill fs-5"></i>
+      <span>Nuevo Usuario</span>
+    </a>
+  </div>
+</div>
 
-{# Filtros #}
-<form method="get" class="card mb-4" style="border-top: 3px solid var(--sandia-rojo);">
-  <div class="card-body py-3">
-    <div class="row g-2 align-items-end">
-      <div class="col-12 col-md-5">
-        <label class="form-label mb-1" for="q">Buscar</label>
-        <div class="input-group">
-          <span class="input-group-text bg-white"><i class="bi bi-search text-secondary"></i></span>
-          <input class="form-control border-start-0" type="search" id="q" name="q" value="{{ filtro_texto }}" placeholder="Nombre o correo">
+{# 2. Indicadores Clave del Equipo (KPI Cards) #}
+{% if stats %}
+<div class="row row-cols-2 row-cols-xl-4 g-2.5 g-md-3 mb-4">
+  {# Total Colaboradores #}
+  <div class="col">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 p-xl-3.5" style="border: 1.5px solid #E2E8F0 !important; border-top: 4px solid #E11D48 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 48px; height: 48px; background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%); color: #E11D48;">
+          <i class="bi bi-people-fill fs-4"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Total Personal</div>
+          <div class="h4 fw-bold text-dark mb-0 font-monospace">{{ stats.total }}</div>
+          <div class="text-muted small mt-0.5" style="font-size: 0.72rem;">Cuentas registradas</div>
         </div>
       </div>
+    </div>
+  </div>
+
+  {# Personal Activo #}
+  <div class="col">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 p-xl-3.5" style="border: 1.5px solid #E2E8F0 !important; border-top: 4px solid #16A34A !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 48px; height: 48px; background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); color: #16A34A;">
+          <i class="bi bi-person-check-fill fs-4"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Personal Activo</div>
+          <div class="h4 fw-bold text-success mb-0 font-monospace">{{ stats.activos }}</div>
+          <div class="text-muted small mt-0.5" style="font-size: 0.72rem;">Con acceso habilitado</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Equipo Clínico #}
+  <div class="col">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 p-xl-3.5" style="border: 1.5px solid #E2E8F0 !important; border-top: 4px solid #0284C7 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 48px; height: 48px; background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%); color: #0284C7;">
+          <i class="bi bi-heart-pulse-fill fs-4"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Equipo Clínico</div>
+          <div class="h4 fw-bold text-primary mb-0 font-monospace">{{ stats.clinicos }}</div>
+          <div class="text-muted small mt-0.5" style="font-size: 0.72rem;">Veterinarios y Auxiliares</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Operaciones & Atención #}
+  <div class="col">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 p-xl-3.5" style="border: 1.5px solid #E2E8F0 !important; border-top: 4px solid #0D9488 !important;">
+      <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-xs" 
+             style="width: 48px; height: 48px; background: linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 100%); color: #0D9488;">
+          <i class="bi bi-scissors fs-4"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-secondary small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Operaciones & Spa</div>
+          <div class="h4 fw-bold text-dark mb-0 font-monospace" style="color: #0F766E !important;">{{ stats.operativos }}</div>
+          <div class="text-muted small mt-0.5" style="font-size: 0.72rem;">Spa, Caja y Recepción</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# 3. Tarjeta de Filtros Modernos #}
+<div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+  <div class="card-body p-3 p-md-4">
+    <form method="get" class="row g-3 align-items-end" role="search">
+      <div class="col-12 col-md-5">
+        <label class="form-label small fw-bold text-secondary mb-1" for="q">
+          <i class="bi bi-search me-1 text-danger"></i>Buscar por Nombre, Correo o Teléfono
+        </label>
+        <div class="input-group">
+          <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+          <input class="form-control border-start-0 ps-0 bg-light" type="search" id="q" name="q" value="{{ filtro_texto }}" placeholder="Ej: Camila, admin@sandiavet.com, 310..." autofocus>
+        </div>
+      </div>
+
       <div class="col-6 col-md-3">
-        <label class="form-label mb-1" for="rol">Rol</label>
-        <select class="form-select" id="rol" name="rol">
+        <label class="form-label small fw-bold text-secondary mb-1" for="rol">
+          <i class="bi bi-person-badge me-1 text-danger"></i>Filtrar por Rol
+        </label>
+        <select class="form-select bg-light fw-semibold" id="rol" name="rol">
           <option value="">Todos los roles</option>
-          {% for clave, etiqueta in ROLES.items() %}
-          <option value="{{ clave }}" {% if filtro_rol == clave %}selected{% endif %}>{{ etiqueta }}</option>
-          {% endfor %}
+          <option value="admin" {% if filtro_rol == 'admin' %}selected{% endif %}>👑 Administrador</option>
+          <option value="veterinario" {% if filtro_rol == 'veterinario' %}selected{% endif %}>🩺 Veterinario/a</option>
+          <option value="auxiliar" {% if filtro_rol == 'auxiliar' %}selected{% endif %}>🩹 Auxiliar Clínico</option>
+          <option value="groomer" {% if filtro_rol == 'groomer' %}selected{% endif %}>✂️ Groomer / Spa</option>
+          <option value="cajero" {% if filtro_rol == 'cajero' %}selected{% endif %}>💳 Cajero/a POS</option>
+          <option value="recepcion" {% if filtro_rol == 'recepcion' %}selected{% endif %}>📋 Recepción</option>
         </select>
       </div>
+
       <div class="col-6 col-md-2">
-        <label class="form-label mb-1" for="estado">Estado</label>
-        <select class="form-select" id="estado" name="estado">
+        <label class="form-label small fw-bold text-secondary mb-1" for="estado">
+          <i class="bi bi-toggle2-on me-1 text-danger"></i>Estado
+        </label>
+        <select class="form-select bg-light fw-semibold" id="estado" name="estado">
           <option value="activos" {% if filtro_estado == 'activos' %}selected{% endif %}>Activos</option>
           <option value="inactivos" {% if filtro_estado == 'inactivos' %}selected{% endif %}>Inactivos</option>
           <option value="todos" {% if filtro_estado == 'todos' %}selected{% endif %}>Todos</option>
         </select>
       </div>
-      <div class="col-12 col-md-2 d-grid">
-        <button class="btn btn-primary" type="submit"><i class="bi bi-funnel-fill me-1"></i>Filtrar</button>
-      </div>
-    </div>
-  </div>
-</form>
 
+      <div class="col-12 col-md-2 d-flex gap-2">
+        <button class="btn btn-sandia-coral rounded-pill fw-bold shadow-xs flex-grow-1 py-2" type="submit">
+          <i class="bi bi-funnel me-1"></i>Filtrar
+        </button>
+        {% if filtro_texto or filtro_rol or filtro_estado != 'activos' %}
+        <a href="{{ url_for('admin.usuarios') }}" class="btn btn-outline-secondary rounded-pill px-3 py-2" title="Limpiar filtros">
+          <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+{# Diccionario de Estilos Visuales por Rol #}
+{% set estilos_rol = {
+  'admin': {'badge': 'background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%); color: #BE123C; border: 1.2px solid #FECDD3;', 'icono': 'bi-shield-shaded', 'emoji': '👑', 'avatar_bg': 'linear-gradient(135deg, #E11D48 0%, #FB7185 100%)'},
+  'veterinario': {'badge': 'background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%); color: #0369A1; border: 1.2px solid #BAE6FD;', 'icono': 'bi-heart-pulse-fill', 'emoji': '🩺', 'avatar_bg': 'linear-gradient(135deg, #0284C7 0%, #38BDF8 100%)'},
+  'auxiliar': {'badge': 'background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); color: #15803D; border: 1.2px solid #BBF7D0;', 'icono': 'bi-bandaid-fill', 'emoji': '🩹', 'avatar_bg': 'linear-gradient(135deg, #16A34A 0%, #4ADE80 100%)'},
+  'groomer': {'badge': 'background: linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 100%); color: #0F766E; border: 1.2px solid #99F6E4;', 'icono': 'bi-scissors', 'emoji': '✂️', 'avatar_bg': 'linear-gradient(135deg, #0D9488 0%, #2DD4BF 100%)'},
+  'cajero': {'badge': 'background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); color: #B45309; border: 1.2px solid #FDE68A;', 'icono': 'bi-cart-check-fill', 'emoji': '💳', 'avatar_bg': 'linear-gradient(135deg, #D97706 0%, #FBBF24 100%)'},
+  'recepcion': {'badge': 'background: linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 100%); color: #7E22CE; border: 1.2px solid #E9D5FF;', 'icono': 'bi-clipboard-check-fill', 'emoji': '📋', 'avatar_bg': 'linear-gradient(135deg, #9333EA 0%, #C084FC 100%)'}
+} %}
+
+{# 4. Tabla y Feed de Resultados #}
 {% if not usuarios %}
-<div class="card">
+<div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
   <div class="card-body text-center text-secondary py-5">
-    <div style="font-size:3rem; opacity:0.35;">👥</div>
-    <div class="fw-bold mt-2">No hay usuarios que coincidan</div>
-    <div class="small mt-1">Intenta con otro filtro o crea uno nuevo</div>
+    <div class="display-4 mb-2">👥</div>
+    <h5 class="fw-bold text-dark" style="font-family: var(--fuente-marca);">No se encontraron usuarios</h5>
+    <p class="text-muted small mb-3">
+      {% if filtro_texto or filtro_rol %}
+      No hay colaboradores que coincidan con los criterios de búsqueda seleccionados.
+      {% else %}
+      Todavía no hay usuarios registrados bajo este criterio.
+      {% endif %}
+    </p>
+    <a href="{{ url_for('admin.usuarios') }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-4 py-2 shadow-xs fw-semibold">
+      <i class="bi bi-arrow-repeat me-1"></i>Ver Todos los Usuarios
+    </a>
   </div>
 </div>
 {% else %}
 
-{# Contador #}
-<div class="d-flex align-items-center gap-2 mb-3">
-  <span class="badge rounded-pill" style="background:var(--sandia-rojo);font-size:0.85rem;padding:0.4em 0.85em;">{{ usuarios|length }}</span>
-  <span class="text-secondary small fw-bold">{{ 'usuario' if usuarios|length == 1 else 'usuarios' }} encontrado{{ 's' if usuarios|length != 1 else '' }}</span>
+{# Contador de Resultados #}
+<div class="d-flex align-items-center justify-content-between mb-3 px-1">
+  <span class="small text-secondary fw-semibold">
+    Mostrando <span class="badge bg-danger rounded-pill px-2.5 py-1">{{ usuarios|length }}</span> {{ 'colaborador' if usuarios|length == 1 else 'colaboradores' }} del equipo
+  </span>
 </div>
 
-{# ── Tarjetas en celular ── #}
-<div class="d-md-none d-flex flex-column gap-3">
+{# ── Vista Móvil (Tarjetas Fluidas) ── #}
+<div class="d-md-none d-flex flex-column gap-3 mb-4">
   {% for u in usuarios %}
-  <div class="usuario-card">
-    <div class="d-flex align-items-center gap-3">
-      <div class="usuario-avatar usuario-avatar--{{ loop.index0 % 6 }}{% if not u.activo %} usuario-avatar--inactivo{% endif %}">
-        {{ u.nombre[:1]|upper }}
+  {% set rol_info = estilos_rol.get(u.rol, {'badge': 'background:#F1F5F9; color:#475569;', 'icono': 'bi-person-fill', 'emoji': '👤', 'avatar_bg': '#64748B'}) %}
+  <div class="card border-0 shadow-sm rounded-4 bg-white p-3.5 position-relative overflow-hidden" style="border: 1.5px solid {% if u.activo %}#FECDD3{% else %}#E2E8F0{% endif %} !important;">
+    <div class="d-flex align-items-start gap-3">
+      {# Avatar con Iniciales y Badge de Emoji #}
+      <div class="position-relative flex-shrink-0">
+        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-xs" 
+             style="width: 52px; height: 52px; font-size: 1.3rem; background: {% if u.activo %}{{ rol_info.avatar_bg }}{% else %}#94A3B8{% endif %};">
+          {{ u.nombre[:1]|upper }}
+        </div>
+        <span class="position-absolute bottom-0 end-0 bg-white rounded-circle shadow-xs fs-6 d-flex align-items-center justify-content-center border" style="width: 22px; height: 22px; font-size: 0.75rem;">
+          {{ rol_info.emoji }}
+        </span>
       </div>
+
       <div class="flex-grow-1 min-w-0">
-        <div class="fw-bold text-truncate" style="font-size:1rem;">{{ u.nombre }}</div>
-        <div class="small text-secondary text-truncate">{{ u.email }}</div>
-        {% if u.telefono %}<div class="small text-secondary"><i class="bi bi-telephone me-1"></i>{{ u.telefono }}</div>{% endif %}
-        <div class="mt-2 d-flex flex-wrap gap-1">
-          <span class="rol-badge rol-badge--{{ u.rol }}">{{ u.rol_etiqueta }}</span>
+        <div class="d-flex align-items-center justify-content-between gap-1 mb-0.5">
+          <h2 class="h6 fw-bold text-dark text-truncate mb-0" style="font-family: var(--fuente-marca);">
+            {{ u.nombre }}
+          </h2>
+          {% if u.id == current_user.id %}
+          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">Tú</span>
+          {% endif %}
+        </div>
+
+        <div class="small text-secondary text-truncate d-flex align-items-center gap-1 mb-1">
+          <i class="bi bi-envelope text-muted"></i>
+          <span>{{ u.email }}</span>
+        </div>
+
+        {% if u.telefono %}
+        <div class="small text-muted d-flex align-items-center gap-1 mb-2">
+          <i class="bi bi-whatsapp text-success"></i>
+          <span>{{ u.telefono }}</span>
+        </div>
+        {% endif %}
+
+        <div class="d-flex flex-wrap gap-1.5 align-items-center">
+          <span class="badge rounded-pill px-2.5 py-1 small fw-semibold" style="{{ rol_info.badge }}">
+            <i class="bi {{ rol_info.icono }} me-1"></i>{{ u.rol_etiqueta }}
+          </span>
           {% if u.activo %}
-          <span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Activo</span>
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 small fw-semibold">
+              <i class="bi bi-check-circle-fill me-1"></i>Activo
+            </span>
           {% else %}
-          <span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>
+            <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2.5 py-1 small">
+              <i class="bi bi-slash-circle me-1"></i>Inactivo
+            </span>
           {% endif %}
         </div>
       </div>
     </div>
-    <div class="d-flex gap-2 mt-3 pt-3" style="border-top:1px solid var(--sandia-gris-claro);">
-      <a class="btn btn-sm btn-outline-primary flex-grow-1" href="{{ url_for('admin.usuario_editar', usuario_id=u.id) }}">
+
+    {# Barra de Acciones Móvil #}
+    <div class="d-flex gap-2 mt-3 pt-3 border-top">
+      <a class="btn btn-sm btn-outline-primary rounded-pill flex-grow-1 fw-semibold py-1.5 shadow-xs" href="{{ url_for('admin.usuario_editar', usuario_id=u.id) }}">
         <i class="bi bi-pencil-square me-1"></i>Editar
       </a>
       {% if u.id != current_user.id %}
+      {% set accion = 'desactivar' if u.activo else 'activar' %}
       <form method="post" action="{{ url_for('admin.usuario_cambiar_estado', usuario_id=u.id, estado=filtro_estado) }}" class="flex-grow-1 d-grid"
-            data-confirmar="¿{{ 'Desactivar' if u.activo else 'Activar' }} a {{ u.nombre }}?">
+            onsubmit="return confirm('¿Confirmas {{ accion }} la cuenta de {{ u.nombre }}?')">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-sm btn-outline-{{ 'danger' if u.activo else 'success' }}" type="submit">
+        <button class="btn btn-sm btn-outline-{{ 'danger' if u.activo else 'success' }} rounded-pill fw-semibold py-1.5 shadow-xs" type="submit">
           <i class="bi {{ 'bi-person-dash' if u.activo else 'bi-person-check' }} me-1"></i>{{ 'Desactivar' if u.activo else 'Activar' }}
         </button>
       </form>
@@ -100,67 +265,126 @@
   {% endfor %}
 </div>
 
-{# ── Tabla desktop ── #}
-<div class="card d-none d-md-block" style="border-top: 3px solid var(--sandia-rojo); overflow:hidden;">
+{# ── Vista Desktop (Tabla Moderna) ── #}
+<div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden d-none d-md-block mb-4" style="border: 1.5px solid #FECDD3 !important;">
+  <div class="card-header card-header-sandia py-3 px-4 d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-2">
+      <span class="fs-5">👥</span>
+      <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Directorio de Miembros del Sistema</span>
+    </div>
+    <span class="badge badge-sandia-rosa rounded-pill px-3 py-1 small">
+      {{ usuarios|length }} cuentas
+    </span>
+  </div>
+
   <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0 usuarios-tabla">
-      <thead>
+    <table class="table table-hover align-middle mb-0">
+      <thead style="background-color: #FFF5F6; border-bottom: 1.5px solid #FECDD3;">
         <tr>
-          <th style="padding-left:1.25rem;">Miembro del equipo</th>
-          <th>Contacto</th>
-          <th>Rol</th>
-          <th>Estado</th>
-          <th>Último acceso</th>
-          <th class="text-end" style="padding-right:1.25rem;">Acciones</th>
+          <th class="ps-4 py-3 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem; letter-spacing: 0.5px;">Miembro del Equipo</th>
+          <th class="py-3 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem; letter-spacing: 0.5px;">Contacto & Correo</th>
+          <th class="py-3 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem; letter-spacing: 0.5px;">Rol Asignado</th>
+          <th class="py-3 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem; letter-spacing: 0.5px;">Estado</th>
+          <th class="py-3 small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem; letter-spacing: 0.5px;">Último Acceso</th>
+          <th class="pe-4 py-3 text-end small fw-bold text-secondary text-uppercase" style="font-size: 0.74rem; letter-spacing: 0.5px;">Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for u in usuarios %}
-        <tr class="usuario-fila{% if not u.activo %} usuario-fila--inactivo{% endif %}">
-          <td style="padding-left:1.25rem; padding-top:0.85rem; padding-bottom:0.85rem;">
+        {% set rol_info = estilos_rol.get(u.rol, {'badge': 'background:#F1F5F9; color:#475569;', 'icono': 'bi-person-fill', 'emoji': '👤', 'avatar_bg': '#64748B'}) %}
+        <tr class="{% if not u.activo %}table-light opacity-75{% endif %}">
+          {# Nombre y Avatar #}
+          <td class="ps-4 py-3">
             <div class="d-flex align-items-center gap-3">
-              <div class="usuario-avatar usuario-avatar--sm usuario-avatar--{{ loop.index0 % 6 }}{% if not u.activo %} usuario-avatar--inactivo{% endif %}">
-                {{ u.nombre[:1]|upper }}
+              <div class="position-relative flex-shrink-0">
+                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-xs" 
+                     style="width: 44px; height: 44px; font-size: 1.15rem; background: {% if u.activo %}{{ rol_info.avatar_bg }}{% else %}#94A3B8{% endif %};">
+                  {{ u.nombre[:1]|upper }}
+                </div>
+                <span class="position-absolute bottom-0 end-0 bg-white rounded-circle shadow-xs fs-6 d-flex align-items-center justify-content-center border" style="width: 18px; height: 18px; font-size: 0.65rem;">
+                  {{ rol_info.emoji }}
+                </span>
               </div>
-              <div>
-                <div class="fw-bold" style="font-size:0.95rem;">{{ u.nombre }}</div>
-                {% if u.id == current_user.id %}
-                <span class="badge" style="background:#FEF3C7;color:#92400E;font-size:0.7rem;border:1px solid #FDE68A;">Tú</span>
+              <div class="min-w-0">
+                <div class="d-flex align-items-center gap-1.5">
+                  <span class="fw-bold text-dark d-block" style="font-family: var(--fuente-marca); font-size: 0.95rem;">{{ u.nombre }}</span>
+                  {% if u.id == current_user.id %}
+                  <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">Tú</span>
+                  {% endif %}
+                </div>
+                {% if u.tarjeta_profesional %}
+                <span class="text-muted small" style="font-size: 0.74rem;">TP: <code>{{ u.tarjeta_profesional }}</code></span>
                 {% endif %}
               </div>
             </div>
           </td>
-          <td>
-            <div style="font-size:0.88rem;">{{ u.email }}</div>
-            {% if u.telefono %}<div class="small text-secondary"><i class="bi bi-telephone me-1"></i>{{ u.telefono }}</div>{% endif %}
+
+          {# Contacto #}
+          <td class="py-3">
+            <div class="text-dark fw-semibold small d-flex align-items-center gap-1">
+              <i class="bi bi-envelope text-danger"></i>
+              <span>{{ u.email }}</span>
+            </div>
+            {% if u.telefono %}
+            <div class="text-muted small mt-0.5 d-flex align-items-center gap-1" style="font-size: 0.76rem;">
+              <i class="bi bi-whatsapp text-success"></i>
+              <span>{{ u.telefono }}</span>
+            </div>
+            {% endif %}
           </td>
-          <td><span class="rol-badge rol-badge--{{ u.rol }}">{{ u.rol_etiqueta }}</span></td>
-          <td>
+
+          {# Rol #}
+          <td class="py-3">
+            <span class="badge rounded-pill px-3 py-1.5 small fw-semibold shadow-xs" style="{{ rol_info.badge }}">
+              <i class="bi {{ rol_info.icono }} me-1"></i>{{ u.rol_etiqueta }}
+            </span>
+          </td>
+
+          {# Estado #}
+          <td class="py-3">
             {% if u.activo %}
-            <span class="estado estado--ok"><i class="bi bi-check-circle-fill"></i>Activo</span>
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 small fw-semibold">
+              <i class="bi bi-check-circle-fill me-1"></i>Activo
+            </span>
             {% else %}
-            <span class="estado estado--neutro"><i class="bi bi-slash-circle"></i>Inactivo</span>
+            <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2.5 py-1 small">
+              <i class="bi bi-slash-circle me-1"></i>Inactivo
+            </span>
             {% endif %}
           </td>
-          <td>
+
+          {# Último Acceso #}
+          <td class="py-3">
             {% if u.ultimo_acceso %}
-            <div style="font-size:0.85rem;">{{ u.ultimo_acceso|fecha_hora }}</div>
+            <div class="text-dark small font-monospace fw-semibold">{{ u.ultimo_acceso|fecha_hora }}</div>
             {% else %}
-            <span class="text-secondary small">Nunca</span>
+            <span class="text-muted small fst-italic">Sin inicios aún</span>
             {% endif %}
           </td>
-          <td class="text-end" style="padding-right:1.25rem;">
-            <div class="d-inline-flex gap-2">
-              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.usuario_editar', usuario_id=u.id) }}">
-                <i class="bi bi-pencil-square me-1"></i>Editar
+
+          {# Acciones #}
+          <td class="pe-4 py-3 text-end">
+            <div class="d-inline-flex gap-1.5 align-items-center">
+              <a class="btn btn-xs btn-outline-primary rounded-pill px-3 py-1 fw-semibold shadow-xs d-inline-flex align-items-center gap-1" 
+                 href="{{ url_for('admin.usuario_editar', usuario_id=u.id) }}" title="Editar perfil y permisos">
+                <i class="bi bi-pencil-square"></i>
+                <span>Editar</span>
               </a>
+
               {% if u.id != current_user.id %}
-              <form method="post" action="{{ url_for('admin.usuario_cambiar_estado', usuario_id=u.id, estado=filtro_estado) }}"
-                    data-confirmar="¿{{ 'Desactivar' if u.activo else 'Activar' }} a {{ u.nombre }}?">
+              {% set accion = 'desactivar' if u.activo else 'activar' %}
+              <form method="post" action="{{ url_for('admin.usuario_cambiar_estado', usuario_id=u.id, estado=filtro_estado) }}" class="m-0"
+                    onsubmit="return confirm('¿Confirmas {{ accion }} a {{ u.nombre }}?')">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button class="btn btn-sm btn-outline-{{ 'danger' if u.activo else 'success' }}" type="submit">
-                  <i class="bi {{ 'bi-person-dash' if u.activo else 'bi-person-check' }} me-1"></i>{{ 'Desactivar' if u.activo else 'Activar' }}
+                {% if u.activo %}
+                <button class="btn btn-xs btn-outline-danger rounded-pill px-2.5 py-1 fw-semibold shadow-xs" type="submit" title="Desactivar cuenta">
+                  <i class="bi bi-person-dash me-0.5"></i>Desactivar
                 </button>
+                {% else %}
+                <button class="btn btn-xs btn-outline-success rounded-pill px-2.5 py-1 fw-semibold shadow-xs" type="submit" title="Activar cuenta">
+                  <i class="bi bi-person-check me-0.5"></i>Activar
+                </button>
+                {% endif %}
               </form>
               {% endif %}
             </div>

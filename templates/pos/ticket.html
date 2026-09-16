@@ -336,13 +336,13 @@
     
     <!-- Encabezado con Logo Oficial de Sandía -->
     <div class="ticket-header">
-      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Logo Sandía" class="ticket-logo">
-      <div class="brand-name">SANDÍA</div>
-      <div class="brand-subtitle">Medicina & Spa Veterinario</div>
+      <img src="{{ static_url('img/dog_icon.png') }}" alt="Logo Sandía" class="ticket-logo">
+      <div class="brand-name">{{ clinica.nombre if clinica and clinica.nombre else 'SANDÍA' }}</div>
+      <div class="brand-subtitle">{{ clinica.subtitulo if clinica and clinica.subtitulo else 'Medicina y Spa Veterinario' }}</div>
       <div class="brand-details">
-        NIT: 901.234.567-8 · Régimen Simplificado<br>
-        Calle 10 # 40-20, Medellín<br>
-        WhatsApp: +57 300 123 4567
+        {% if clinica.nit %}NIT: {{ clinica.nit }}<br>{% endif %}
+        {% if clinica.direccion %}{{ clinica.direccion }}{% if clinica.ciudad %}, {{ clinica.ciudad }}{% endif %}<br>{% endif %}
+        {% if clinica.whatsapp or clinica.telefono %}Tel/WhatsApp: {{ clinica.whatsapp or clinica.telefono }}{% endif %}
       </div>
     </div>
 

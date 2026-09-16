@@ -1,107 +1,610 @@
 {% extends "base.html" %}
-{% from "_macros.html" import campo, campo_select, campo_switch, encabezado %}
-{% block titulo %}{{ 'Editar usuario' if usuario else 'Nuevo usuario' }}{% endblock %}
+{% block titulo %}{{ 'Editar Usuario' if usuario else 'Nuevo Usuario' }} · Sandía{% endblock %}
 
 {% block contenido %}
-{{ encabezado('Editar usuario' if usuario else 'Nuevo usuario', usuario.email if usuario else 'Crea una cuenta para un miembro del equipo') }}
-
-<div style="max-width: 640px;">
-
-  {# Hero del formulario #}
-  <div class="card mb-3" style="border-top: 3px solid var(--sandia-rojo); overflow:hidden;">
-    <div class="card-body" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFF8F8 60%, #ffffff 100%); padding: 1.5rem;">
-      <div class="d-flex align-items-center gap-3">
-        <div id="form-avatar-preview" class="usuario-avatar usuario-avatar--0" style="width:56px;height:56px;font-size:1.5rem;flex-shrink:0;">
-          {% if usuario %}{{ usuario.nombre[:1]|upper }}{% else %}<i class="bi bi-person" style="font-size:1.4rem;"></i>{% endif %}
-        </div>
-        <div>
-          <div class="fw-bold" style="font-size:1.05rem;" id="form-nombre-preview">
-            {% if usuario %}{{ usuario.nombre }}{% else %}Nuevo usuario{% endif %}
-          </div>
-          <div class="small text-secondary">
-            {% if usuario %}<span class="rol-badge rol-badge--{{ usuario.rol }}">{{ usuario.rol_etiqueta }}</span>
-            {% else %}<span class="text-secondary">Completa el formulario</span>{% endif %}
-          </div>
-        </div>
+{# 1. Cabecera con Navegación y Título #}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('admin.usuarios') }}" class="btn btn-sm btn-outline-secondary rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Volver al directorio">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <div>
+        <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca); color: #BE123C;">
+          {{ 'Editar Usuario: ' ~ usuario.nombre if usuario else 'Registrar Nuevo Usuario' }}
+        </h1>
+        <p class="text-secondary small mb-0 mt-0.5">
+          {{ 'Modifica la información personal, asignación de rol o credenciales' if usuario else 'Crea una cuenta para un colaborador y asigna sus permisos en el sistema' }}
+        </p>
       </div>
     </div>
   </div>
 
-  <div class="card" style="border-top: 3px solid var(--sandia-rojo);">
-    <div class="card-body p-4">
-      <form method="post" novalidate id="usuario-form">
-        {{ form.hidden_tag() }}
-
-        {# Datos personales #}
-        <div class="mb-3">
-          <div class="d-flex align-items-center gap-2 mb-3">
-            <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#FDECEB,#FEE2E2);display:flex;align-items:center;justify-content:center;">
-              <i class="bi bi-person-fill" style="color:var(--sandia-rojo);font-size:0.85rem;"></i>
-            </div>
-            <span class="fw-bold" style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--sandia-gris);">Datos personales</span>
-          </div>
-          {{ campo(form.nombre, autocomplete="off", autofocus=True) }}
-          {{ campo(form.email, type="email", inputmode="email", autocomplete="off") }}
-          {{ campo(form.telefono, type="tel", inputmode="tel", autocomplete="off") }}
-        </div>
-
-        <hr class="my-3">
-
-        {# Rol y acceso #}
-        <div class="mb-3">
-          <div class="d-flex align-items-center gap-2 mb-3">
-            <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#E0F2F1,#B2DFDB);display:flex;align-items:center;justify-content:center;">
-              <i class="bi bi-shield-check-fill" style="color:#00897B;font-size:0.85rem;"></i>
-            </div>
-            <span class="fw-bold" style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--sandia-gris);">Rol y acceso</span>
-          </div>
-          {{ campo_select(form.rol, ayuda="Define a qué módulos tiene acceso este usuario.") }}
-          {{ campo_switch(form.activo, ayuda="Un usuario inactivo no puede iniciar sesión, pero su historial se conserva.") }}
-        </div>
-
-        <hr class="my-3">
-
-        {# Contraseña #}
-        <div class="mb-1">
-          <div class="d-flex align-items-center gap-2 mb-3">
-            <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#EDE9FE,#DDD6FE);display:flex;align-items:center;justify-content:center;">
-              <i class="bi bi-key-fill" style="color:#7C3AED;font-size:0.85rem;"></i>
-            </div>
-            <span class="fw-bold" style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--sandia-gris);">Contraseña</span>
-          </div>
-          {{ campo(form.password, autocomplete="new-password", ayuda=("Déjala vacía para no cambiarla." if usuario else "Mínimo 8 caracteres.")) }}
-          {{ campo(form.password_confirmacion, autocomplete="new-password") }}
-        </div>
-
-        <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
-          {{ form.enviar(class_="btn btn-sandia btn-lg flex-grow-1") }}
-          <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('admin.usuarios') }}">
-            <i class="bi bi-arrow-left me-1"></i>Cancelar
-          </a>
-        </div>
-      </form>
-    </div>
+  <div>
+    <a href="{{ url_for('admin.usuarios') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 fw-semibold shadow-xs">
+      <i class="bi bi-people me-1"></i>Ver Todos los Usuarios
+    </a>
   </div>
 </div>
 
+<form method="post" novalidate id="usuario-form">
+  {{ form.hidden_tag() }}
+
+  <div class="row g-4">
+    {# ── Columna Principal: Formulario Estructurado (8 cols) ── #}
+    <div class="col-12 col-lg-8">
+      
+      {# Bloque 1: Datos Personales & Contacto #}
+      <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="card-header card-header-sandia py-3 px-4 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">👤</span>
+            <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">1. Información Personal & Contacto</span>
+          </div>
+          <span class="badge badge-sandia-rosa rounded-pill px-2.5 py-1 small">Requerido</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.nombre.id }}">
+                <i class="bi bi-person-fill text-danger me-1"></i>Nombre Completo *
+              </label>
+              {{ form.nombre(class_="form-control bg-light" + (" is-invalid" if form.nombre.errors else ""), id="inputNombre", placeholder="Ej: Dra. Camila Morales", autofocus=True) }}
+              {% for error in form.nombre.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.email.id }}">
+                <i class="bi bi-envelope-fill text-danger me-1"></i>Correo Electrónico (Usuario de Acceso) *
+              </label>
+              {{ form.email(class_="form-control bg-light" + (" is-invalid" if form.email.errors else ""), id="inputEmail", type="email", placeholder="ejemplo@sandiavet.com") }}
+              {% for error in form.email.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.telefono.id }}">
+                <i class="bi bi-whatsapp text-success me-1"></i>Teléfono Celular / WhatsApp
+              </label>
+              {{ form.telefono(class_="form-control bg-light" + (" is-invalid" if form.telefono.errors else ""), id="inputTelefono", type="tel", placeholder="Ej: 3105551234") }}
+              {% for error in form.telefono.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.tarjeta_profesional.id }}">
+                <i class="bi bi-award-fill text-primary me-1"></i>Tarjeta Profesional (Médicos Veterinarios)
+              </label>
+              {{ form.tarjeta_profesional(class_="form-control bg-light", id="inputTP", placeholder="Ej: 53214") }}
+              <div class="form-text small" style="font-size: 0.74rem;">Aparece en fórmulas, historias y certificados.</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.titulo_profesional.id }}">
+                <i class="bi bi-mortarboard-fill text-purple me-1" style="color: #7C3AED;"></i>Título Profesional
+              </label>
+              {{ form.titulo_profesional(class_="form-control bg-light", id="inputTitulo", placeholder="Ej: Médica veterinaria") }}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.especialidad.id }}">
+                <i class="bi bi-star-fill text-warning me-1"></i>Especialidad / Diplomado
+              </label>
+              {{ form.especialidad(class_="form-control bg-light", id="inputEspecialidad", placeholder="Ej: Dpl. Dermatología de pequeñas especies") }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Bloque 2: Selección Visual de Rol & Permisos #}
+      <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="card-header card-header-sandia py-3 px-4 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">🛡️</span>
+            <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">2. Perfil de Rol & Acceso</span>
+          </div>
+          <span class="badge badge-sandia-rosa rounded-pill px-2.5 py-1 small">Permisos</span>
+        </div>
+        <div class="card-body p-4">
+          <label class="form-label small fw-bold text-secondary mb-2">
+            Selecciona el rol operativo del colaborador:
+          </label>
+
+          {# Tarjetas Interactivas de Rol #}
+          <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-2.5 mb-4" id="selector-tarjetas-rol">
+            
+            {# 1. Administrador #}
+            <div class="col">
+              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="admin" style="background: #FFFBFB;">
+                <div class="d-flex align-items-center gap-2 mb-1.5">
+                  <span class="fs-4">👑</span>
+                  <strong class="text-dark" style="font-size: 0.92rem;">Administrador</strong>
+                </div>
+                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
+                  Acceso total a todos los módulos, reportes financieros, gastos y configuración.
+                </p>
+              </div>
+            </div>
+
+            {# 2. Veterinario #}
+            <div class="col">
+              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="veterinario" style="background: #F8FAFC;">
+                <div class="d-flex align-items-center gap-2 mb-1.5">
+                  <span class="fs-4">🩺</span>
+                  <strong class="text-dark" style="font-size: 0.92rem;">Veterinario/a</strong>
+                </div>
+                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
+                  Historias clínicas SOAP, recetas, vacunas, cirugías y certificados.
+                </p>
+              </div>
+            </div>
+
+            {# 3. Auxiliar #}
+            <div class="col">
+              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="auxiliar" style="background: #F8FAFC;">
+                <div class="d-flex align-items-center gap-2 mb-1.5">
+                  <span class="fs-4">🩹</span>
+                  <strong class="text-dark" style="font-size: 0.92rem;">Auxiliar</strong>
+                </div>
+                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
+                  Hospitalización, triaje, aplicación de vacunas y apoyo clínico.
+                </p>
+              </div>
+            </div>
+
+            {# 4. Groomer #}
+            <div class="col">
+              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="groomer" style="background: #F8FAFC;">
+                <div class="d-flex align-items-center gap-2 mb-1.5">
+                  <span class="fs-4">✂️</span>
+                  <strong class="text-dark" style="font-size: 0.92rem;">Groomer / Spa</strong>
+                </div>
+                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
+                  Agenda de spa, estados de baño/corte y fotos de ingreso/salida.
+                </p>
+              </div>
+            </div>
+
+            {# 5. Cajero #}
+            <div class="col">
+              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="cajero" style="background: #F8FAFC;">
+                <div class="d-flex align-items-center gap-2 mb-1.5">
+                  <span class="fs-4">💳</span>
+                  <strong class="text-dark" style="font-size: 0.92rem;">Cajero/a POS</strong>
+                </div>
+                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
+                  Punto de venta, cobro de facturas, apertura y arqueo de caja.
+                </p>
+              </div>
+            </div>
+
+            {# 6. Recepción #}
+            <div class="col">
+              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="recepcion" style="background: #F8FAFC;">
+                <div class="d-flex align-items-center gap-2 mb-1.5">
+                  <span class="fs-4">📋</span>
+                  <strong class="text-dark" style="font-size: 0.92rem;">Recepción</strong>
+                </div>
+                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
+                  Registro de tutores, pacientes, agenda general y consentimientos.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {# Select de respaldo oculto sincronizado #}
+          <div class="d-none">
+            {{ form.rol(class_="form-select", id="selectRolReal") }}
+          </div>
+          {% for error in form.rol.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+
+          {# Switch de Estado Activo #}
+          <div class="p-3 rounded-4 bg-light border d-flex align-items-center justify-content-between">
+            <div>
+              <label class="form-check-label fw-bold text-dark d-block" for="{{ form.activo.id }}" style="font-size: 0.9rem;">
+                Cuenta Habilitada y Activa
+              </label>
+              <div class="text-muted small" style="font-size: 0.76rem;">
+                Si se desactiva, el usuario no podrá iniciar sesión pero su historial clínico y de auditoría se conservará intacto.
+              </div>
+            </div>
+            <div class="form-check form-switch fs-4 mb-0 ms-3">
+              {{ form.activo(class_="form-check-input cursor-pointer", id="switchActivo") }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Bloque 3: Credenciales & Seguridad #}
+      <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="card-header card-header-sandia py-3 px-4 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">🔐</span>
+            <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">3. Seguridad & Contraseña de Acceso</span>
+          </div>
+          <span class="badge badge-sandia-rosa rounded-pill px-2.5 py-1 small">Seguridad</span>
+        </div>
+        <div class="card-body p-4">
+          {% if usuario %}
+          <div class="alert alert-info py-2 px-3 small rounded-3 mb-3 d-flex align-items-center gap-2" style="background: #F0F9FF; border-color: #BAE6FD; color: #0369A1;">
+            <i class="bi bi-info-circle-fill fs-5"></i>
+            <span>Déjala en blanco si deseas conservar la contraseña actual de este usuario.</span>
+          </div>
+          {% endif %}
+
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.password.id }}">
+                <i class="bi bi-key-fill text-danger me-1"></i>{{ 'Nueva Contraseña' if usuario else 'Contraseña de Acceso *' }}
+              </label>
+              <div class="input-group">
+                {{ form.password(class_="form-control bg-light border-end-0" + (" is-invalid" if form.password.errors else ""), id="inputPassword", autocomplete="new-password", placeholder="Mínimo 8 caracteres") }}
+                <button class="btn btn-outline-secondary border-start-0 bg-light text-muted btn-toggle-password" type="button" data-target="inputPassword" title="Mostrar/ocultar contraseña">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+              {% for error in form.password.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              
+              {# Medidor de Fortaleza #}
+              <div class="mt-2 d-none" id="medidor-password-wrap">
+                <div class="progress" style="height: 4px;">
+                  <div class="progress-bar" id="barra-fortaleza" role="progressbar" style="width: 0%;"></div>
+                </div>
+                <div class="d-flex justify-content-between small text-muted mt-1" style="font-size: 0.7rem;">
+                  <span>Seguridad: <strong id="texto-fortaleza">Débil</strong></span>
+                  <span id="hint-fortaleza">Usa letras, números y símbolos</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.password_confirmacion.id }}">
+                <i class="bi bi-check-all text-danger me-1"></i>Confirmar Contraseña
+              </label>
+              <div class="input-group">
+                {{ form.password_confirmacion(class_="form-control bg-light border-end-0" + (" is-invalid" if form.password_confirmacion.errors else ""), id="inputPasswordConfirm", autocomplete="new-password", placeholder="Repite la contraseña") }}
+                <button class="btn btn-outline-secondary border-start-0 bg-light text-muted btn-toggle-password" type="button" data-target="inputPasswordConfirm" title="Mostrar/ocultar contraseña">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+              {% for error in form.password_confirmacion.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+              <div class="small mt-1 d-none" id="password-match-feedback" style="font-size: 0.72rem;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Barra de Botones Inferior #}
+      <div class="card border-0 shadow-sm rounded-4 bg-white p-3 p-md-4 mb-4" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3">
+          <a class="btn btn-outline-secondary rounded-pill px-4 fw-semibold shadow-xs" href="{{ url_for('admin.usuarios') }}">
+            <i class="bi bi-x-circle me-1"></i> Cancelar
+          </a>
+          <button type="submit" class="btn btn-sandia-coral rounded-pill px-5 py-2.5 fw-bold shadow-sm d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill fs-5"></i>
+            <span>{{ 'Guardar Cambios' if usuario else 'Crear Usuario Oficial' }}</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    {# ── Columna Lateral: Tarjeta de Vista Previa en Vivo (4 cols) ── #}
+    <div class="col-12 col-lg-4">
+      <div class="position-sticky" style="top: 85px;">
+        
+        {# Fotocheck / Credencial en Vivo #}
+        <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden mb-3" style="border: 1.5px solid #FECDD3 !important;">
+          <div class="p-3 text-white text-center" style="background: linear-gradient(135deg, #BE123C 0%, #E11D48 50%, #FB7185 100%);">
+            <div class="small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 1px; opacity: 0.9;">Credencial de Acceso</div>
+            <div class="fw-bold fs-6" style="font-family: var(--fuente-marca);">Sandía · Medicina & Spa</div>
+          </div>
+
+          <div class="card-body p-4 text-center">
+            {# Avatar Dinámico #}
+            <div class="position-relative d-inline-block mb-3">
+              <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm mx-auto" 
+                   id="preview-avatar"
+                   style="width: 72px; height: 72px; font-size: 2rem; background: linear-gradient(135deg, #E11D48 0%, #FB7185 100%);">
+                {{ usuario.nombre[:1]|upper if usuario else '?' }}
+              </div>
+              <span class="position-absolute bottom-0 end-0 bg-white rounded-circle shadow-xs d-flex align-items-center justify-content-center border" 
+                    id="preview-emoji-badge"
+                    style="width: 26px; height: 26px; font-size: 0.9rem;">
+                👑
+              </span>
+            </div>
+
+            {# Nombre y Datos #}
+            <h5 class="fw-bold text-dark mb-1 text-truncate" id="preview-nombre" style="font-family: var(--fuente-marca);">
+              {{ usuario.nombre if usuario else 'Nombre del Colaborador' }}
+            </h5>
+            <div class="text-secondary small text-truncate mb-2" id="preview-email">
+              {{ usuario.email if usuario else 'correo@sandiavet.com' }}
+            </div>
+
+            <div class="mb-3">
+              <span class="badge rounded-pill px-3 py-1.5 fw-semibold shadow-xs" id="preview-rol-badge" 
+                    style="background: #FFF1F2; color: #BE123C; border: 1.2px solid #FECDD3; font-size: 0.78rem;">
+                👑 Administrador
+              </span>
+            </div>
+
+            <div class="text-muted small border-top pt-2" id="preview-telefono-wrap">
+              <i class="bi bi-whatsapp text-success me-1"></i>
+              <span id="preview-telefono">{{ usuario.telefono if (usuario and usuario.telefono) else 'Sin teléfono asignado' }}</span>
+            </div>
+            
+            <div class="text-muted small mt-1 d-none" id="preview-tp-wrap">
+              <i class="bi bi-award text-primary me-1"></i>
+              <span id="preview-tp">{{ usuario.tarjeta_profesional if (usuario and usuario.tarjeta_profesional) else '' }}</span>
+            </div>
+          </div>
+        </div>
+
+        {# Módulos Accesibles según Rol Seleccionado #}
+        <div class="card border-0 shadow-sm rounded-4 bg-white p-3.5" style="border: 1.5px solid #E2E8F0 !important;">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="bi bi-grid-fill text-danger"></i>
+            <strong class="text-dark small" style="font-size: 0.82rem;">Módulos a los que tendrá acceso:</strong>
+          </div>
+          <ul class="list-unstyled mb-0 small text-secondary" id="preview-modulos-lista" style="font-size: 0.76rem; line-height: 1.8;">
+            <!-- Renderizado dinámico vía JS -->
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</form>
+
+<style>
+  .cursor-pointer { cursor: pointer; }
+  .tarjeta-rol-item {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .tarjeta-rol-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    border-color: #FB7185 !important;
+  }
+  .tarjeta-rol-item.active {
+    background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%) !important;
+    border: 2px solid #E11D48 !important;
+    box-shadow: 0 4px 14px rgba(225, 29, 72, 0.18);
+  }
+</style>
+{% endblock %}
+
 {% block scripts %}
 <script>
-  // Actualiza el avatar preview al escribir el nombre
-  const nombreInput = document.getElementById('{{ form.nombre.id }}');
-  const preview = document.getElementById('form-avatar-preview');
-  const nombrePreview = document.getElementById('form-nombre-preview');
-  if (nombreInput) {
-    nombreInput.addEventListener('input', function() {
+  // Módulos por rol para la tarjeta de previsualización
+  const modulosPorRol = {
+    'admin': [
+      '✅ Historias Clínicas & Consultas SOAP',
+      '✅ Pacientes & Directorio de Tutores',
+      '✅ Agenda Médica & Consentimientos',
+      '✅ Spa & Grooming de Mascotas',
+      '✅ Punto de Venta (POS) & Control de Caja',
+      '✅ Inventario, Lotes FEFO & Alertas',
+      '✅ Reportes Financieros & Gastos',
+      '✅ Administración de Usuarios & Clínica'
+    ],
+    'veterinario': [
+      '✅ Historias Clínicas & Consultas SOAP',
+      '✅ Pacientes & Directorio de Tutores',
+      '✅ Agenda Médica & Cirugías',
+      '✅ Emisión de Consentimientos & Certificados',
+      '✅ Recetas Médicas & Exámenes de Lab',
+      '✅ Consulta de Inventario y Medicamentos'
+    ],
+    'auxiliar': [
+      '✅ Historias Clínicas & Triaje',
+      '✅ Hospitalizaciones & Curvas de Peso',
+      '✅ Aplicación de Vacunas y Desparasitaciones',
+      '✅ Directorio de Pacientes y Tutores',
+      '✅ Consulta de Stock en Inventario'
+    ],
+    'groomer': [
+      '✅ Agenda de Spa & Grooming',
+      '✅ Registro de Fotos de Ingreso y Salida',
+      '✅ Aviso de Recogida por WhatsApp',
+      '✅ Directorio de Mascotas y Tutores'
+    ],
+    'cajero': [
+      '✅ Punto de Venta (POS) & Facturación',
+      '✅ Apertura, Arqueo y Cierre de Caja',
+      '✅ Cobro de Ventas y Servicios de Spa',
+      '✅ Consulta de Catálogo y Precios'
+    ],
+    'recepcion': [
+      '✅ Directorio de Pacientes y Tutores',
+      '✅ Agenda de Citas Médicas y Spa',
+      '✅ Emisión y Firma de Consentimientos',
+      '✅ Creación de Fichas de Mascotas'
+    ]
+  };
+
+  const rolMeta = {
+    'admin': { nombre: '👑 Administrador', badgeStyle: 'background: #FFF1F2; color: #BE123C; border: 1.2px solid #FECDD3;', avatarBg: 'linear-gradient(135deg, #E11D48 0%, #FB7185 100%)', emoji: '👑' },
+    'veterinario': { nombre: '🩺 Veterinario/a', badgeStyle: 'background: #F0F9FF; color: #0369A1; border: 1.2px solid #BAE6FD;', avatarBg: 'linear-gradient(135deg, #0284C7 0%, #38BDF8 100%)', emoji: '🩺' },
+    'auxiliar': { nombre: '🩹 Auxiliar Clínico', badgeStyle: 'background: #F0FDF4; color: #15803D; border: 1.2px solid #BBF7D0;', avatarBg: 'linear-gradient(135deg, #16A34A 0%, #4ADE80 100%)', emoji: '🩹' },
+    'groomer': { nombre: '✂️ Groomer / Spa', badgeStyle: 'background: #F0FDFA; color: #0F766E; border: 1.2px solid #99F6E4;', avatarBg: 'linear-gradient(135deg, #0D9488 0%, #2DD4BF 100%)', emoji: '✂️' },
+    'cajero': { nombre: '💳 Cajero/a POS', badgeStyle: 'background: #FFFBEB; color: #B45309; border: 1.2px solid #FDE68A;', avatarBg: 'linear-gradient(135deg, #D97706 0%, #FBBF24 100%)', emoji: '💳' },
+    'recepcion': { nombre: '📋 Recepción', badgeStyle: 'background: #FAF5FF; color: #7E22CE; border: 1.2px solid #E9D5FF;', avatarBg: 'linear-gradient(135deg, #9333EA 0%, #C084FC 100%)', emoji: '📋' }
+  };
+
+  // Elementos DOM
+  const selectRol = document.getElementById('selectRolReal');
+  const tarjetasRol = document.querySelectorAll('.tarjeta-rol-item');
+  const inputNombre = document.getElementById('inputNombre');
+  const inputEmail = document.getElementById('inputEmail');
+  const inputTelefono = document.getElementById('inputTelefono');
+  const inputTP = document.getElementById('inputTP');
+
+  const previewNombre = document.getElementById('preview-nombre');
+  const previewEmail = document.getElementById('preview-email');
+  const previewTelefono = document.getElementById('preview-telefono');
+  const previewTPWrap = document.getElementById('preview-tp-wrap');
+  const previewTP = document.getElementById('preview-tp');
+  const previewAvatar = document.getElementById('preview-avatar');
+  const previewEmoji = document.getElementById('preview-emoji-badge');
+  const previewRolBadge = document.getElementById('preview-rol-badge');
+  const previewModulos = document.getElementById('preview-modulos-lista');
+
+  function actualizarRolVisual(rolSeleccionado) {
+    if (!rolSeleccionado) rolSeleccionado = 'admin';
+    
+    // Activar tarjeta
+    tarjetasRol.forEach(t => {
+      if (t.getAttribute('data-rol') === rolSeleccionado) {
+        t.classList.add('active');
+      } else {
+        t.classList.remove('active');
+      }
+    });
+
+    if (selectRol) selectRol.value = rolSeleccionado;
+
+    // Actualizar vista previa
+    const meta = rolMeta[rolSeleccionado] || rolMeta['admin'];
+    if (previewRolBadge) {
+      previewRolBadge.textContent = meta.nombre;
+      previewRolBadge.style.cssText = meta.badgeStyle;
+    }
+    if (previewEmoji) previewEmoji.textContent = meta.emoji;
+    if (previewAvatar) previewAvatar.style.background = meta.avatarBg;
+
+    // Actualizar lista de módulos
+    if (previewModulos) {
+      const mods = modulosPorRol[rolSeleccionado] || [];
+      previewModulos.innerHTML = mods.map(m => `<li>${m}</li>`).join('');
+    }
+  }
+
+  // Event Listeners para selección de rol
+  tarjetasRol.forEach(tarjeta => {
+    tarjeta.addEventListener('click', function() {
+      const rol = this.getAttribute('data-rol');
+      actualizarRolVisual(rol);
+    });
+  });
+
+  // Sincronización en tiempo real de campos
+  if (inputNombre) {
+    inputNombre.addEventListener('input', function() {
+      const val = this.value.trim();
+      previewNombre.textContent = val || 'Nombre del Colaborador';
+      previewAvatar.textContent = val ? val[0].toUpperCase() : '?';
+    });
+  }
+
+  if (inputEmail) {
+    inputEmail.addEventListener('input', function() {
+      previewEmail.textContent = this.value.trim() || 'correo@sandiavet.com';
+    });
+  }
+
+  if (inputTelefono) {
+    inputTelefono.addEventListener('input', function() {
+      previewTelefono.textContent = this.value.trim() || 'Sin teléfono asignado';
+    });
+  }
+
+  if (inputTP) {
+    inputTP.addEventListener('input', function() {
       const val = this.value.trim();
       if (val) {
-        preview.innerHTML = val[0].toUpperCase();
-        nombrePreview.textContent = val;
+        previewTPWrap.classList.remove('d-none');
+        previewTP.textContent = val;
       } else {
-        preview.innerHTML = '<i class="bi bi-person" style="font-size:1.4rem;"></i>';
-        nombrePreview.textContent = 'Nuevo usuario';
+        previewTPWrap.classList.add('d-none');
       }
     });
   }
+
+  // Inicializar rol actual
+  const rolInicial = selectRol ? selectRol.value : '{{ usuario.rol if usuario else "admin" }}';
+  actualizarRolVisual(rolInicial || 'admin');
+
+  // Toggle Ver/Ocultar contraseña
+  document.querySelectorAll('.btn-toggle-password').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const targetId = this.getAttribute('data-target');
+      const input = document.getElementById(targetId);
+      const icon = this.querySelector('i');
+      if (input) {
+        if (input.type === 'password') {
+          input.type = 'text';
+          icon.className = 'bi bi-eye-slash';
+        } else {
+          input.type = 'password';
+          icon.className = 'bi bi-eye';
+        }
+      }
+    });
+  });
+
+  // Medidor de fortaleza de contraseña
+  const inputPwd = document.getElementById('inputPassword');
+  const inputPwdConf = document.getElementById('inputPasswordConfirm');
+  const medidorWrap = document.getElementById('medidor-password-wrap');
+  const barraFortaleza = document.getElementById('barra-fortaleza');
+  const textoFortaleza = document.getElementById('texto-fortaleza');
+  const matchFeedback = document.getElementById('password-match-feedback');
+
+  if (inputPwd) {
+    inputPwd.addEventListener('input', function() {
+      const val = this.value;
+      if (!val) {
+        medidorWrap.classList.add('d-none');
+        return;
+      }
+      medidorWrap.classList.remove('d-none');
+
+      let score = 0;
+      if (val.length >= 8) score += 25;
+      if (val.length >= 12) score += 15;
+      if (/[A-Z]/.test(val)) score += 20;
+      if (/[0-9]/.test(val)) score += 20;
+      if (/[^A-Za-z0-9]/.test(val)) score += 20;
+
+      barraFortaleza.style.width = score + '%';
+      if (score < 40) {
+        barraFortaleza.className = 'progress-bar bg-danger';
+        textoFortaleza.textContent = 'Débil';
+        textoFortaleza.className = 'text-danger';
+      } else if (score < 75) {
+        barraFortaleza.className = 'progress-bar bg-warning';
+        textoFortaleza.textContent = 'Media';
+        textoFortaleza.className = 'text-warning-emphasis';
+      } else {
+        barraFortaleza.className = 'progress-bar bg-success';
+        textoFortaleza.textContent = 'Fuerte / Segura';
+        textoFortaleza.className = 'text-success';
+      }
+      checkCoincidencia();
+    });
+  }
+
+  function checkCoincidencia() {
+    if (!inputPwdConf || !inputPwd) return;
+    const p1 = inputPwd.value;
+    const p2 = inputPwdConf.value;
+    if (!p2) {
+      matchFeedback.classList.add('d-none');
+      return;
+    }
+    matchFeedback.classList.remove('d-none');
+    if (p1 === p2) {
+      matchFeedback.className = 'small mt-1 text-success fw-bold';
+      matchFeedback.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Las contraseñas coinciden';
+    } else {
+      matchFeedback.className = 'small mt-1 text-danger';
+      matchFeedback.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i>Las contraseñas no coinciden aún';
+    }
+  }
+
+  if (inputPwdConf) {
+    inputPwdConf.addEventListener('input', checkCoincidencia);
+  }
 </script>
-{% endblock %}
 {% endblock %}

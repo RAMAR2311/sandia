@@ -413,26 +413,72 @@
 </section>
 {% endif %}
 
-<!-- 3. WIDGET COMPACTO: Mascotas Pendientes de Recogida (Con colapsable y scroll máx) -->
+<!-- 3. WIDGET INTEGRAL: Agenda y Turnos del Día (Spa, Recogida y Consultas) -->
 <section class="mb-3">
   <div class="recogida-card-compact">
-    <!-- Header Fino con Acento Sandía -->
+    <!-- Header con Pestañas de Navegación del Día -->
     <div class="recogida-header-compact d-flex align-items-center justify-content-between flex-wrap gap-2">
-      <div class="d-flex align-items-center gap-2">
-        <i class="bi bi-clock-history text-warning-emphasis fs-5"></i>
-        <strong class="text-dark" style="font-size: 0.92rem;">Mascotas Pendientes de Recogida</strong>
-        {% if mascotas_recogida %}
-        <span class="badge bg-warning text-dark fw-bold rounded-pill" style="font-size: 0.7rem; padding: 2px 8px;">
-          {{ mascotas_recogida|length }} en espera
-        </span>
+      <ul class="nav nav-pills gap-1" id="pills-dashboard-agenda" role="tablist">
+        <!-- Pestaña 1: Spa de Hoy -->
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active py-1 px-2.5 small fw-bold rounded-pill d-flex align-items-center gap-1.5" 
+                  id="pills-spa-tab" 
+                  data-bs-toggle="pill" 
+                  data-bs-target="#pills-spa" 
+                  type="button" 
+                  role="tab" 
+                  aria-controls="pills-spa" 
+                  aria-selected="true"
+                  style="font-size: 0.8rem;">
+            <span>✂️ Spa & Grooming</span>
+            <span class="badge bg-danger rounded-pill px-1.5 py-0.5" style="font-size: 0.68rem;">{{ citas_spa_hoy|length }}</span>
+          </button>
+        </li>
+
+        <!-- Pestaña 2: Pendientes de Recogida -->
+        <li class="nav-item" role="presentation">
+          <button class="nav-link py-1 px-2.5 small fw-bold rounded-pill d-flex align-items-center gap-1.5" 
+                  id="pills-recogida-tab" 
+                  data-bs-toggle="pill" 
+                  data-bs-target="#pills-recogida" 
+                  type="button" 
+                  role="tab" 
+                  aria-controls="pills-recogida" 
+                  aria-selected="false"
+                  style="font-size: 0.8rem;">
+            <span>⏱️ Esperando Recogida</span>
+            {% if mascotas_recogida %}
+            <span class="badge bg-warning text-dark rounded-pill px-1.5 py-0.5 fw-bold" style="font-size: 0.68rem;">{{ mascotas_recogida|length }}</span>
+            {% else %}
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-1.5 py-0.5" style="font-size: 0.68rem;">0</span>
+            {% endif %}
+          </button>
+        </li>
+
+        <!-- Pestaña 3: Consultas Médicas -->
+        {% if current_user.rol in ('admin', 'veterinario', 'auxiliar', 'recepcion') %}
+        <li class="nav-item" role="presentation">
+          <button class="nav-link py-1 px-2.5 small fw-bold rounded-pill d-flex align-items-center gap-1.5" 
+                  id="pills-consultas-tab" 
+                  data-bs-toggle="pill" 
+                  data-bs-target="#pills-consultas" 
+                  type="button" 
+                  role="tab" 
+                  aria-controls="pills-consultas" 
+                  aria-selected="false"
+                  style="font-size: 0.8rem;">
+            <span>🩺 Consultas & Citas</span>
+            <span class="badge bg-primary rounded-pill px-1.5 py-0.5" style="font-size: 0.68rem;">{{ citas_medicas_hoy|length }}</span>
+          </button>
+        </li>
         {% endif %}
-      </div>
+      </ul>
 
       <div class="d-flex align-items-center gap-2">
         <a href="{{ url_for('spa.agenda') }}" class="text-decoration-none small text-secondary fw-bold" style="font-size: 0.78rem;">
-          <i class="bi bi-scissors me-1 text-danger"></i>Ver Agenda Spa
+          <i class="bi bi-calendar-week me-1 text-danger"></i>Ver Agenda Completa
         </a>
-        <button class="btn btn-sm btn-link text-secondary p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRecogida" aria-expanded="true" aria-controls="collapseRecogida" title="Minimizar / Expandir lista">
+        <button class="btn btn-sm btn-link text-secondary p-0 ms-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRecogida" aria-expanded="true" aria-controls="collapseRecogida" title="Minimizar / Expandir lista">
           <i class="bi bi-chevron-up" id="btnIconRecogida"></i>
         </button>
       </div>
@@ -440,102 +486,274 @@
 
     <!-- Contenedor Colapsable con Altura Máxima y Scroll -->
     <div class="collapse show" id="collapseRecogida">
-      {% if mascotas_recogida %}
-      <div style="max-height: 200px; overflow-y: auto;">
-        {% for item in mascotas_recogida %}
-        <div class="item-recogida-compact d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
-          
-          <!-- Lado Izquierdo: Datos de la Mascota y Tutor en Formato Compacto -->
-          <div class="d-flex align-items-center gap-2 min-w-0">
-            <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center flex-shrink-0" style="width: 34px; height: 34px; font-size: 1.15rem;">
-              {{ item.cita.mascota.especie_emoji or '🐾' }}
-            </div>
-            
-            <div class="min-w-0">
-              <!-- Fila 1: Nombre + Badges inline -->
-              <div class="d-flex align-items-center gap-1 flex-wrap">
-                <a href="{{ url_for('spa.cita_detalle', id=item.cita.id) }}" class="fw-bold text-dark text-decoration-none me-1" style="font-size: 0.88rem;">
-                  {{ item.cita.mascota.nombre }}
+      <div class="tab-content" id="pills-dashboard-agendaContent">
+
+        <!-- PANEL 1: TODAS LAS CITAS DE SPA DE HOY -->
+        <div class="tab-pane fade show active" id="pills-spa" role="tabpanel" aria-labelledby="pills-spa-tab">
+          {% if citas_spa_hoy %}
+          <div style="max-height: 240px; overflow-y: auto;">
+            {% for cita in citas_spa_hoy %}
+            <div class="item-recogida-compact d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+              
+              <!-- Datos de la Mascota y Servicio -->
+              <div class="d-flex align-items-center gap-2 min-w-0">
+                <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; font-size: 1.15rem;">
+                  {{ cita.mascota.especie_emoji or '🐾' }}
+                </div>
+                
+                <div class="min-w-0">
+                  <!-- Fila 1: Hora + Nombre + Badges de Estado -->
+                  <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                    <span class="badge bg-dark-subtle text-dark border font-monospace px-2 py-0.5 fw-bold" style="font-size: 0.72rem;">
+                      <i class="bi bi-clock me-1 text-danger"></i>{{ cita.fecha_hora|hora }}
+                    </span>
+                    <a href="{{ url_for('spa.cita_detalle', id=cita.id) }}" class="fw-bold text-dark text-decoration-none" style="font-size: 0.88rem;">
+                      {{ cita.mascota.nombre }}
+                    </a>
+                    <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 0.65rem; padding: 2px 6px;">
+                      {{ cita.mascota.especie }}
+                    </span>
+
+                    <!-- Badge de Estado de Spa -->
+                    {% if cita.estado == 'programada' %}
+                      <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill" style="font-size: 0.68rem; padding: 2px 7px;">
+                        <i class="bi bi-calendar3 me-1"></i>Programada
+                      </span>
+                    {% elif cita.estado == 'en_proceso' %}
+                      <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill" style="font-size: 0.68rem; padding: 2px 7px;">
+                        <i class="bi bi-scissors me-1"></i>En Baño / Corte
+                      </span>
+                    {% elif cita.estado == 'listo_recogida' %}
+                      <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill fw-bold" style="font-size: 0.68rem; padding: 2px 7px;">
+                        <i class="bi bi-bell-fill me-1"></i>Listo para Recogida
+                      </span>
+                    {% elif cita.estado == 'entregado' %}
+                      <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.68rem; padding: 2px 7px;">
+                        <i class="bi bi-check2-circle me-1"></i>Entregado
+                      </span>
+                    {% endif %}
+
+                    <!-- Pago -->
+                    {% if cita.venta_id %}
+                      <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.65rem; padding: 2px 6px;">
+                        <i class="bi bi-check me-0.5"></i>Pagada
+                      </span>
+                    {% endif %}
+                  </div>
+
+                  <!-- Fila 2: Servicio + Groomer + Tutor -->
+                  <div class="text-secondary text-truncate mt-0.5" style="font-size: 0.76rem; max-width: 620px;">
+                    <span class="fw-semibold text-dark">{{ cita.servicio_spa.nombre if cita.servicio_spa else 'Grooming' }}</span>
+                    {% if cita.groomer %}
+                    <span class="text-muted">• Estilista: <strong>{{ cita.groomer.nombre }}</strong></span>
+                    {% endif %}
+                    <span class="text-muted">• Tutor: {{ cita.tutor.nombre_completo if cita.tutor else 'N/A' }}</span>
+                    {% if cita.tutor and (cita.tutor.whatsapp or cita.tutor.telefono) %}
+                    <span class="text-muted">({{ cita.tutor.whatsapp or cita.tutor.telefono }})</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Acciones Rápidas según Estado -->
+              <div class="d-flex align-items-center gap-1 flex-shrink-0 ms-auto ms-md-0">
+                {% if cita.estado == 'programada' %}
+                  <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=cita.id) }}" class="m-0">
+                    {{ form_csrf.csrf_token }}
+                    <input type="hidden" name="estado" value="en_proceso">
+                    <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+                    <button type="submit" class="btn btn-xs btn-outline-primary fw-bold rounded-pill px-2.5 py-1" style="font-size: 0.75rem;" title="Iniciar el servicio de baño/corte">
+                      <i class="bi bi-play-fill me-0.5"></i>Iniciar
+                    </button>
+                  </form>
+                {% elif cita.estado == 'en_proceso' %}
+                  <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=cita.id) }}" class="m-0">
+                    {{ form_csrf.csrf_token }}
+                    <input type="hidden" name="estado" value="listo_recogida">
+                    <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+                    <button type="submit" class="btn btn-xs btn-warning text-dark fw-bold rounded-pill px-2.5 py-1 shadow-xs" style="font-size: 0.75rem;" title="Marcar como listo para que el tutor recoja">
+                      <i class="bi bi-check-circle-fill me-0.5"></i>Listo
+                    </button>
+                  </form>
+                {% elif cita.estado == 'listo_recogida' %}
+                  {% if not cita.venta_id %}
+                  <a href="{{ url_for('pos.terminal', cita_spa_id=cita.id) }}" class="btn btn-xs btn-outline-success fw-bold rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                    <i class="bi bi-cart-check me-0.5"></i>Cobrar
+                  </a>
+                  {% endif %}
+                {% endif %}
+
+                <a href="{{ url_for('spa.cita_detalle', id=cita.id) }}" class="btn btn-xs btn-light border rounded-pill py-1 px-2.5 text-secondary" style="font-size: 0.75rem;" title="Ver ficha del turno">
+                  <span>Ver Turno</span> <i class="bi bi-chevron-right small"></i>
                 </a>
-                <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 0.65rem; padding: 2px 6px;">
-                  {{ item.cita.mascota.especie }}
-                </span>
-
-                <!-- Badge de Tiempo -->
-                {% if item.nivel_alerta == 'critico' %}
-                <span class="badge badge-tiempo-critico rounded-pill" title="Mascota lista hace más de 1 hora y media">
-                  <i class="bi bi-exclamation-octagon-fill me-1"></i>¡Tiempo Excedido! ({{ item.etiqueta_tiempo }})
-                </span>
-                {% elif item.nivel_alerta == 'alerta' %}
-                <span class="badge badge-tiempo-alerta rounded-pill">
-                  <i class="bi bi-clock-fill me-1"></i>{{ item.etiqueta_tiempo }}
-                </span>
-                {% else %}
-                <span class="badge badge-tiempo-normal rounded-pill">
-                  <i class="bi bi-check-circle-fill me-1"></i>{{ item.etiqueta_tiempo }}
-                </span>
-                {% endif %}
-
-                <!-- Estado de Pago -->
-                {% if item.pagado %}
-                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.65rem; padding: 2px 6px;">
-                  <i class="bi bi-check me-1"></i>Pagada
-                </span>
-                {% else %}
-                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill" style="font-size: 0.65rem; padding: 2px 6px;">
-                  Sin pagar
-                </span>
-                {% endif %}
               </div>
 
-              <!-- Fila 2: Tutor y Servicio en 1 sola línea compacta -->
-              <div class="text-secondary text-truncate" style="font-size: 0.78rem; max-width: 580px;">
-                Tutor: <strong>{{ item.cita.tutor.nombre_completo if item.cita.tutor else 'N/A' }}</strong>
-                {% if item.cita.tutor and (item.cita.tutor.whatsapp or item.cita.tutor.telefono) %}
-                <span class="text-muted">• Tel: {{ item.cita.tutor.whatsapp or item.cita.tutor.telefono }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="p-3 text-center text-muted small">
+            <i class="bi bi-calendar-x text-secondary me-1"></i>
+            <span>No hay servicios de spa programados para hoy.</span>
+            <a href="{{ url_for('spa.cita_nueva') }}" class="btn btn-xs btn-sandia-coral rounded-pill px-3 py-1 ms-2 shadow-xs fw-bold">
+              <i class="bi bi-plus-circle me-1"></i>Agendar Spa
+            </a>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- PANEL 2: MASCOTAS PENDIENTES DE RECOGIDA (ALERTAS DE TIEMPO) -->
+        <div class="tab-pane fade" id="pills-recogida" role="tabpanel" aria-labelledby="pills-recogida-tab">
+          {% if mascotas_recogida %}
+          <div style="max-height: 240px; overflow-y: auto;">
+            {% for item in mascotas_recogida %}
+            <div class="item-recogida-compact d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+              
+              <div class="d-flex align-items-center gap-2 min-w-0">
+                <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; font-size: 1.15rem;">
+                  {{ item.cita.mascota.especie_emoji or '🐾' }}
+                </div>
+                
+                <div class="min-w-0">
+                  <div class="d-flex align-items-center gap-1 flex-wrap">
+                    <a href="{{ url_for('spa.cita_detalle', id=item.cita.id) }}" class="fw-bold text-dark text-decoration-none me-1" style="font-size: 0.88rem;">
+                      {{ item.cita.mascota.nombre }}
+                    </a>
+                    <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 0.65rem; padding: 2px 6px;">
+                      {{ item.cita.mascota.especie }}
+                    </span>
+
+                    <!-- Badge de Tiempo -->
+                    {% if item.nivel_alerta == 'critico' %}
+                    <span class="badge badge-tiempo-critico rounded-pill" title="Mascota lista hace más de 1 hora y media">
+                      <i class="bi bi-exclamation-octagon-fill me-1"></i>¡Tiempo Excedido! ({{ item.etiqueta_tiempo }})
+                    </span>
+                    {% elif item.nivel_alerta == 'alerta' %}
+                    <span class="badge badge-tiempo-alerta rounded-pill">
+                      <i class="bi bi-clock-fill me-1"></i>{{ item.etiqueta_tiempo }}
+                    </span>
+                    {% else %}
+                    <span class="badge badge-tiempo-normal rounded-pill">
+                      <i class="bi bi-check-circle-fill me-1"></i>{{ item.etiqueta_tiempo }}
+                    </span>
+                    {% endif %}
+
+                    <!-- Estado de Pago -->
+                    {% if item.pagado %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.65rem; padding: 2px 6px;">
+                      <i class="bi bi-check me-1"></i>Pagada
+                    </span>
+                    {% else %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill" style="font-size: 0.65rem; padding: 2px 6px;">
+                      Sin pagar
+                    </span>
+                    {% endif %}
+                  </div>
+
+                  <div class="text-secondary text-truncate" style="font-size: 0.78rem; max-width: 580px;">
+                    Tutor: <strong>{{ item.cita.tutor.nombre_completo if item.cita.tutor else 'N/A' }}</strong>
+                    {% if item.cita.tutor and (item.cita.tutor.whatsapp or item.cita.tutor.telefono) %}
+                    <span class="text-muted">• Tel: {{ item.cita.tutor.whatsapp or item.cita.tutor.telefono }}</span>
+                    {% endif %}
+                    <span class="text-muted">• {{ item.cita.servicio_spa.nombre if item.cita.servicio_spa else 'Grooming' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Acciones Miniatura -->
+              <div class="d-flex align-items-center gap-1 flex-shrink-0 ms-auto ms-md-0">
+                {% if item.wa_url %}
+                <a href="{{ item.wa_url }}" target="_blank" class="btn btn-sm text-white fw-bold shadow-xs py-1 px-2.5 rounded-pill" style="background-color: #25D366; font-size: 0.75rem;" title="Enviar WhatsApp de aviso de recogida">
+                  <i class="bi bi-whatsapp me-1"></i>Avisar
+                </a>
                 {% endif %}
-                <span class="text-muted">• {{ item.cita.servicio_spa.nombre if item.cita.servicio_spa else 'Grooming' }}</span>
+
+                {% if item.pagado %}
+                <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=item.cita.id) }}" class="m-0" onsubmit="return confirm('¿Confirmas la entrega de {{ item.cita.mascota.nombre }} a su tutor?')">
+                  {{ form_csrf.csrf_token }}
+                  <input type="hidden" name="estado" value="entregado">
+                  <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+                  <button type="submit" class="btn btn-sm btn-success fw-bold shadow-xs py-1 px-2.5 rounded-pill" style="font-size: 0.75rem;" title="Marcar como entregada al tutor">
+                    <i class="bi bi-check2 me-1"></i>Entregar
+                  </button>
+                </form>
+                {% else %}
+                <a href="{{ url_for('pos.terminal', cita_spa_id=item.cita.id) }}" class="btn btn-sm btn-outline-success fw-bold shadow-xs py-1 px-2.5 rounded-pill" style="font-size: 0.75rem;" title="Cobrar el servicio en POS">
+                  <i class="bi bi-cart-check me-1"></i>Cobrar
+                </a>
+                {% endif %}
+
+                <a href="{{ url_for('spa.cita_detalle', id=item.cita.id) }}" class="btn btn-sm btn-light border py-1 px-2 text-secondary rounded-pill" style="font-size: 0.75rem;" title="Ver detalle de la cita">
+                  <i class="bi bi-chevron-right"></i>
+                </a>
+              </div>
+
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="p-3 text-center text-muted small">
+            <i class="bi bi-check-circle-fill text-success me-1"></i>
+            <span>No hay mascotas en espera de recogida. Todas han sido entregadas.</span>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- PANEL 3: CONSULTAS MÉDICAS DEL DÍA -->
+        {% if current_user.rol in ('admin', 'veterinario', 'auxiliar', 'recepcion') %}
+        <div class="tab-pane fade" id="pills-consultas" role="tabpanel" aria-labelledby="pills-consultas-tab">
+          {% if citas_medicas_hoy %}
+          <div style="max-height: 240px; overflow-y: auto;">
+            {% for c_med in citas_medicas_hoy %}
+            <div class="item-recogida-compact d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2">
+              <div class="d-flex align-items-center gap-2 min-w-0">
+                <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; font-size: 1.15rem;">
+                  {{ c_med.mascota.especie_emoji or '🐾' }}
+                </div>
+                <div class="min-w-0">
+                  <div class="d-flex align-items-center gap-1.5 flex-wrap">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2 py-0.5 fw-bold" style="font-size: 0.72rem;">
+                      <i class="bi bi-clock me-1"></i>{{ c_med.fecha_hora|hora }}
+                    </span>
+                    <span class="fw-bold text-dark" style="font-size: 0.88rem;">{{ c_med.mascota.nombre }}</span>
+                    <span class="badge bg-light text-secondary border text-capitalize" style="font-size: 0.65rem; padding: 2px 6px;">
+                      {{ c_med.tipo_etiqueta }}
+                    </span>
+                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill" style="font-size: 0.65rem; padding: 2px 6px;">
+                      {{ c_med.estado_etiqueta }}
+                    </span>
+                  </div>
+                  <div class="text-secondary text-truncate mt-0.5" style="font-size: 0.76rem; max-width: 600px;">
+                    <span>Motivo: <strong>{{ c_med.motivo or 'Consulta general' }}</strong></span>
+                    {% if c_med.profesional %}
+                    <span class="text-muted">• Dr(a): {{ c_med.profesional.nombre }}</span>
+                    {% endif %}
+                    <span class="text-muted">• Tutor: {{ c_med.tutor.nombre_completo if c_med.tutor else 'N/A' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center gap-1 flex-shrink-0 ms-auto ms-md-0">
+                <a href="{{ url_for('agenda.detalle', id=c_med.id) }}" class="btn btn-xs btn-sandia-rosa rounded-pill px-3 py-1 shadow-xs" style="font-size: 0.75rem;">
+                  <i class="bi bi-eye me-1"></i>Ver Cita
+                </a>
               </div>
             </div>
+            {% endfor %}
           </div>
-
-          <!-- Lado Derecho: Botones de Acción Miniatura -->
-          <div class="d-flex align-items-center gap-1 flex-shrink-0 ms-auto ms-md-0">
-            {% if item.wa_url %}
-            <a href="{{ item.wa_url }}" target="_blank" class="btn btn-sm text-white fw-bold shadow-xs py-1 px-2" style="background-color: #25D366; font-size: 0.75rem;" title="Enviar WhatsApp de aviso de recogida">
-              <i class="bi bi-whatsapp me-1"></i>Avisar
-            </a>
-            {% endif %}
-
-            {% if item.pagado %}
-            <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=item.cita.id) }}" class="m-0" onsubmit="return confirm('¿Confirmas la entrega de {{ item.cita.mascota.nombre }} a su tutor?')">
-              {{ form_csrf.csrf_token }}
-              <input type="hidden" name="estado" value="entregado">
-              <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
-              <button type="submit" class="btn btn-sm btn-success fw-bold shadow-xs py-1 px-2" style="font-size: 0.75rem;" title="Marcar como entregada al tutor">
-                <i class="bi bi-check2 me-1"></i>Entregar
-              </button>
-            </form>
-            {% else %}
-            <a href="{{ url_for('pos.terminal', cita_spa_id=item.cita.id) }}" class="btn btn-sm btn-outline-success fw-bold shadow-xs py-1 px-2" style="font-size: 0.75rem;" title="Cobrar el servicio en POS">
-              <i class="bi bi-cart-check me-1"></i>Cobrar
-            </a>
-            {% endif %}
-
-            <a href="{{ url_for('spa.cita_detalle', id=item.cita.id) }}" class="btn btn-sm btn-light border py-1 px-2 text-secondary" style="font-size: 0.75rem;" title="Ver detalle de la cita">
-              <i class="bi bi-chevron-right"></i>
+          {% else %}
+          <div class="p-3 text-center text-muted small">
+            <i class="bi bi-calendar-x text-secondary me-1"></i>
+            <span>No hay citas médicas o consultas agendadas para hoy.</span>
+            <a href="{{ url_for('agenda.nueva') }}" class="btn btn-xs btn-outline-primary rounded-pill px-3 py-1 ms-2 shadow-xs fw-bold">
+              <i class="bi bi-plus-circle me-1"></i>Agendar Consulta
             </a>
           </div>
-
+          {% endif %}
         </div>
-        {% endfor %}
+        {% endif %}
+
       </div>
-      {% else %}
-      <div class="p-3 text-center text-muted small">
-        <i class="bi bi-check-circle-fill text-success me-1"></i>
-        <span>No hay mascotas en espera de recogida. Todas han sido entregadas.</span>
-      </div>
-      {% endif %}
     </div>
   </div>
 </section>

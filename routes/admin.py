@@ -5,8 +5,9 @@ from flask_login import current_user, login_required
 from sqlalchemy import func, or_, select
 
 from decorators import admin_required
-from forms import RazaForm, UsuarioCrearForm, UsuarioForm, construir_configuracion_form, valor_de_campo
+from forms import PerfilMedicoForm, RazaForm, UsuarioCrearForm, UsuarioForm, construir_configuracion_form, valor_de_campo
 from models import ESPECIES, GRUPOS_CONFIGURACION, ROLES, ConfiguracionSistema, Raza, Usuario, db
+from utils import eliminar_firma_digital, guardar_firma_digital
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -41,7 +42,7 @@ def usuarios():
     consulta = select(Usuario)
     if texto:
         patron = f"%{texto}%"
-        consulta = consulta.where(or_(Usuario.nombre.ilike(patron), Usuario.email.ilike(patron)))
+        consulta = consulta.where(or_(Usuario.nombre.ilike(patron), Usuario.email.ilike(patron), Usuario.telefono.ilike(patron)))
     if rol in ROLES:
         consulta = consulta.where(Usuario.rol == rol)
     if estado == "activos":
@@ -50,8 +51,26 @@ def usuarios():
         consulta = consulta.where(Usuario.activo.is_(False))
     consulta = consulta.order_by(Usuario.activo.desc(), Usuario.nombre)
     lista = db.session.execute(consulta).scalars().all()
+
+    # Estadísticas globales del equipo para tarjetas KPI
+    todos = db.session.execute(select(Usuario)).scalars().all()
+    stats = {
+        "total": len(todos),
+        "activos": len([u for u in todos if u.activo]),
+        "inactivos": len([u for u in todos if not u.activo]),
+        "admins": len([u for u in todos if u.rol == "admin" and u.activo]),
+        "clinicos": len([u for u in todos if u.rol in ("veterinario", "auxiliar") and u.activo]),
+        "operativos": len([u for u in todos if u.rol in ("groomer", "cajero", "recepcion") and u.activo]),
+    }
+
     return render_template(
-        "admin/usuarios.html", usuarios=lista, filtro_texto=texto, filtro_rol=rol, filtro_estado=estado
+        "admin/usuarios.html",
+        usuarios=lista,
+        filtro_texto=texto,
+        filtro_rol=rol,
+        filtro_estado=estado,
+        stats=stats,
+        ROLES=ROLES,
     )
 
 
@@ -68,6 +87,9 @@ def usuario_nuevo():
                 nombre=form.nombre.data.strip(),
                 email=form.email.data,
                 telefono=(form.telefono.data or "").strip() or None,
+                tarjeta_profesional=(form.tarjeta_profesional.data or "").strip() or None,
+                titulo_profesional=(form.titulo_profesional.data or "").strip() or None,
+                especialidad=(form.especialidad.data or "").strip() or None,
                 rol=form.rol.data,
                 activo=form.activo.data,
             )
@@ -81,9 +103,9 @@ def usuario_nuevo():
                 flash("No se pudo crear el usuario. Inténtalo de nuevo.", "danger")
             else:
                 current_app.logger.info("Usuario %s creado por %s", usuario.email, current_user.email)
-                flash(f"Usuario {usuario.nombre} creado.", "success")
+                flash(f"Usuario {usuario.nombre} creado correctamente.", "success")
                 return redirect(url_for("admin.usuarios"))
-    return render_template("admin/usuario_form.html", form=form, usuario=None)
+    return render_template("admin/usuario_form.html", form=form, usuario=None, ROLES=ROLES)
 
 
 @bp.route("/usuarios/<int:usuario_id>/editar", methods=["GET", "POST"])
@@ -105,6 +127,9 @@ def usuario_editar(usuario_id):
             usuario.nombre = form.nombre.data.strip()
             usuario.email = form.email.data
             usuario.telefono = (form.telefono.data or "").strip() or None
+            usuario.tarjeta_profesional = (form.tarjeta_profesional.data or "").strip() or None
+            usuario.titulo_profesional = (form.titulo_profesional.data or "").strip() or None
+            usuario.especialidad = (form.especialidad.data or "").strip() or None
             usuario.rol = form.rol.data
             usuario.activo = form.activo.data
             if form.password.data:
@@ -117,9 +142,155 @@ def usuario_editar(usuario_id):
                 flash("No se pudieron guardar los cambios. Inténtalo de nuevo.", "danger")
             else:
                 current_app.logger.info("Usuario %s editado por %s", usuario.email, current_user.email)
-                flash("Cambios guardados.", "success")
+                flash(f"Usuario {usuario.nombre} actualizado correctamente.", "success")
                 return redirect(url_for("admin.usuarios"))
-    return render_template("admin/usuario_form.html", form=form, usuario=usuario)
+    return render_template("admin/usuario_form.html", form=form, usuario=usuario, ROLES=ROLES)
+
+
+# ---------------------------------------------------------------------------
+# Perfil del Médico Veterinario Principal y Firma Digital
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/medico-principal", methods=["GET", "POST"])
+@login_required
+@admin_required
+def medico_principal():
+    """Panel de configuración de la doctora/médico veterinaria principal del centro y su firma."""
+    nombre_def = ConfiguracionSistema.obtener("medico_principal_nombre", "Dra. Daniela Pulido")
+    titulo_def = ConfiguracionSistema.obtener("medico_principal_titulo", "Médica veterinaria")
+    tp_def = ConfiguracionSistema.obtener("medico_principal_tp", "53214")
+    esp_def = ConfiguracionSistema.obtener("medico_principal_especialidad", "Dpl. Dermatología de pequeñas especies")
+    firma_def = ConfiguracionSistema.obtener("medico_principal_firma", "")
+
+    # Buscar el usuario de la doctora
+    usuario_vet = db.session.execute(
+        select(Usuario).where(
+            or_(
+                Usuario.rol == "veterinario",
+                Usuario.email == "veterinaria@sandiavet.com",
+                Usuario.nombre.ilike("%Daniela%"),
+            )
+        )
+    ).scalars().first()
+
+    if usuario_vet:
+        if not firma_def and usuario_vet.firma_digital:
+            firma_def = usuario_vet.firma_digital
+
+    form = PerfilMedicoForm()
+
+    if request.method == "GET":
+        form.nombre.data = nombre_def
+        form.titulo_profesional.data = titulo_def
+        form.tarjeta_profesional.data = tp_def
+        form.especialidad.data = esp_def
+        if usuario_vet:
+            form.email.data = usuario_vet.email
+            form.telefono.data = usuario_vet.telefono or ""
+
+    if form.validate_on_submit():
+        try:
+            nombre = form.nombre.data.strip()
+            titulo = form.titulo_profesional.data.strip()
+            tp = form.tarjeta_profesional.data.strip()
+            especialidad = (form.especialidad.data or "").strip()
+            tel = (form.telefono.data or "").strip() or None
+            email_val = (form.email.data or "").strip().lower()
+
+            ConfiguracionSistema.establecer("medico_principal_nombre", nombre, current_user)
+            ConfiguracionSistema.establecer("medico_principal_titulo", titulo, current_user)
+            ConfiguracionSistema.establecer("medico_principal_tp", tp, current_user)
+            ConfiguracionSistema.establecer("medico_principal_especialidad", especialidad, current_user)
+
+            # Manejo de archivo o trazo de firma
+            archivo_firma = form.firma_archivo.data
+            canvas_firma = form.firma_canvas.data
+            nueva_firma_nombre = None
+
+            if archivo_firma and getattr(archivo_firma, "filename", ""):
+                nueva_firma_nombre = guardar_firma_digital(archivo_firma)
+            elif canvas_firma and canvas_firma.startswith("data:image"):
+                nueva_firma_nombre = guardar_firma_digital(canvas_firma)
+
+            if nueva_firma_nombre:
+                firma_anterior = ConfiguracionSistema.obtener("medico_principal_firma")
+                if firma_anterior and firma_anterior != nueva_firma_nombre:
+                    eliminar_firma_digital(firma_anterior)
+                ConfiguracionSistema.establecer("medico_principal_firma", nueva_firma_nombre, current_user)
+                if usuario_vet:
+                    usuario_vet.firma_digital = nueva_firma_nombre
+
+            # Sincronizar en el registro del usuario veterinario
+            if usuario_vet:
+                usuario_vet.nombre = nombre
+                usuario_vet.tarjeta_profesional = tp
+                usuario_vet.titulo_profesional = titulo
+                usuario_vet.especialidad = especialidad
+                if tel:
+                    usuario_vet.telefono = tel
+                if email_val:
+                    usuario_vet.email = email_val
+
+            db.session.commit()
+            ConfiguracionSistema.invalidar_cache()
+            flash("Datos profesionales y firma guardados exitosamente.", "success")
+            return redirect(url_for("admin.medico_principal"))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception("Error al guardar perfil del médico principal")
+            flash(f"No se pudo guardar la información: {e}", "danger")
+
+    firma_actual = ConfiguracionSistema.obtener("medico_principal_firma", "") or (usuario_vet.firma_digital if usuario_vet else "")
+    url_firma_preview = None
+    if firma_actual:
+        if firma_actual.startswith("data:") or firma_actual.startswith("/"):
+            url_firma_preview = firma_actual
+        else:
+            url_firma_preview = url_for("static", filename=f"uploads/firmas/{firma_actual}")
+
+    return render_template(
+        "admin/medico_perfil.html",
+        form=form,
+        configs={
+            "nombre": nombre_def,
+            "titulo": titulo_def,
+            "tp": tp_def,
+            "especialidad": esp_def,
+            "firma": firma_actual,
+        },
+        usuario_vet=usuario_vet,
+        url_firma_preview=url_firma_preview,
+    )
+
+
+@bp.route("/medico-principal/firma/eliminar", methods=["POST"])
+@login_required
+@admin_required
+def medico_eliminar_firma():
+    firma_actual = ConfiguracionSistema.obtener("medico_principal_firma", "")
+    if firma_actual:
+        eliminar_firma_digital(firma_actual)
+        ConfiguracionSistema.establecer("medico_principal_firma", "", current_user)
+
+    vets = db.session.execute(
+        select(Usuario).where(
+            or_(
+                Usuario.rol == "veterinario",
+                Usuario.email == "veterinaria@sandiavet.com",
+                Usuario.nombre.ilike("%Daniela%"),
+            )
+        )
+    ).scalars().all()
+    for v in vets:
+        if v.firma_digital:
+            v.firma_digital = None
+
+    db.session.commit()
+    ConfiguracionSistema.invalidar_cache()
+    flash("Firma digital eliminada correctamente.", "info")
+    return redirect(url_for("admin.medico_principal"))
+
 
 
 @bp.route("/usuarios/<int:usuario_id>/estado", methods=["POST"])

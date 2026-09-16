@@ -88,9 +88,9 @@
   <!-- Barra de Herramientas Superior -->
   <div class="documento-toolbar d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 no-print">
     <div class="d-flex align-items-center gap-2">
-      <span class="fs-4">🍉</span>
+      <img src="{{ static_url('img/dog_icon.png') }}" alt="Sandía Spa" style="height: 38px; width: auto;" class="d-inline-block">
       <div>
-        <h6 class="fw-bold mb-0 text-dark">Sandía · Medicina & Spa Veterinario</h6>
+        <h6 class="fw-bold mb-0 text-dark">{{ clinica.nombre if clinica and clinica.nombre else 'Sandía' }} · {{ clinica.subtitulo if clinica and clinica.subtitulo else 'Medicina y Spa Veterinario' }}</h6>
         <small class="text-muted">Documento Clínico Oficial</small>
       </div>
     </div>
@@ -111,18 +111,16 @@
 
   <!-- Hoja Oficial del Documento -->
   <div class="documento-hoja">
-    <!-- Encabezado con Identidad de Marca -->
+    <!-- Encabezado con Identidad de Marca Oficial Sandía Spa -->
     <div class="header-clinica d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
       <div class="d-flex align-items-center gap-3">
-        <div class="bg-danger-subtle text-danger rounded-circle d-flex align-items-center justify-content-center shadow-xs" style="width: 52px; height: 52px; font-size: 1.7rem;">
-          🍉
-        </div>
+        <img src="{{ static_url('img/dog_icon.png') }}" alt="Logo Sandía Spa" style="height: 60px; width: auto;" class="d-inline-block">
         <div>
-          <h4 class="fw-bold mb-0 text-dark" style="color: #E53935 !important; letter-spacing: -0.5px;">SANDÍA VETCARE</h4>
-          <div class="small fw-semibold text-secondary">Medicina & Spa Veterinario</div>
+          <h4 class="fw-bold mb-0 text-dark" style="color: #E53935 !important; letter-spacing: -0.5px; font-family: 'Fredoka', 'Quicksand', sans-serif;">{{ clinica.nombre if clinica and clinica.nombre else 'SANDÍA' }}</h4>
+          <div class="small fw-semibold text-secondary">{{ clinica.subtitulo if clinica and clinica.subtitulo else 'Medicina y Spa Veterinario' }}</div>
           <div class="small text-muted" style="font-size: 0.75rem;">
-            NIT: 901.554.892-1 · Tel / WhatsApp: +57 312 456 7890<br>
-            Cra. 15 # 104-32, Usaquén · Bogotá D.C.
+            NIT: {{ clinica.nit if clinica and clinica.nit else '901.554.892-1' }} · Tel / WhatsApp: {{ clinica.telefono if clinica and clinica.telefono else '+57 312 456 7890' }}<br>
+            {{ clinica.direccion if clinica and clinica.direccion else 'Cra. 15 # 104-32, Usaquén' }} · {{ clinica.ciudad if clinica and clinica.ciudad else 'Bogotá D.C.' }}
           </div>
         </div>
       </div>
@@ -241,7 +239,7 @@
       <!-- A: Diagnóstico -->
       <div class="bloque-seccion border-warning-subtle bg-warning-subtle bg-opacity-25">
         <div class="bloque-seccion-header text-warning-emphasis">
-          <i class="bi bi-check-circle-fill"></i>Diagnóstico Clínico (A)
+          <i class="bi bi-check-circle-fill"></i>Diagnóstico Presuntivo (A)
         </div>
         <div class="fs-6 fw-bold text-dark">{{ consulta.diagnostico }}</div>
       </div>
@@ -277,14 +275,28 @@
       <!-- Firma del Médico -->
       <div class="row mt-5 pt-3 border-top align-items-center">
         <div class="col-6 text-muted small">
-          Documento emitido electrónicamente por el sistema <strong>Sandía VetCare</strong>.<br>
-          Válido como informe clínico y constancia de atención.
+          Documento emitido electrónicamente por el sistema <strong>{{ clinica.nombre if clinica and clinica.nombre else 'Sandía' }} · {{ clinica.subtitulo if clinica and clinica.subtitulo else 'Medicina y Spa Veterinario' }}</strong>.<br>
+          Válido como informe clínico y constancia oficial de atención veterinaria.
         </div>
         <div class="col-6 text-end">
           <div class="d-inline-block text-center">
-            <div style="width: 220px; border-top: 1.5px solid #334155; padding-top: 4px;">
-              <strong class="d-block text-dark">Dr/a. {{ consulta.veterinario.nombre if consulta.veterinario else 'Médico Veterinario' }}</strong>
-              <small class="text-secondary">Médico Veterinario Tratante</small>
+            {% set url_firma_doc = (consulta.veterinario.url_firma if (consulta.veterinario and consulta.veterinario.firma_digital) else clinica.doctora_firma_url) %}
+            {% if url_firma_doc %}
+            <div class="mb-1 text-center">
+              <img src="{{ url_firma_doc }}" alt="Firma Médico Veterinario" style="max-height: 65px; max-width: 170px; object-fit: contain;">
+            </div>
+            {% endif %}
+            <div style="min-width: 250px; border-top: 1.5px solid #334155; padding-top: 5px;">
+              <strong class="d-block text-dark" style="font-size: 0.95rem;">
+                {{ consulta.veterinario.nombre if (consulta.veterinario and consulta.veterinario.nombre) else (clinica.doctora_nombre if clinica and clinica.doctora_nombre else 'Dra. Daniela Pulido') }}
+              </strong>
+              <small class="text-secondary d-block" style="font-size: 0.78rem;">
+                {{ (consulta.veterinario.titulo_profesional if consulta.veterinario and consulta.veterinario.titulo_profesional else clinica.doctora_titulo) or 'Médica veterinaria' }} · 
+                <span class="text-danger fw-semibold">{{ (consulta.veterinario.especialidad if consulta.veterinario and consulta.veterinario.especialidad else clinica.doctora_especialidad) or 'Dpl. Dermatología de pequeñas especies' }}</span>
+              </small>
+              <small class="text-muted fw-bold" style="font-size: 0.75rem;">
+                T.P. {{ (consulta.veterinario.tarjeta_profesional if (consulta.veterinario and consulta.veterinario.tarjeta_profesional) else (clinica.doctora_tp if clinica and clinica.doctora_tp else '53214')) }}
+              </small>
             </div>
           </div>
         </div>

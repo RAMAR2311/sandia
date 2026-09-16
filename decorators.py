@@ -34,11 +34,8 @@ def rol_requerido(*roles):
 
 admin_required = rol_requerido("admin")
 veterinario_required = rol_requerido("admin", "veterinario")
-clinico_required = rol_requerido("admin", "veterinario", "auxiliar")
-spa_required = rol_requerido("admin", "groomer")
-caja_required = rol_requerido("admin", "cajero")
+clinico_required = rol_requerido("admin", "veterinario", "auxiliar", "recepcion")
+spa_required = rol_requerido("admin", "groomer", "auxiliar", "recepcion")
+caja_required = rol_requerido("admin", "cajero", "auxiliar", "recepcion")
 recepcion_required = rol_requerido("admin", "recepcion", "auxiliar", "veterinario")
-# Agendar/consultar citas de spa: el groomer necesita verlas y recepción suele
-# tomarlas por teléfono. El cambio de estado en sí (recepción física del
-# proceso, entrega) sigue restringido a spa_required.
-agenda_spa_required = rol_requerido("admin", "recepcion", "groomer")
+agenda_spa_required = rol_requerido("admin", "recepcion", "groomer", "auxiliar", "veterinario")

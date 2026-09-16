@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from decorators import admin_required
 from forms import GastoForm
 from models import CATEGORIAS_GASTO, Gasto, TIPOS_GASTO, db
-from utils import ZONA_BOGOTA, eliminar_documento, guardar_documento, hoy_bogota
+from utils import ZONA_BOGOTA, eliminar_documento, formato_cop, guardar_documento, hoy_bogota
 
 bp = Blueprint("gastos", __name__, url_prefix="/gastos")
 
@@ -145,6 +145,6 @@ def nuevo():
                 current_app.logger.exception("Error al registrar gasto")
                 flash("No se pudo registrar el gasto.", "danger")
             else:
-                flash(f"Gasto de {gasto.monto:,.0f} registrado.", "success")
+                flash(f"Gasto de {formato_cop(gasto.monto)} registrado correctamente.", "success")
                 return redirect(url_for("gastos.lista"))
     return render_template("gastos/form.html", form=form)

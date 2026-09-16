@@ -1,0 +1,480 @@
+{% extends "base.html" %}
+{% block titulo %}Perfil del Médico Veterinario Principal & Firma · Sandía{% endblock %}
+
+{% block contenido %}
+{# 1. Cabecera #}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('admin.configuracion') }}" class="btn btn-sm btn-outline-secondary rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Volver a Configuración">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <div>
+        <div class="d-flex align-items-center gap-2">
+          <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca); color: #BE123C;">
+            Médico Veterinario Principal & Firma Digital
+          </h1>
+          <span class="badge rounded-pill bg-danger-subtle text-danger px-2.5 py-1 small fw-bold">
+            <i class="bi bi-patch-check-fill me-1"></i>Profesional Oficial
+          </span>
+        </div>
+        <p class="text-secondary small mb-0 mt-1">
+          Configuración de la información profesional predeterminada de la doctora del centro (Dra. Daniela Pulido) y su firma oficial para documentos médicos.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('admin.configuracion') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 fw-semibold shadow-xs">
+      <i class="bi bi-sliders me-1"></i>Ajustes de Clínica
+    </a>
+    <a href="{{ url_for('admin.usuarios') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-2 fw-semibold shadow-xs">
+      <i class="bi bi-people-fill me-1"></i>Directorio de Usuarios
+    </a>
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" novalidate id="form-medico-principal">
+  {{ form.hidden_tag() }}
+
+  <div class="row g-4">
+    {# ── Columna Izquierda: Formulario de Datos & Firma (7 cols) ── #}
+    <div class="col-12 col-lg-7">
+
+      {# Tarjeta 1: Información Profesional Oficial #}
+      <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="card-header card-header-sandia py-3 px-4 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #FFF1F2, #FEE2E2); border-bottom: 1px solid #FECDD3;">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">🩺</span>
+            <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca); color: #9F1239;">1. Datos del Profesional Veterinario</span>
+          </div>
+          <span class="badge bg-white text-danger border border-danger-subtle rounded-pill px-2.5 py-1 small">Predeterminado</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.nombre.id }}">
+                <i class="bi bi-person-badge-fill text-danger me-1"></i>Nombre del Médico / Doctora *
+              </label>
+              {{ form.nombre(class_="form-control bg-light" + (" is-invalid" if form.nombre.errors else ""), id="inputNombre", placeholder="Ej: Dra. Daniela Pulido", autofocus=True) }}
+              {% for error in form.nombre.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.titulo_profesional.id }}">
+                <i class="bi bi-mortarboard-fill text-primary me-1"></i>Título Profesional *
+              </label>
+              {{ form.titulo_profesional(class_="form-control bg-light" + (" is-invalid" if form.titulo_profesional.errors else ""), id="inputTitulo", placeholder="Ej: Médica veterinaria") }}
+              {% for error in form.titulo_profesional.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.tarjeta_profesional.id }}">
+                <i class="bi bi-award-fill text-danger me-1"></i>Tarjeta Profesional (T.P.) *
+              </label>
+              {{ form.tarjeta_profesional(class_="form-control bg-light" + (" is-invalid" if form.tarjeta_profesional.errors else ""), id="inputTP", placeholder="Ej: 53214") }}
+              {% for error in form.tarjeta_profesional.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.especialidad.id }}">
+                <i class="bi bi-star-fill text-warning me-1"></i>Especialidad / Diplomado / Postgrado
+              </label>
+              {{ form.especialidad(class_="form-control bg-light" + (" is-invalid" if form.especialidad.errors else ""), id="inputEspecialidad", placeholder="Ej: Dpl. Dermatología de pequeñas especies") }}
+              <div class="form-text small" style="font-size: 0.74rem;">Esta mención acompañará el sello en las prescripciones y certificados.</div>
+              {% for error in form.especialidad.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.telefono.id }}">
+                <i class="bi bi-whatsapp text-success me-1"></i>Teléfono / WhatsApp Profesional
+              </label>
+              {{ form.telefono(class_="form-control bg-light", id="inputTelefono", placeholder="Ej: 3124567890") }}
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold text-secondary mb-1" for="{{ form.email.id }}">
+                <i class="bi bi-envelope-at-fill text-secondary me-1"></i>Correo Electrónico
+              </label>
+              {{ form.email(class_="form-control bg-light", id="inputEmail", placeholder="veterinaria@sandiavet.com") }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Tarjeta 2: Firma Manuscrita / Digital #}
+      <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden" style="border: 1.5px solid #E2E8F0 !important;">
+        <div class="card-header py-3 px-4 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #F8FAFC, #F1F5F9); border-bottom: 1px solid #E2E8F0;">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">✍️</span>
+            <span class="fw-bold fs-6 text-dark" style="font-family: var(--fuente-marca);">2. Firma Digital Oficial</span>
+          </div>
+          {% if url_firma_preview %}
+          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 small">
+            <i class="bi bi-check-circle-fill me-1"></i>Firma Configurada
+          </span>
+          {% else %}
+          <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 small">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>Sin Firma Adjunta
+          </span>
+          {% endif %}
+        </div>
+        <div class="card-body p-4">
+
+          {% if url_firma_preview %}
+          {# Firma actual #}
+          <div class="p-3 mb-4 rounded-3 border d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3" style="background-color: #FAFAFA;">
+            <div class="d-flex align-items-center gap-3">
+              <div class="p-2 rounded-2 border bg-white shadow-xs d-flex align-items-center justify-content-center" style="width: 140px; height: 75px; background-image: radial-gradient(#CBD5E1 1px, transparent 1px); background-size: 8px 8px;">
+                <img src="{{ url_firma_preview }}" alt="Firma Dra. Daniela Pulido" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+              </div>
+              <div>
+                <div class="fw-bold text-dark small">Firma Digital Actual</div>
+                <div class="text-muted" style="font-size: 0.75rem;">Se imprime automáticamente en fórmulas, informes SOAP y certificados.</div>
+              </div>
+            </div>
+            <div>
+              <button type="button" class="btn btn-sm btn-outline-danger px-3 py-1.5 rounded-pill" data-bs-toggle="modal" data-bs-target="#modalEliminarFirma">
+                <i class="bi bi-trash3-fill me-1"></i>Eliminar firma
+              </button>
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="alert alert-info border-0 rounded-3 py-2 px-3 small d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-info-circle-fill fs-5 text-info flex-shrink-0"></i>
+            <div>
+              Puedes <b>subir una foto/escaneo</b> de la firma en fondo blanco o transparente, o <b>dibujarla directamente</b> abajo con el ratón o pantalla táctil.
+            </div>
+          </div>
+
+          {# Tabs de selección de método de firma #}
+          <ul class="nav nav-pills nav-fill mb-3 p-1 bg-light rounded-pill border" id="pills-firma-tab" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active rounded-pill small py-1.5 fw-bold" id="tab-subir-btn" data-bs-toggle="pill" data-bs-target="#tab-subir" type="button" role="tab">
+                <i class="bi bi-cloud-arrow-up-fill me-1"></i>Subir Imagen de Firma
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link rounded-pill small py-1.5 fw-bold" id="tab-dibujar-btn" data-bs-toggle="pill" data-bs-target="#tab-dibujar" type="button" role="tab">
+                <i class="bi bi-pen-fill me-1"></i>Dibujar Firma en Pantalla
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="pills-firma-tabContent">
+            {# Tab 1: Subir Imagen #}
+            <div class="tab-pane fade show active" id="tab-subir" role="tabpanel">
+              <div class="border border-2 border-dashed rounded-3 p-4 text-center bg-light position-relative" id="drop-zone-firma">
+                <i class="bi bi-file-earmark-image fs-1 text-secondary d-block mb-2"></i>
+                <label for="{{ form.firma_archivo.id }}" class="form-label fw-bold text-dark mb-1 stretched-link" style="cursor: pointer;">
+                  Haz clic para seleccionar o arrastra aquí tu firma
+                </label>
+                <div class="text-muted small" style="font-size: 0.75rem;">Formatos aceptados: PNG transparente (recomendado), JPG o WEBP (máx. 5MB)</div>
+                {{ form.firma_archivo(class_="d-none", id="inputFirmaArchivo", accept="image/png, image/jpeg, image/webp") }}
+              </div>
+              <div id="firma-archivo-seleccionado" class="mt-2 text-success small fw-bold d-none">
+                <i class="bi bi-check2-circle me-1"></i>Archivo seleccionado: <span id="nombre-archivo-firma"></span>
+              </div>
+            </div>
+
+            {# Tab 2: Dibujar en Canvas #}
+            <div class="tab-pane fade" id="tab-dibujar" role="tabpanel">
+              <div class="position-relative border rounded-3 p-1 bg-white shadow-inner" style="background-image: radial-gradient(#E2E8F0 1px, transparent 1px); background-size: 10px 10px;">
+                <canvas id="canvas-firma" width="600" height="200" style="width: 100%; height: 180px; touch-action: none; cursor: crosshair; display: block;"></canvas>
+                <div class="position-absolute bottom-0 end-0 p-2 d-flex gap-1">
+                  <button type="button" class="btn btn-sm btn-light border shadow-xs text-secondary rounded-pill px-2.5 py-1 small" id="btn-limpiar-canvas" title="Borrar trazo">
+                    <i class="bi bi-eraser-fill me-1"></i>Limpiar trazo
+                  </button>
+                </div>
+              </div>
+              <div class="text-muted text-center mt-1" style="font-size: 0.72rem;">
+                <i class="bi bi-hand-index-thumb me-1"></i>Dibuja tu firma sobre el recuadro blanco usando el ratón, lápiz óptico o tu dedo en el celular/tablet.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {# Botón Guardar Principal #}
+      <div class="d-grid d-sm-flex gap-2 mb-4">
+        <button type="submit" class="btn btn-sandia btn-lg px-4 shadow-sm" id="btn-guardar-medico" style="background-color: #E53935; border-color: #E53935; color: white; font-weight: 700;">
+          <i class="bi bi-floppy2-fill me-2"></i>Guardar Información y Firma
+        </button>
+        <a href="{{ url_for('admin.configuracion') }}" class="btn btn-outline-secondary btn-lg px-4">
+          Cancelar
+        </a>
+      </div>
+
+    </div>
+
+    {# ── Columna Derecha: Vista Previa en Vivo del Sello Oficial (5 cols) ── #}
+    <div class="col-12 col-lg-5">
+      <div class="sticky-top" style="top: 1rem; z-index: 10;">
+        <div class="card border-0 shadow rounded-4 overflow-hidden" style="border: 2px solid #E2E8F0 !important;">
+          <div class="card-header py-3 px-3 bg-dark text-white d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-file-earmark-medical-fill text-danger fs-5"></i>
+              <span class="fw-bold small text-uppercase" style="letter-spacing: 0.05em;">Vista Previa en Documentos</span>
+            </div>
+            <span class="badge bg-danger rounded-pill px-2 py-0.5" style="font-size: 0.65rem;">En Vivo</span>
+          </div>
+
+          <div class="card-body p-4 bg-white">
+            <div class="text-center text-muted small mb-3 fst-italic" style="font-size: 0.75rem;">
+              Representación visual exacta de cómo se estamparán la firma y los datos profesionales al pie de fórmulas médicas, historias clínicas y certificados:
+            </div>
+
+            {# Simulación de hoja de informe oficial #}
+            <div class="p-4 rounded-3 border shadow-xs bg-white" style="border: 1px dashed #CBD5E1 !important; min-height: 240px; position: relative;">
+              <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <div class="d-flex align-items-center gap-2">
+                  <img src="{{ static_url('img/dog_icon.png') }}" alt="Logo" style="height: 26px; width: auto;">
+                  <span class="fw-bold small" style="color: #E53935; font-family: 'Fredoka', sans-serif;">SANDÍA VETCARE</span>
+                </div>
+                <span class="text-muted" style="font-size: 0.68rem;">INFORME OFICIAL</span>
+              </div>
+
+              <div class="py-2 text-center text-muted small" style="font-size: 0.72rem;">
+                <i class="bi bi-file-text me-1"></i>[ ... Contenido clínico de la consulta / prescripción ... ]
+              </div>
+
+              {# Pie de firma en vivo #}
+              <div class="mt-4 pt-3 text-center" style="max-width: 280px; margin: 0 auto;">
+                <div id="preview-firma-box" class="d-flex align-items-center justify-content-center mb-1" style="height: 70px;">
+                  {% if url_firma_preview %}
+                  <img id="preview-img-firma" src="{{ url_firma_preview }}" alt="Firma" style="max-height: 70px; max-width: 180px; object-fit: contain;">
+                  {% else %}
+                  <div id="preview-sin-firma" class="text-muted small fst-italic" style="font-size: 0.72rem; color: #94A3B8 !important;">
+                    (Firma manuscrita digital)
+                  </div>
+                  <img id="preview-img-firma" src="" alt="Firma" class="d-none" style="max-height: 70px; max-width: 180px; object-fit: contain;">
+                  {% endif %}
+                </div>
+
+                <div style="border-top: 1.5px solid #1E293B; padding-top: 5px;">
+                  <div class="fw-bold text-dark" id="preview-nombre" style="font-size: 0.95rem;">
+                    {{ configs.nombre or 'Dra. Daniela Pulido' }}
+                  </div>
+                  <div class="text-secondary fw-semibold" id="preview-titulo-esp" style="font-size: 0.75rem;">
+                    <span id="preview-titulo">{{ configs.titulo or 'Médica veterinaria' }}</span> · 
+                    <span id="preview-especialidad" class="text-primary">{{ configs.especialidad or 'Dpl. Dermatología de pequeñas especies' }}</span>
+                  </div>
+                  <div class="text-muted fw-bold" id="preview-tp" style="font-size: 0.72rem;">
+                    T.P. <span id="preview-tp-num">{{ configs.tp or '53214' }}</span>
+                  </div>
+                  <div class="text-muted mt-1" style="font-size: 0.65rem; color: #64748B;">
+                    Sandía · Medicina & Spa Veterinario
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {# Card de Resumen Informativo #}
+            <div class="mt-3 p-3 rounded-3 bg-light border small text-secondary">
+              <div class="fw-bold text-dark mb-1"><i class="bi bi-shield-check text-success me-1"></i>Efecto de esta configuración:</div>
+              <ul class="mb-0 ps-3" style="font-size: 0.75rem;">
+                <li>Cualquier consulta SOAP emitida generará automáticamente el PDF con el nombre y firma de la doctora.</li>
+                <li>Las fórmulas médicas (Rx) descargadas por tutores llevarán su sello y tarjeta profesional.</li>
+                <li>Los certificados oficiales de viaje y salud animal integrarán su firma validada con código QR.</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</form>
+
+{# Modal de confirmación para eliminar firma #}
+{% if url_firma_preview %}
+<div class="modal fade" id="modalEliminarFirma" tabindex="-1" aria-labelledby="modalEliminarFirmaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header bg-danger text-white border-0 py-2.5 px-3">
+        <h6 class="modal-title fw-bold" id="modalEliminarFirmaLabel"><i class="bi bi-trash3-fill me-1"></i>Eliminar Firma</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body p-3 text-center">
+        <p class="small text-secondary mb-3">
+          ¿Seguro que deseas eliminar la firma digital actual? Los nuevos documentos se emitirán sin el gráfico de firma hasta que adjuntes una nueva.
+        </p>
+        <form method="post" action="{{ url_for('admin.medico_eliminar_firma') }}" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger btn-sm rounded-pill px-3 fw-bold">Sí, eliminar firma</button>
+        </form>
+        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3 ms-1" data-bs-dismiss="modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# Script para Canvas táctil y Vista Previa en Vivo #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // 1. Elementos de formulario
+  const inputNombre = document.getElementById('inputNombre');
+  const inputTitulo = document.getElementById('inputTitulo');
+  const inputTP = document.getElementById('inputTP');
+  const inputEspecialidad = document.getElementById('inputEspecialidad');
+  const inputFirmaArchivo = document.getElementById('inputFirmaArchivo');
+  const inputFirmaCanvas = document.getElementById('{{ form.firma_canvas.id }}');
+
+  // Elementos de vista previa
+  const previewNombre = document.getElementById('preview-nombre');
+  const previewTitulo = document.getElementById('preview-titulo');
+  const previewTPNum = document.getElementById('preview-tp-num');
+  const previewEspecialidad = document.getElementById('preview-especialidad');
+  const previewImgFirma = document.getElementById('preview-img-firma');
+  const previewSinFirma = document.getElementById('preview-sin-firma');
+
+  function actualizarPreview() {
+    if (inputNombre && previewNombre) previewNombre.textContent = inputNombre.value.trim() || 'Dra. Daniela Pulido';
+    if (inputTitulo && previewTitulo) previewTitulo.textContent = inputTitulo.value.trim() || 'Médica veterinaria';
+    if (inputTP && previewTPNum) previewTPNum.textContent = inputTP.value.trim() || '53214';
+    if (inputEspecialidad && previewEspecialidad) previewEspecialidad.textContent = inputEspecialidad.value.trim() || 'Dpl. Dermatología de pequeñas especies';
+  }
+
+  if (inputNombre) inputNombre.addEventListener('input', actualizarPreview);
+  if (inputTitulo) inputTitulo.addEventListener('input', actualizarPreview);
+  if (inputTP) inputTP.addEventListener('input', actualizarPreview);
+  if (inputEspecialidad) inputEspecialidad.addEventListener('input', actualizarPreview);
+
+  // 2. Previsualización de archivo subido
+  if (inputFirmaArchivo) {
+    inputFirmaArchivo.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        document.getElementById('firma-archivo-seleccionado').classList.remove('d-none');
+        document.getElementById('nombre-archivo-firma').textContent = file.name;
+        
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          if (previewImgFirma) {
+            previewImgFirma.src = evt.target.result;
+            previewImgFirma.classList.remove('d-none');
+          }
+          if (previewSinFirma) previewSinFirma.classList.add('d-none');
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  // 3. Canvas interactivo de firma
+  const canvas = document.getElementById('canvas-firma');
+  let ctx = null;
+  let dibujando = false;
+  let haDibujado = false;
+
+  if (canvas) {
+    ctx = canvas.getContext('2d');
+    
+    function ajustarResolucionCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.strokeStyle = '#0F172A'; // Azul muy oscuro/negro estilizado
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    }
+
+    // Inicializar resolución cuando se muestre el tab
+    const tabDibujarBtn = document.getElementById('tab-dibujar-btn');
+    if (tabDibujarBtn) {
+      tabDibujarBtn.addEventListener('shown.bs.tab', function() {
+        ajustarResolucionCanvas();
+      });
+    }
+    ajustarResolucionCanvas();
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function iniciarDibujo(e) {
+      e.preventDefault();
+      dibujando = true;
+      haDibujado = true;
+      const pos = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
+
+    function dibujar(e) {
+      if (!dibujando) return;
+      e.preventDefault();
+      const pos = getPos(e);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    }
+
+    function pararDibujo(e) {
+      if (dibujando) {
+        dibujando = false;
+        ctx.closePath();
+        // Guardar data URL en el campo oculto y actualizar preview
+        const dataUrl = canvas.toDataURL('image/png');
+        if (inputFirmaCanvas) inputFirmaCanvas.value = dataUrl;
+        if (previewImgFirma) {
+          previewImgFirma.src = dataUrl;
+          previewImgFirma.classList.remove('d-none');
+        }
+        if (previewSinFirma) previewSinFirma.classList.add('d-none');
+      }
+    }
+
+    canvas.addEventListener('mousedown', iniciarDibujo);
+    canvas.addEventListener('mousemove', dibujar);
+    window.addEventListener('mouseup', pararDibujo);
+
+    canvas.addEventListener('touchstart', iniciarDibujo, { passive: false });
+    canvas.addEventListener('touchmove', dibujar, { passive: false });
+    window.addEventListener('touchend', pararDibujo);
+
+    // Botón limpiar canvas
+    const btnLimpiar = document.getElementById('btn-limpiar-canvas');
+    if (btnLimpiar) {
+      btnLimpiar.addEventListener('click', function() {
+        const rect = canvas.getBoundingClientRect();
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        haDibujado = false;
+        if (inputFirmaCanvas) inputFirmaCanvas.value = '';
+        {% if not url_firma_preview %}
+        if (previewImgFirma) {
+          previewImgFirma.src = '';
+          previewImgFirma.classList.add('d-none');
+        }
+        if (previewSinFirma) previewSinFirma.classList.remove('d-none');
+        {% endif %}
+      });
+    }
+  }
+
+  // Al enviar el formulario, si se dibujó en canvas, asegurar que esté serializado
+  const formMedico = document.getElementById('form-medico-principal');
+  if (formMedico && canvas && inputFirmaCanvas) {
+    formMedico.addEventListener('submit', function() {
+      if (haDibujado) {
+        inputFirmaCanvas.value = canvas.toDataURL('image/png');
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

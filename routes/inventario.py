@@ -144,7 +144,10 @@ def lista():
     estado = request.args.get("estado", "activos")
     pagina = request.args.get("page", 1, type=int)
 
-    consulta = select(Producto)
+    consulta = select(Producto).options(
+        selectinload(Producto.variantes),
+        selectinload(Producto.lotes),
+    )
     normalizado = normalizar_texto(texto)
     if normalizado:
         consulta = consulta.where(

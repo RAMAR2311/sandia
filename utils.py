@@ -302,3 +302,62 @@ def eliminar_documento(subcarpeta: str, nombre: str) -> None:
         ruta.unlink(missing_ok=True)
     except OSError:
         current_app.logger.warning("No se pudo borrar el documento %s", ruta)
+
+
+def guardar_firma_digital(origen, subcarpeta: str = "firmas") -> str:
+    """Guarda una firma digital (desde archivo subido o base64 canvas) como PNG transparente.
+
+    Retorna el nombre del archivo generado dentro de `subcarpeta`.
+    """
+    import base64
+    import io
+    from PIL import Image, ImageOps, UnidentifiedImageError
+
+    carpeta = _carpeta_subidas(subcarpeta)
+    nombre = f"firma_{uuid.uuid4().hex}.png"
+    destino = carpeta / nombre
+
+    if isinstance(origen, str) and origen.startswith("data:image"):
+        # Viene como Data URL de canvas
+        try:
+            encabezado, data_b64 = origen.split(",", 1)
+            datos_bytes = base64.b64decode(data_b64)
+            img = Image.open(io.BytesIO(datos_bytes))
+            img = img.convert("RGBA")
+            # Reducir si es muy grande pero preservando calidad
+            img.thumbnail((800, 400))
+            img.save(destino, "PNG", optimize=True)
+            return nombre
+        except Exception as exc:
+            raise ValueError("No se pudo procesar el trazo de la firma digital.") from exc
+    elif hasattr(origen, "stream") or hasattr(origen, "read"):
+        # Viene como archivo subido (FileStorage)
+        nombre_orig = secure_filename(getattr(origen, "filename", "") or "")
+        ext = nombre_orig.rsplit(".", 1)[-1].lower() if "." in nombre_orig else ""
+        if ext not in EXTENSIONES_IMAGEN:
+            raise ValueError("Formato de firma no permitido. Usa una imagen PNG, JPG o WEBP.")
+        try:
+            img = Image.open(origen.stream)
+            img.load()
+            img = ImageOps.exif_transpose(img)
+            if img.mode not in ("RGBA", "RGB"):
+                img = img.convert("RGBA")
+            img.thumbnail((900, 450))
+            img.save(destino, "PNG", optimize=True)
+            return nombre
+        except Exception as exc:
+            raise ValueError("El archivo subido no es una imagen válida.") from exc
+    else:
+        raise ValueError("Origen de firma inválido.")
+
+
+def eliminar_firma_digital(nombre: str, subcarpeta: str = "firmas") -> None:
+    """Elimina el archivo de firma física si existe."""
+    if not nombre or nombre.startswith("data:") or "/" in nombre or "\\" in nombre:
+        return
+    ruta = Path(current_app.config["UPLOAD_FOLDER"]) / subcarpeta / nombre
+    try:
+        ruta.unlink(missing_ok=True)
+    except OSError:
+        current_app.logger.warning("No se pudo borrar la firma %s", ruta)
+

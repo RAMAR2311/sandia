@@ -35,7 +35,7 @@ MODULOS = [
         "descripcion": "Consultas SOAP, vacunación y desparasitación",
         "icono": "bi-journal-medical",
         "endpoint": "historias.lista",
-        "roles": ("admin", "veterinario", "auxiliar"),
+        "roles": ("admin", "veterinario", "auxiliar", "recepcion"),
         "en_barra": True,
         "esencial": True,
     },
@@ -95,7 +95,7 @@ MODULOS = [
         "descripcion": "Agenda de peluquería y notificaciones por WhatsApp",
         "icono": "bi-scissors",
         "endpoint": "spa.agenda",
-        "roles": ("admin", "recepcion", "groomer"),
+        "roles": ("admin", "recepcion", "groomer", "auxiliar"),
         "en_barra": True,
         "esencial": True,
     },
@@ -105,7 +105,7 @@ MODULOS = [
         "descripcion": "Terminal de cobro rápido y facturación",
         "icono": "bi-cart-check-fill",
         "endpoint": "pos.terminal",
-        "roles": ("admin", "cajero"),
+        "roles": ("admin", "cajero", "auxiliar", "recepcion"),
         "en_barra": True,
         "esencial": True,
     },
@@ -115,7 +115,7 @@ MODULOS = [
         "descripcion": "Apertura, cierre y arqueo de turno",
         "icono": "bi-cash-coin",
         "endpoint": "pos.caja_estado",
-        "roles": ("admin", "cajero"),
+        "roles": ("admin", "cajero", "auxiliar", "recepcion"),
         "en_barra": False,
         "esencial": True,
     },
@@ -317,9 +317,8 @@ def obtener_mascotas_pendientes_recogida():
 @bp.route("/")
 @login_required
 def index():
-    vacunas_pendientes = []
-    if current_user.rol in ("admin", "veterinario", "auxiliar"):
-        vacunas_pendientes = vacunas_por_vencer()
+    # Alertas de vacunaciones por vencer para todo el equipo operativo
+    vacunas_pendientes = vacunas_por_vencer()
 
     mascotas_recogida = obtener_mascotas_pendientes_recogida()
     form_csrf = SoloCsrfForm()
@@ -353,8 +352,8 @@ def index():
             select(func.count(Mascota.id)).where(Mascota.activo.is_(True), Mascota.fallecido.is_(False))
         ).scalar() or 0
 
-        # Turno de caja abierto (para admin y cajero)
-        if current_user.rol in ("admin", "cajero"):
+        # Turno de caja abierto (para admin, cajero y auxiliares que cobran en el POS)
+        if current_user.rol in ("admin", "cajero", "auxiliar", "recepcion"):
             turno = db.session.execute(
                 select(TurnoCaja)
                 .where(TurnoCaja.usuario_id == current_user.id, TurnoCaja.estado.in_(("abierta", "abierto")))
@@ -372,18 +371,47 @@ def index():
             ).scalar()
             metricas["ventas_hoy"] = ventas_hoy_val or Decimal("0.00")
 
-        # Alertas de stock crítico
-        if current_user.rol in ("admin", "veterinario", "auxiliar", "cajero"):
-            productos_alerta = db.session.execute(
-                select(func.count(Producto.id)).where(
-                    Producto.activo.is_(True),
-                    Producto.tipo == "producto",
-                    Producto.cantidad_stock <= Producto.stock_minimo,
-                )
-            ).scalar() or 0
-            metricas["stock_critico"] = productos_alerta
+        # Alertas de stock crítico (para todo el equipo)
+        productos_alerta = db.session.execute(
+            select(func.count(Producto.id)).where(
+                Producto.activo.is_(True),
+                Producto.tipo == "producto",
+                Producto.cantidad_stock <= Producto.stock_minimo,
+            )
+        ).scalar() or 0
+        metricas["stock_critico"] = productos_alerta
     except Exception:
         pass
+
+    # Citas de Spa y Citas Médicas del día para visualización directa en el inicio
+    citas_spa_hoy = []
+    citas_medicas_hoy = []
+    try:
+        citas_spa_hoy = db.session.execute(
+            select(CitaSpa)
+            .where(CitaSpa.fecha_hora >= inicio_dia, CitaSpa.fecha_hora <= fin_dia, CitaSpa.estado != "cancelada")
+            .options(
+                selectinload(CitaSpa.mascota),
+                selectinload(CitaSpa.tutor),
+                selectinload(CitaSpa.servicio_spa),
+                selectinload(CitaSpa.groomer),
+                selectinload(CitaSpa.venta),
+            )
+            .order_by(CitaSpa.fecha_hora.asc())
+        ).scalars().all()
+
+        citas_medicas_hoy = db.session.execute(
+            select(Cita)
+            .where(Cita.fecha_hora >= inicio_dia, Cita.fecha_hora <= fin_dia, Cita.estado != "cancelada")
+            .options(
+                selectinload(Cita.mascota),
+                selectinload(Cita.tutor),
+                selectinload(Cita.profesional),
+            )
+            .order_by(Cita.fecha_hora.asc())
+        ).scalars().all()
+    except Exception:
+        db.session.rollback()
 
     todos_modulos = modulos_para(current_user.rol)
     modulos_esenciales = [m for m in todos_modulos if m.get("esencial", False)]
@@ -396,6 +424,8 @@ def index():
         modulos_secundarios=modulos_secundarios,
         vacunas_pendientes=vacunas_pendientes,
         mascotas_recogida=mascotas_recogida,
+        citas_spa_hoy=citas_spa_hoy,
+        citas_medicas_hoy=citas_medicas_hoy,
         form_csrf=form_csrf,
         metricas=metricas,
     )

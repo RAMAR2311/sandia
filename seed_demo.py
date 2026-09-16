@@ -49,20 +49,36 @@ with app.app_context():
 
     # 2. Usuarios por rol
     usuarios_data = [
-        ("Dr. Jhon Administrador", "admin@sandiavet.com", "Admin123456*", "admin", "3101112233"),
-        ("Dra. Camila Morales", "veterinaria@sandiavet.com", "Vet123456*", "veterinario", "3152223344"),
-        ("Carlos Andrés Gómez", "cajero@sandiavet.com", "Caja123456*", "cajero", "3203334455"),
-        ("Andrea Restrepo", "spa@sandiavet.com", "Spa123456*", "groomer", "3004445566"),
+        ("Dr. Jhon Administrador", "admin@sandiavet.com", "Admin123456*", "admin", "3101112233", None, None, None),
+        ("Dra. Daniela Pulido", "veterinaria@sandiavet.com", "Vet123456*", "veterinario", "3152223344", "53214", "Médica veterinaria", "Dpl. Dermatología de pequeñas especies"),
+        ("Carlos Andrés Gómez", "cajero@sandiavet.com", "Caja123456*", "cajero", "3203334455", None, None, None),
+        ("Andrea Restrepo", "spa@sandiavet.com", "Spa123456*", "groomer", "3004445566", None, None, None),
     ]
 
     usuarios = {}
-    for nombre, email, pwd, rol, tel in usuarios_data:
+    for nombre, email, pwd, rol, tel, tp, titulo, esp in usuarios_data:
         u = db.session.execute(db.select(Usuario).filter_by(email=email)).scalar_one_or_none()
         if not u:
-            u = Usuario(nombre=nombre, email=email, rol=rol, activo=True, telefono=tel)
+            u = Usuario(
+                nombre=nombre,
+                email=email,
+                rol=rol,
+                activo=True,
+                telefono=tel,
+                tarjeta_profesional=tp,
+                titulo_profesional=titulo,
+                especialidad=esp,
+            )
             u.establecer_password(pwd)
             db.session.add(u)
             db.session.flush()
+        else:
+            if rol == "veterinario":
+                u.nombre = nombre
+                u.tarjeta_profesional = tp
+                u.titulo_profesional = titulo
+                u.especialidad = esp
+                db.session.flush()
         usuarios[rol] = u
 
     db.session.commit()

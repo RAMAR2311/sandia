@@ -4,7 +4,9 @@
 
 {% block contenido %}
 {% call encabezado("Configuración", "Datos de la clínica y ajustes del sistema") %}
-  {# sin botones en el encabezado #}
+  <a href="{{ url_for('admin.medico_principal') }}" class="btn btn-sandia btn-sm rounded-pill px-3 shadow-xs">
+    <i class="bi bi-person-badge-fill me-1"></i>Médico Principal & Firma
+  </a>
 {% endcall %}
 
 <form method="post" novalidate>
@@ -12,12 +14,13 @@
 
   {# Iconos y colores por grupo #}
   {% set grupo_meta = {
-    "Datos de la clínica":    {"icono": "bi-hospital-fill",      "color": "#E53935", "bg": "linear-gradient(135deg,#FDECEB,#FEE2E2)"},
-    "Ventas e inventario":    {"icono": "bi-cart-check-fill",    "color": "#16A34A", "bg": "linear-gradient(135deg,#DCFCE7,#BBF7D0)"},
-    "Agenda y citas":         {"icono": "bi-calendar2-heart-fill","color": "#0284C7", "bg": "linear-gradient(135deg,#E0F2FE,#BAE6FD)"},
-    "Facturación":            {"icono": "bi-receipt-cutoff",     "color": "#D97706", "bg": "linear-gradient(135deg,#FEF3C7,#FDE68A)"},
-    "Notificaciones":         {"icono": "bi-bell-fill",          "color": "#7C3AED", "bg": "linear-gradient(135deg,#EDE9FE,#DDD6FE)"},
-    "General":                {"icono": "bi-sliders",            "color": "#00897B", "bg": "linear-gradient(135deg,#E0F2F1,#B2DFDB)"}
+    "Datos de la clínica":              {"icono": "bi-hospital-fill",      "color": "#E53935", "bg": "linear-gradient(135deg,#FDECEB,#FEE2E2)"},
+    "Médico Veterinario Principal & Firma": {"icono": "bi-person-badge-fill", "color": "#BE123C", "bg": "linear-gradient(135deg,#FFF1F2,#FECDD3)"},
+    "Ventas e inventario":              {"icono": "bi-cart-check-fill",    "color": "#16A34A", "bg": "linear-gradient(135deg,#DCFCE7,#BBF7D0)"},
+    "Agenda y citas":                   {"icono": "bi-calendar2-heart-fill","color": "#0284C7", "bg": "linear-gradient(135deg,#E0F2FE,#BAE6FD)"},
+    "Facturación":                      {"icono": "bi-receipt-cutoff",     "color": "#D97706", "bg": "linear-gradient(135deg,#FEF3C7,#FDE68A)"},
+    "Notificaciones":                   {"icono": "bi-bell-fill",          "color": "#7C3AED", "bg": "linear-gradient(135deg,#EDE9FE,#DDD6FE)"},
+    "General":                          {"icono": "bi-sliders",            "color": "#00897B", "bg": "linear-gradient(135deg,#E0F2F1,#B2DFDB)"}
   } %}
 
   <div class="row g-4">

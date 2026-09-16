@@ -5,6 +5,7 @@ from datetime import datetime, time
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from decorators import admin_required, recepcion_required
 from forms import FallecimientoForm, FotoForm, MascotaForm, RegistroPesoForm, SoloCsrfForm
@@ -388,7 +389,15 @@ def lista():
     estado = request.args.get("estado", "activas")
     pagina = request.args.get("page", 1, type=int)
 
-    consulta = select(Mascota).join(Mascota.tutor)
+    consulta = (
+        select(Mascota)
+        .join(Mascota.tutor)
+        .options(
+            selectinload(Mascota.tutor),
+            selectinload(Mascota.raza),
+            selectinload(Mascota.registros_peso),
+        )
+    )
     normalizado = normalizar_texto(texto)
     if normalizado:
         consulta = consulta.where(

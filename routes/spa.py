@@ -188,14 +188,24 @@ def cita_nueva():
 
     # Cargar opciones de selects
     tutores = db.session.execute(select(Tutor).filter_by(activo=True).order_by(Tutor.nombre_completo)).scalars().all()
-    mascotas = db.session.execute(select(Mascota).filter_by(activo=True).order_by(Mascota.nombre)).scalars().all()
+    mascotas = db.session.execute(
+        select(Mascota).filter_by(activo=True).options(selectinload(Mascota.tutor)).order_by(Mascota.nombre)
+    ).scalars().all()
     servicios = db.session.execute(select(ServicioSpa).filter_by(activo=True).order_by(ServicioSpa.nombre)).scalars().all()
     groomers = db.session.execute(select(Usuario).filter(Usuario.activo.is_(True), Usuario.rol.in_(("groomer", "auxiliar", "admin"))).order_by(Usuario.nombre)).scalars().all()
 
     form.tutor_id.choices = [(t.id, f"{t.nombre_completo} (Doc: {t.documento_texto or 'S/N'})") for t in tutores]
-    form.mascota_id.choices = [(m.id, f"{m.nombre} ({m.especie}) - Tutor ID: {m.tutor_id}") for m in mascotas]
-    form.servicio_spa_id.choices = [(s.id, f"{s.nombre} (${s.precio_sugerido:,.2f} - {s.duracion_minutos} min)") for s in servicios]
+    form.mascota_id.choices = [
+        (m.id, f"{m.nombre} ({m.especie_etiqueta}) - Tutor: {m.tutor.nombre_completo if m.tutor else 'Sin tutor'}")
+        for m in mascotas
+    ]
+    form.servicio_spa_id.choices = [(s.id, f"{s.nombre} (${s.precio_sugerido:,.0f} - {s.duracion_minutos} min)") for s in servicios]
     form.groomer_id.choices = [(0, "-- Sin groomer asignado --")] + [(g.id, f"{g.nombre} ({g.rol.capitalize()})") for g in groomers]
+
+    mascotas_data = [
+        {"id": m.id, "nombre": m.nombre, "especie": m.especie_etiqueta, "emoji": m.especie_emoji, "tutor_id": m.tutor_id}
+        for m in mascotas
+    ]
 
     # Pre-selección por parámetros GET si vienen desde la ficha de mascota o tutor
     mascota_pre = request.args.get("mascota_id", type=int)
@@ -238,7 +248,7 @@ def cita_nueva():
                 current_app.logger.exception("Error al agendar cita de spa")
                 flash("Error al agendar la cita. Verifica los campos e inténtalo de nuevo.", "danger")
 
-    return render_template("spa/form_cita.html", form=form)
+    return render_template("spa/form_cita.html", form=form, mascotas_data=mascotas_data)
 
 
 @bp.route("/cita/<int:id>", methods=["GET"])

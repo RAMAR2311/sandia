@@ -8,6 +8,7 @@ Incluye:
 """
 
 import io
+import os
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -30,7 +31,7 @@ COLOR_EXITO = colors.HexColor("#10B981")
 
 
 def _obtener_datos_clinica(db_session=None):
-    """Recupera la configuración de la clínica o valores por defecto."""
+    """Recupera la configuración de la clínica y doctora principal o valores por defecto."""
     datos = {
         "nombre": "Sandía",
         "subtitulo": "Medicina y Spa Veterinario",
@@ -40,6 +41,11 @@ def _obtener_datos_clinica(db_session=None):
         "telefono": "312 456 7890",
         "whatsapp": "+57 312 456 7890",
         "email": "contacto@sandiavetcare.com",
+        "doctora_nombre": "Dra. Daniela Pulido",
+        "doctora_titulo": "Médica veterinaria",
+        "doctora_tp": "53214",
+        "doctora_especialidad": "Dpl. Dermatología de pequeñas especies",
+        "doctora_firma": "",
     }
     if db_session:
         try:
@@ -55,9 +61,50 @@ def _obtener_datos_clinica(db_session=None):
                 elif c.clave == "clinica_telefono" and c.valor: datos["telefono"] = c.valor
                 elif c.clave == "clinica_whatsapp" and c.valor: datos["whatsapp"] = c.valor
                 elif c.clave == "clinica_email" and c.valor: datos["email"] = c.valor
+                elif c.clave == "medico_principal_nombre" and c.valor: datos["doctora_nombre"] = c.valor
+                elif c.clave == "medico_principal_titulo" and c.valor: datos["doctora_titulo"] = c.valor
+                elif c.clave == "medico_principal_tp" and c.valor: datos["doctora_tp"] = c.valor
+                elif c.clave == "medico_principal_especialidad" and c.valor: datos["doctora_especialidad"] = c.valor
+                elif c.clave == "medico_principal_firma" and c.valor: datos["doctora_firma"] = c.valor
         except Exception:
             pass
     return datos
+
+
+def _obtener_logo_img(width=18*mm, height=17*mm):
+    """Retorna el elemento Image de ReportLab para el logo oficial de Sandía Spa si existe."""
+    logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "img", "dog_icon.png")
+    if os.path.exists(logo_path):
+        try:
+            return RLImage(logo_path, width=width, height=height)
+        except Exception:
+            return None
+    return None
+
+
+def _obtener_firma_flowable(nombre_o_base64: str, width=42*mm, height=18*mm):
+    """Retorna un elemento Image de ReportLab para la firma digital si existe."""
+    if not nombre_o_base64:
+        return None
+    try:
+        if str(nombre_o_base64).startswith("data:image"):
+            import base64
+            _, b64 = nombre_o_base64.split(",", 1)
+            raw = base64.b64decode(b64)
+            return RLImage(io.BytesIO(raw), width=width, height=height)
+        else:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            rutas = [
+                os.path.join(base_dir, "static", "uploads", "firmas", str(nombre_o_base64)),
+                os.path.join(base_dir, "static", "uploads", str(nombre_o_base64)),
+            ]
+            for r in rutas:
+                if os.path.exists(r):
+                    return RLImage(r, width=width, height=height)
+    except Exception:
+        pass
+    return None
+
 
 
 def _crear_estilos():
@@ -173,17 +220,34 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
     # =========================================================================
     fecha_str = consulta.fecha_hora.strftime("%d/%m/%Y %H:%M") if hasattr(consulta.fecha_hora, "strftime") else str(consulta.fecha_hora)
     
-    header_data = [
-        [
-            Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
-            Paragraph(f"<b>INFORME CLÍNICO OFICIAL</b><br/><font color='#E53935' size=10><b>CONSULTA SOAP #{consulta.id:04d}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+    logo_img = _obtener_logo_img(width=18 * mm, height=17 * mm)
+    if logo_img:
+        header_data = [
+            [
+                logo_img,
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>INFORME CLÍNICO OFICIAL</b><br/><font color='#E53935' size=10><b>CONSULTA SOAP #{consulta.id:04d}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
         ]
-    ]
-    t_header = Table(header_data, colWidths=[110 * mm, 78 * mm])
-    t_header.setStyle(TableStyle([
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-    ]))
+        t_header = Table(header_data, colWidths=[20 * mm, 90 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ('RIGHTPADDING', (0,0), (0,0), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ]))
+    else:
+        header_data = [
+            [
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>INFORME CLÍNICO OFICIAL</b><br/><font color='#E53935' size=10><b>CONSULTA SOAP #{consulta.id:04d}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[110 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ]))
     historia.append(t_header)
     historia.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_PRIMARIO, spaceAfter=8))
 
@@ -197,7 +261,11 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
     nombre_tutor = tutor.nombre_completo if tutor else "N/A"
     tel_tutor = tutor.telefono or (tutor.whatsapp or "N/A") if tutor else "N/A"
     doc_tutor = f"Doc: {tutor.documento_texto}" if tutor and hasattr(tutor, "documento_texto") else ""
-    nombre_vet = f"Dr/a. {vet.nombre}" if vet else "Médico Veterinario"
+    nombre_vet = vet.nombre if vet else clinica.get("doctora_nombre", "Dra. Daniela Pulido")
+    titulo_vet = getattr(vet, "titulo_profesional", None) or clinica.get("doctora_titulo", "Médica veterinaria")
+    tp_vet = getattr(vet, "tarjeta_profesional", None) or clinica.get("doctora_tp", "53214")
+    esp_vet = getattr(vet, "especialidad", None) or clinica.get("doctora_especialidad", "Dpl. Dermatología de pequeñas especies")
+    firma_vet = getattr(vet, "firma_digital", None) or clinica.get("doctora_firma", "")
 
     info_data = [
         [
@@ -313,7 +381,7 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
     # =========================================================================
     # 5. SECCIÓN A: AVALÚO (Diagnóstico)
     # =========================================================================
-    historia.append(Paragraph("<b>A · AVALÚO (Diagnóstico Clínico)</b>", estilos['SeccionHeader']))
+    historia.append(Paragraph("<b>A · AVALÚO (Diagnóstico Presuntivo)</b>", estilos['SeccionHeader']))
     historia.append(Spacer(1, 2))
     diag_data = [[Paragraph(f"<b>DIAGNÓSTICO:</b> {consulta.diagnostico}", estilos['TextoNormal'])]]
     t_diag = Table(diag_data, colWidths=[188 * mm])
@@ -372,10 +440,30 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
     # 7. FIRMA MÉDICA & PIE DE PÁGINA
     # =========================================================================
     historia.append(Spacer(1, 10))
+    firma_img = _obtener_firma_flowable(firma_vet, width=42 * mm, height=18 * mm)
+    lineas_sello = [
+        f"<b>{nombre_vet}</b>",
+        f"{titulo_vet} · T.P. {tp_vet}",
+    ]
+    if esp_vet:
+        lineas_sello.append(f"<font color='#BE123C' size=7><b>{esp_vet}</b></font>")
+    lineas_sello.append(f"<font size=7 color='#64748B'>{clinica['nombre']} · {clinica['subtitulo']}</font>")
+    sello_html = "<br/>".join(lineas_sello)
+
+    if firma_img:
+        firma_col = [
+            firma_img,
+            Paragraph(f"______________________________________<br/>{sello_html}", estilos['PiePagina'])
+        ]
+    else:
+        firma_col = [
+            Paragraph(f"______________________________________<br/>{sello_html}", estilos['PiePagina'])
+        ]
+
     firma_data = [
         [
             "",
-            Paragraph(f"______________________________________<br/><b>{nombre_vet}</b><br/>Médico Veterinario Tratante<br/><font size=7 color='#64748B'>{clinica['nombre']} · Medicina & Spa Veterinario</font>", estilos['PiePagina'])
+            firma_col
         ]
     ]
     t_firma = Table(firma_data, colWidths=[100 * mm, 88 * mm])
@@ -413,17 +501,34 @@ def generar_pdf_factura(venta, db_session=None) -> io.BytesIO:
     fecha_str = fecha_dt.strftime("%d/%m/%Y %H:%M") if hasattr(fecha_dt, "strftime") else str(fecha_dt)
 
     # 1. Header
-    header_data = [
-        [
-            Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
-            Paragraph(f"<b>COMPROBANTE DE PAGO</b><br/><font color='#E53935' size=11><b>{venta.numero_factura}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+    logo_img = _obtener_logo_img(width=18 * mm, height=17 * mm)
+    if logo_img:
+        header_data = [
+            [
+                logo_img,
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>COMPROBANTE DE PAGO</b><br/><font color='#E53935' size=11><b>{venta.numero_factura}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
         ]
-    ]
-    t_header = Table(header_data, colWidths=[110 * mm, 78 * mm])
-    t_header.setStyle(TableStyle([
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-    ]))
+        t_header = Table(header_data, colWidths=[20 * mm, 90 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ('RIGHTPADDING', (0,0), (0,0), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ]))
+    else:
+        header_data = [
+            [
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>COMPROBANTE DE PAGO</b><br/><font color='#E53935' size=11><b>{venta.numero_factura}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[110 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ]))
     historia.append(t_header)
     historia.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_PRIMARIO, spaceAfter=8))
 
@@ -546,17 +651,34 @@ def generar_pdf_receta(consulta, db_session=None) -> io.BytesIO:
     fecha_str = consulta.fecha_hora.strftime("%d/%m/%Y") if hasattr(consulta.fecha_hora, "strftime") else str(consulta.fecha_hora)
 
     # 1. Header Recetario
-    header_data = [
-        [
-            Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
-            Paragraph(f"<b>RECETARIO MÉDICO</b><br/><font color='#E53935' size=10><b>FÓRMULA #{consulta.id:04d}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+    logo_img = _obtener_logo_img(width=18 * mm, height=17 * mm)
+    if logo_img:
+        header_data = [
+            [
+                logo_img,
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>RECETARIO MÉDICO</b><br/><font color='#E53935' size=10><b>FÓRMULA #{consulta.id:04d}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
         ]
-    ]
-    t_header = Table(header_data, colWidths=[110 * mm, 74 * mm])
-    t_header.setStyle(TableStyle([
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-    ]))
+        t_header = Table(header_data, colWidths=[20 * mm, 90 * mm, 74 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ('RIGHTPADDING', (0,0), (0,0), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ]))
+    else:
+        header_data = [
+            [
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>RECETARIO MÉDICO</b><br/><font color='#E53935' size=10><b>FÓRMULA #{consulta.id:04d}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[110 * mm, 74 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ]))
     historia.append(t_header)
     historia.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_PRIMARIO, spaceAfter=8))
 
@@ -565,7 +687,11 @@ def generar_pdf_receta(consulta, db_session=None) -> io.BytesIO:
     especie_raza = f"{mascota.especie.capitalize() if mascota else ''} · {mascota.raza.nombre if mascota and mascota.raza else 'Mestizo'}"
     peso_str = f"Peso: {consulta.peso_kg} kg" if consulta.peso_kg else ""
     nombre_tutor = tutor.nombre_completo if tutor else "N/A"
-    nombre_vet = f"Dr/a. {vet.nombre}" if vet else "Médico Veterinario"
+    nombre_vet = vet.nombre if vet else clinica.get("doctora_nombre", "Dra. Daniela Pulido")
+    titulo_vet = getattr(vet, "titulo_profesional", None) or clinica.get("doctora_titulo", "Médica veterinaria")
+    tp_vet = getattr(vet, "tarjeta_profesional", None) or clinica.get("doctora_tp", "53214")
+    esp_vet = getattr(vet, "especialidad", None) or clinica.get("doctora_especialidad", "Dpl. Dermatología de pequeñas especies")
+    firma_vet = getattr(vet, "firma_digital", None) or clinica.get("doctora_firma", "")
 
     info_data = [
         [
@@ -612,11 +738,31 @@ def generar_pdf_receta(consulta, db_session=None) -> io.BytesIO:
         historia.append(Spacer(1, 10))
 
     # 4. Firma
-    historia.append(Spacer(1, 20))
+    historia.append(Spacer(1, 15))
+    firma_img = _obtener_firma_flowable(firma_vet, width=42 * mm, height=18 * mm)
+    lineas_sello = [
+        f"<b>{nombre_vet}</b>",
+        f"{titulo_vet} · T.P. {tp_vet}",
+    ]
+    if esp_vet:
+        lineas_sello.append(f"<font color='#BE123C' size=7><b>{esp_vet}</b></font>")
+    lineas_sello.append(f"<font size=7 color='#64748B'>{clinica['nombre']} · {clinica['subtitulo']}</font>")
+    sello_html = "<br/>".join(lineas_sello)
+
+    if firma_img:
+        firma_col = [
+            firma_img,
+            Paragraph(f"______________________________________<br/>{sello_html}", estilos['PiePagina'])
+        ]
+    else:
+        firma_col = [
+            Paragraph(f"______________________________________<br/>{sello_html}", estilos['PiePagina'])
+        ]
+
     firma_data = [
         [
             "",
-            Paragraph(f"______________________________________<br/><b>{nombre_vet}</b><br/>Médico Veterinario Tratante<br/><font size=7 color='#64748B'>{clinica['nombre']} · Medicina & Spa Veterinario</font>", estilos['PiePagina'])
+            firma_col
         ]
     ]
     t_firma = Table(firma_data, colWidths=[94 * mm, 90 * mm])
@@ -653,17 +799,34 @@ def generar_pdf_spa(cita_spa, db_session=None) -> io.BytesIO:
     fecha_str = cita_spa.fecha_hora.strftime("%d/%m/%Y %H:%M") if hasattr(cita_spa.fecha_hora, "strftime") else str(cita_spa.fecha_hora)
 
     # 1. Header
-    header_data = [
-        [
-            Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
-            Paragraph(f"<b>CERTIFICADO DE SPA & GROOMING</b><br/><font color='#E53935' size=10><b>SERVICIO #{cita_spa.id:04d}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+    logo_img = _obtener_logo_img(width=18 * mm, height=17 * mm)
+    if logo_img:
+        header_data = [
+            [
+                logo_img,
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>CERTIFICADO DE SPA & GROOMING</b><br/><font color='#E53935' size=10><b>SERVICIO #{cita_spa.id:04d}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
         ]
-    ]
-    t_header = Table(header_data, colWidths=[110 * mm, 74 * mm])
-    t_header.setStyle(TableStyle([
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-    ]))
+        t_header = Table(header_data, colWidths=[20 * mm, 90 * mm, 74 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ('RIGHTPADDING', (0,0), (0,0), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ]))
+    else:
+        header_data = [
+            [
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>CERTIFICADO DE SPA & GROOMING</b><br/><font color='#E53935' size=10><b>SERVICIO #{cita_spa.id:04d}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[110 * mm, 74 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ]))
     historia.append(t_header)
     historia.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_PRIMARIO, spaceAfter=8))
 
@@ -736,29 +899,58 @@ def generar_pdf_certificado_salud(cert, db_session=None) -> io.BytesIO:
     fecha_venc_str = cert.fecha_vencimiento.strftime("%d/%m/%Y") if hasattr(cert.fecha_vencimiento, "strftime") else str(cert.fecha_vencimiento)
 
     # 1. Cabecera Institucional
-    header_data = [
-        [
-            Paragraph(
-                f"<b>{clinica['nombre'].upper()}</b><br/>"
-                f"<font size=8>{clinica['subtitulo']}</font><br/>"
-                f"<font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>"
-                f"{clinica['direccion']} · {clinica['ciudad']}</font>",
-                estilos['TituloClinica']
-            ),
-            Paragraph(
-                f"<b>REPÚBLICA DE COLOMBIA</b><br/>"
-                f"<font color='#B71C1C' size=9><b>CERTIFICADO DE SALUD ANIMAL</b></font><br/>"
-                f"<font color='#E53935' size=10><b>No. {cert.consecutivo}</b></font><br/>"
-                f"<font size=7 color='#64748B'>Emisión: {fecha_emision_str}<br/><b>Válido hasta: {fecha_venc_str}</b></font>",
-                estilos['DocumentoFolio']
-            )
+    logo_img = _obtener_logo_img(width=18 * mm, height=17 * mm)
+    if logo_img:
+        header_data = [
+            [
+                logo_img,
+                Paragraph(
+                    f"<b>{clinica['nombre'].upper()}</b><br/>"
+                    f"<font size=8>{clinica['subtitulo']}</font><br/>"
+                    f"<font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>"
+                    f"{clinica['direccion']} · {clinica['ciudad']}</font>",
+                    estilos['TituloClinica']
+                ),
+                Paragraph(
+                    f"<b>REPÚBLICA DE COLOMBIA</b><br/>"
+                    f"<font color='#B71C1C' size=9><b>CERTIFICADO DE SALUD ANIMAL</b></font><br/>"
+                    f"<font color='#E53935' size=10><b>No. {cert.consecutivo}</b></font><br/>"
+                    f"<font size=7 color='#64748B'>Emisión: {fecha_emision_str}<br/><b>Válido hasta: {fecha_venc_str}</b></font>",
+                    estilos['DocumentoFolio']
+                )
+            ]
         ]
-    ]
-    t_header = Table(header_data, colWidths=[112 * mm, 76 * mm])
-    t_header.setStyle(TableStyle([
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-    ]))
+        t_header = Table(header_data, colWidths=[20 * mm, 92 * mm, 76 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('RIGHTPADDING', (0,0), (0,0), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ]))
+    else:
+        header_data = [
+            [
+                Paragraph(
+                    f"<b>{clinica['nombre'].upper()}</b><br/>"
+                    f"<font size=8>{clinica['subtitulo']}</font><br/>"
+                    f"<font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>"
+                    f"{clinica['direccion']} · {clinica['ciudad']}</font>",
+                    estilos['TituloClinica']
+                ),
+                Paragraph(
+                    f"<b>REPÚBLICA DE COLOMBIA</b><br/>"
+                    f"<font color='#B71C1C' size=9><b>CERTIFICADO DE SALUD ANIMAL</b></font><br/>"
+                    f"<font color='#E53935' size=10><b>No. {cert.consecutivo}</b></font><br/>"
+                    f"<font size=7 color='#64748B'>Emisión: {fecha_emision_str}<br/><b>Válido hasta: {fecha_venc_str}</b></font>",
+                    estilos['DocumentoFolio']
+                )
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[112 * mm, 76 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
     historia.append(t_header)
     historia.append(HRFlowable(width="100%", thickness=2, color=COLOR_PRIMARIO, spaceAfter=8))
 
@@ -937,9 +1129,32 @@ def generar_pdf_certificado_salud(cert, db_session=None) -> io.BytesIO:
     historia.append(Spacer(1, 8))
 
     # 7. Firma del Profesional y Certificación Digital
-    nombre_vet = f"Dr.(a) {vet.nombre}" if vet else "Médico Veterinario"
-    tp_vet = getattr(vet, "tarjeta_profesional", "En trámite") or "En trámite"
+    nombre_vet = vet.nombre if vet else clinica.get("doctora_nombre", "Dra. Daniela Pulido")
+    titulo_vet = getattr(vet, "titulo_profesional", None) or clinica.get("doctora_titulo", "Médica veterinaria")
+    tp_vet = getattr(vet, "tarjeta_profesional", None) or clinica.get("doctora_tp", "53214")
+    esp_vet = getattr(vet, "especialidad", None) or clinica.get("doctora_especialidad", "Dpl. Dermatología de pequeñas especies")
+    firma_vet = getattr(vet, "firma_digital", None) or clinica.get("doctora_firma", "")
     url_verif = cert.url_verificacion_publica()
+
+    firma_img = _obtener_firma_flowable(firma_vet, width=42 * mm, height=18 * mm)
+    lineas_sello = [
+        f"<b>{nombre_vet}</b>",
+        f"{titulo_vet} · T.P. No. {tp_vet}",
+    ]
+    if esp_vet:
+        lineas_sello.append(f"<font color='#166534' size=7><b>{esp_vet}</b></font>")
+    lineas_sello.append(f"<font size=7 color='#64748B'>{clinica['nombre']} · {clinica['subtitulo']}</font>")
+    sello_html = "<br/>".join(lineas_sello)
+
+    if firma_img:
+        firma_col_cert = [
+            firma_img,
+            Paragraph(f"__________________________________________<br/>{sello_html}", estilos['PiePagina'])
+        ]
+    else:
+        firma_col_cert = [
+            Paragraph(f"__________________________________________<br/>{sello_html}", estilos['PiePagina'])
+        ]
 
     firma_block = [
         [
@@ -951,13 +1166,7 @@ def generar_pdf_certificado_salud(cert, db_session=None) -> io.BytesIO:
                 f"Hash SHA-256: <code>{cert.hash_integridad_sha256[:20]}...{cert.hash_integridad_sha256[-12:]}</code></font>",
                 estilos['TextoNormal']
             ),
-            Paragraph(
-                f"__________________________________________<br/>"
-                f"<b>{nombre_vet}</b><br/>"
-                f"Médico Veterinario · T.P. No. {tp_vet}<br/>"
-                f"<font size=7 color='#64748B'>{clinica['nombre']} · Medicina y Spa Veterinario</font>",
-                estilos['PiePagina']
-            )
+            firma_col_cert
         ]
     ]
     t_firma = Table(firma_block, colWidths=[100 * mm, 88 * mm])

@@ -101,6 +101,9 @@ class Usuario(UserMixin, BaseModel):
     password_hash = db.Column(db.String(255), nullable=False)
     rol = db.Column(db.String(20), nullable=False)
     tarjeta_profesional = db.Column(db.String(50))
+    titulo_profesional = db.Column(db.String(150), default="Médica veterinaria")
+    especialidad = db.Column(db.String(150), default="Dpl. Dermatología de pequeñas especies")
+    firma_digital = db.Column(db.String(255))
     activo = db.Column(db.Boolean, nullable=False, default=True)
     fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
     ultimo_acceso = db.Column(db.DateTime(timezone=True))
@@ -140,6 +143,26 @@ class Usuario(UserMixin, BaseModel):
     def rol_etiqueta(self) -> str:
         return ROLES.get(self.rol, self.rol)
 
+    @property
+    def url_firma(self) -> str | None:
+        """Devuelve la URL pública o ruta a la firma digital si existe."""
+        if not self.firma_digital:
+            return None
+        if self.firma_digital.startswith("data:") or self.firma_digital.startswith("/"):
+            return self.firma_digital
+        return _generar_url_segura("static", filename=f"uploads/firmas/{self.firma_digital}")
+
+    @property
+    def texto_profesional_completo(self) -> str:
+        partes = [self.nombre]
+        if self.titulo_profesional:
+            partes.append(self.titulo_profesional)
+        if self.tarjeta_profesional:
+            partes.append(f"T.P. {self.tarjeta_profesional}")
+        if self.especialidad:
+            partes.append(self.especialidad)
+        return " · ".join(partes)
+
     def __repr__(self):
         return f"<Usuario {self.email} ({self.rol})>"
 
@@ -160,11 +183,17 @@ CONFIGURACION_INICIAL = [
     ("clinica_telefono", "", "str", "Teléfono fijo o celular", "clinica"),
     ("clinica_whatsapp", "", "str", "WhatsApp (solo dígitos, con indicativo 57)", "clinica"),
     ("clinica_email", "", "str", "Correo electrónico", "clinica"),
+    ("medico_principal_nombre", "Dra. Daniela Pulido", "str", "Nombre del médico veterinario principal", "medico"),
+    ("medico_principal_titulo", "Médica veterinaria", "str", "Título profesional (ej. Médica veterinaria)", "medico"),
+    ("medico_principal_tp", "53214", "str", "Tarjeta profesional (T.P.)", "medico"),
+    ("medico_principal_especialidad", "Dpl. Dermatología de pequeñas especies", "str", "Especialidad / Diplomado", "medico"),
+    ("medico_principal_firma", "", "str", "Nombre de archivo o firma digitalizada", "medico"),
     ("descontar_stock_ventas", "true", "bool", "Descontar inventario automáticamente al registrar una venta", "ventas"),
 ]
 
 GRUPOS_CONFIGURACION = {
     "clinica": "Datos de la clínica",
+    "medico": "Médico Veterinario Principal & Firma",
     "ventas": "Ventas e inventario",
 }
 
@@ -286,7 +315,15 @@ class ConfiguracionSistema(BaseModel):
 
     @classmethod
     def datos_clinica(cls):
-        """Diccionario con los datos de la clínica para plantillas e impresos."""
+        """Diccionario con los datos de la clínica y médico principal para plantillas e impresos."""
+        firma_archivo = cls.obtener("medico_principal_firma") or ""
+        url_firma = None
+        if firma_archivo:
+            if firma_archivo.startswith("data:") or firma_archivo.startswith("/"):
+                url_firma = firma_archivo
+            else:
+                url_firma = _generar_url_segura("static", filename=f"uploads/firmas/{firma_archivo}")
+
         return {
             "nombre": cls.obtener("clinica_nombre"),
             "subtitulo": cls.obtener("clinica_subtitulo"),
@@ -296,6 +333,12 @@ class ConfiguracionSistema(BaseModel):
             "telefono": cls.obtener("clinica_telefono"),
             "whatsapp": cls.obtener("clinica_whatsapp"),
             "email": cls.obtener("clinica_email"),
+            "doctora_nombre": cls.obtener("medico_principal_nombre", "Dra. Daniela Pulido"),
+            "doctora_titulo": cls.obtener("medico_principal_titulo", "Médica veterinaria"),
+            "doctora_tp": cls.obtener("medico_principal_tp", "53214"),
+            "doctora_especialidad": cls.obtener("medico_principal_especialidad", "Dpl. Dermatología de pequeñas especies"),
+            "doctora_firma": firma_archivo,
+            "doctora_firma_url": url_firma,
         }
 
     def __repr__(self):
