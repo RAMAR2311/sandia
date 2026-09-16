@@ -16,19 +16,6 @@
     <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-xs fw-semibold">
       <i class="bi bi-heart-pulse me-1"></i> Ficha Médica Completa
     </a>
-    <a href="{{ url_for('historias.consulta_nueva', mascota_id=mascota.id) }}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-xs fw-semibold">
-      <i class="bi bi-journal-medical me-1"></i> + Consulta SOAP
-    </a>
-    {% if mascota.remisiones %}
-    <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='remisiones') }}" class="btn btn-sm btn-info text-white rounded-pill px-3 shadow-xs fw-semibold" style="background: linear-gradient(135deg, #0284C7, #0EA5E9); border: none;">
-      <i class="bi bi-send-check-fill me-1"></i> Remisiones ({{ mascota.remisiones|length }})
-    </a>
-    {% endif %}
-    {% if mascota.consentimientos %}
-    <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='consentimientos') }}" class="btn btn-sm text-white rounded-pill px-3 shadow-xs fw-semibold" style="background: linear-gradient(135deg, #7E22CE, #9333EA); border: none;">
-      <i class="bi bi-file-earmark-medical me-1"></i> Consentimientos ({{ mascota.consentimientos|length }})
-    </a>
-    {% endif %}
     <a href="{{ url_for('spa.cita_nueva', mascota_id=mascota.id) }}" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 shadow-xs fw-semibold">
       <i class="bi bi-scissors me-1"></i> + Turno Spa
     </a>
