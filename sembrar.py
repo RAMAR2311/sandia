@@ -854,7 +854,7 @@ def sembrar():
         print("\n[OK] ¡Siembra de datos de prueba finalizada exitosamente!")
         print("---------------------------------------------------------------")
         print("Credenciales de acceso para pruebas (todos con clave: Sandia2026*):")
-        for nom, email, rol, _ in usuarios_data:
+        for nom, email, rol, *_ in usuarios_data:
             print(f"  - {rol.upper():12}: {email:26} ({nom})")
         print("---------------------------------------------------------------")
 
