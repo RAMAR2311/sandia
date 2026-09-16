@@ -70,6 +70,16 @@ MODULOS = [
         "esencial": True,
     },
     {
+        "clave": "consentimientos",
+        "nombre": "Consentimientos",
+        "descripcion": "Emisión médico-legal, firmas digitales y plantillas",
+        "icono": "bi-file-earmark-medical",
+        "endpoint": "consentimientos.lista",
+        "roles": ("admin", "veterinario", "auxiliar", "recepcion"),
+        "en_barra": False,
+        "esencial": True,
+    },
+    {
         "clave": "spa",
         "nombre": "Spa & Grooming",
         "descripcion": "Agenda de peluquería y notificaciones por WhatsApp",

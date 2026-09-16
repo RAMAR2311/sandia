@@ -1,0 +1,430 @@
+<!-- MODAL DE EMISIÓN DE CONSENTIMIENTOS INFORMADOS -->
+<div class="modal fade" id="modalEmitirConsentimiento" tabindex="-1" aria-labelledby="modalEmitirConsentimientoLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      
+      <!-- Cabecera del Modal -->
+      <div class="modal-header py-3 px-4" style="background: linear-gradient(135deg, #E53935 0%, #FB7185 100%); color: #ffffff;">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded-circle bg-white text-danger d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+            <i class="bi bi-file-earmark-medical-fill fs-5"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="modalEmitirConsentimientoLabel">Emitir Consentimiento Informado</h5>
+            <small class="opacity-90" style="font-size: 0.78rem;">Documento médico-legal digital con membrete oficial y firma digital</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <!-- Cuerpo del Modal -->
+      <div class="modal-body p-3 p-md-4 bg-light">
+        <div class="row g-3">
+          
+          <!-- Columna Izquierda: Controles y Parámetros Clínicos -->
+          <div class="col-lg-4">
+            
+            <!-- Selector de Plantilla -->
+            <div class="card border-0 shadow-xs rounded-4 p-3 mb-3 bg-white">
+              <label class="form-label fw-bold text-dark small text-uppercase mb-1">
+                <i class="bi bi-collection-fill text-danger me-1"></i> Tipo de Consentimiento
+              </label>
+              <select class="form-select rounded-3 mb-3" id="selectTipoConsentimiento" onchange="cargarPlantillaDinamica()">
+                <option value="QUIRURGICO_V1">Acto Quirúrgico</option>
+                <option value="ANESTESIA_V1">Anestesia y Sedación</option>
+                <option value="HOSPITALIZACION_V1">Hospitalización y RCP</option>
+                <option value="EUTANASIA_V1">Eutanasia Humanitaria</option>
+                <option value="ALTA_VOLUNTARIA_V1">Declinación / Alta Voluntaria</option>
+              </select>
+
+              <label class="form-label fw-bold text-dark small text-uppercase mb-1">
+                <i class="bi bi-tag-fill text-danger me-1"></i> Título del Documento
+              </label>
+              <input type="text" class="form-control rounded-3 mb-3" id="inputTituloConsentimiento" placeholder="Título que verá el tutor">
+
+              <label class="form-label fw-bold text-dark small text-uppercase mb-1">
+                <i class="bi bi-pencil-fill text-danger me-1"></i> Diagnóstico / Procedimiento
+              </label>
+              <textarea class="form-control rounded-3 mb-3" id="inputMotivoConsentimiento" rows="2" 
+                        placeholder="Ej: Ovariohisterectomía / Deshidratación severa" oninput="actualizarPlaceholderDiagnostico()"></textarea>
+
+              <!-- Parámetros Condicionales: RCP -->
+              <div id="bloqueExtraRCP" class="p-2.5 bg-danger-subtle border border-danger-subtle rounded-3 mb-2" style="display: none;">
+                <label class="form-label fw-bold small text-danger d-block mb-1">
+                  <i class="bi bi-heart-pulse-fill me-1"></i> Directiva de RCP:
+                </label>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="rcpChoice" id="rcpChoiceSi" value="true" checked onchange="actualizarPlaceholderDiagnostico()">
+                  <label class="form-check-label small fw-bold" for="rcpChoiceSi">SÍ Autoriza RCP</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="rcpChoice" id="rcpChoiceNo" value="false" onchange="actualizarPlaceholderDiagnostico()">
+                  <label class="form-check-label small text-danger fw-bold" for="rcpChoiceNo">NO Autoriza (DNR)</label>
+                </div>
+              </div>
+
+              <!-- Parámetros Condicionales: Clasificación ASA -->
+              <div id="bloqueExtraASA" class="p-2.5 bg-primary-subtle border border-primary-subtle rounded-3 mb-2" style="display: none;">
+                <label class="form-label fw-bold small text-primary d-block mb-1">
+                  <i class="bi bi-activity me-1"></i> Riesgo ASA:
+                </label>
+                <select class="form-select form-select-sm rounded-2" id="selectASA" onchange="actualizarPlaceholderDiagnostico()">
+                  <option value="">-- Sin clasificación --</option>
+                  <option value="I">ASA I (Paciente Sano)</option>
+                  <option value="II">ASA II (Enfermedad sistémica leve)</option>
+                  <option value="III">ASA III (Enfermedad sistémica moderada/grave)</option>
+                  <option value="IV">ASA IV (Amenaza vital)</option>
+                  <option value="V">ASA V (Moribundo)</option>
+                  <option value="E">Sufijo E (Emergencia)</option>
+                </select>
+              </div>
+
+              <!-- Parámetros Condicionales: Destino del cuerpo -->
+              <div id="bloqueExtraDestino" class="p-2.5 bg-warning-subtle border border-warning-subtle rounded-3 mb-2" style="display: none;">
+                <label class="form-label fw-bold small text-dark d-block mb-1">
+                  <i class="bi bi-box-seam me-1"></i> Destino del Cuerpo:
+                </label>
+                <select class="form-select form-select-sm rounded-2" id="selectDestinoCuerpo" onchange="actualizarPlaceholderDiagnostico()">
+                  <option value="cremacion_individual">Cremación Individual (con cenizas)</option>
+                  <option value="cremacion_comun">Cremación Comunitaria</option>
+                  <option value="biologico">Disposición Biológica Normativa</option>
+                  <option value="retiro_tutor">Retiro por el Tutor</option>
+                </select>
+              </div>
+
+            </div>
+
+            <!-- Botones de Acción / Emisión -->
+            <div class="card border-0 shadow-xs rounded-4 p-3 bg-white">
+              <label class="form-label fw-bold text-dark small text-uppercase mb-2">Canales de Firma</label>
+              
+              <!-- Opción 1: Firmar en Pantalla / Tablet -->
+              <button type="button" class="btn btn-danger w-100 py-2.5 rounded-3 fw-bold mb-2 shadow-xs d-flex align-items-center justify-content-center gap-2" onclick="iniciarFirmaPresencial()">
+                <i class="bi bi-pen-fill"></i> Firmar en Pantalla / Tablet
+              </button>
+
+              <!-- Opción 2: Enviar por WhatsApp -->
+              <button type="button" class="btn btn-outline-success w-100 py-2 rounded-3 fw-bold mb-2 d-flex align-items-center justify-content-center gap-2" onclick="emitirYEnviarWhatsApp()">
+                <i class="bi bi-whatsapp"></i> Emitir y Enviar por WhatsApp
+              </button>
+
+              <!-- Opción 3: Solo Guardar Pendiente -->
+              <button type="button" class="btn btn-outline-secondary w-100 py-2 rounded-3 fw-bold small d-flex align-items-center justify-content-center gap-2" onclick="guardarConsentimientoBorrador()">
+                <i class="bi bi-save me-1"></i> Guardar como Pendiente
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Columna Derecha: Editor de Texto Legal -->
+          <div class="col-lg-8">
+            <div class="card border-0 shadow-xs rounded-4 p-3 bg-white h-100 d-flex flex-column">
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom">
+                <span class="badge bg-danger-subtle text-danger fw-bold px-3 py-1.5 rounded-pill">
+                  <i class="bi bi-file-earmark-text me-1"></i> Texto Legal Adaptado & Editable
+                </span>
+                <small class="text-muted">
+                  <i class="bi bi-check-circle-fill text-success me-1"></i>Datos de {{ mascota.nombre }} y {{ mascota.tutor.nombre_completo }} autocompletados
+                </small>
+              </div>
+
+              <div class="alert alert-warning py-1.5 px-2.5 mb-2 small rounded-3 d-flex align-items-center gap-2" style="font-size: 0.78rem;">
+                <i class="bi bi-info-circle-fill fs-6 text-warning"></i>
+                <span>Puede modificar o agregar cláusulas médicas específicas antes de emitir y solicitar la firma del tutor.</span>
+              </div>
+
+              <textarea class="form-control font-monospace border bg-light p-3 rounded-3 flex-grow-1" 
+                        id="editorTextoConsentimiento" rows="16" style="font-size: 0.88rem; line-height: 1.55; resize: none;" 
+                        placeholder="Cargando plantilla legal..."></textarea>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- SUBMODAL FLOTANTE: LIENZO DE FIRMA TÁCTIL (SIGNATURE PAD) -->
+<div class="modal fade" id="modalCanvasFirmaPresencial" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header py-2.5 px-3 bg-dark text-white">
+        <h6 class="modal-title fw-bold mb-0">
+          <i class="bi bi-pen-fill text-danger me-2"></i> Firma Digital del Tutor
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body p-3 text-center bg-light">
+        <p class="small text-muted mb-2">
+          Pida al tutor que dibuje su firma con el dedo o stylus en el recuadro inferior:
+        </p>
+
+        <div class="bg-white border rounded-3 p-1 position-relative shadow-2xs mb-2" style="touch-action: none;">
+          <canvas id="canvasFirmaPresencial" width="480" height="200" style="width: 100%; height: 200px; cursor: crosshair; display: block;"></canvas>
+          <div class="position-absolute bottom-0 start-0 end-0 pb-1 text-center pointer-events-none">
+            <hr class="w-75 mx-auto my-0 border-secondary opacity-25">
+            <small class="text-muted" style="font-size: 0.7rem;">— Línea de firma —</small>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-2 text-start">
+          <div class="col-6">
+            <label class="form-label small text-muted mb-0 fw-bold">Firmante:</label>
+            <input type="text" id="nombreFirmantePresencial" class="form-control form-control-sm rounded-2" value="{{ mascota.tutor.nombre_completo }}">
+          </div>
+          <div class="col-6">
+            <label class="form-label small text-muted mb-0 fw-bold">Documento:</label>
+            <input type="text" id="docFirmantePresencial" class="form-control form-control-sm rounded-2" value="{{ mascota.tutor.documento_texto or mascota.tutor.numero_documento or '' }}">
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+          <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="limpiarCanvasPresencial()">
+            <i class="bi bi-eraser-fill me-1"></i> Borrar trazo
+          </button>
+          <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-xs" id="btnConfirmarFirmaPresencial" onclick="guardarFirmaPresencial()">
+            <i class="bi bi-check-circle-fill me-1"></i> Confirmar y Sellar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ID_MASCOTA_ACTUAL = {{ mascota.id }};
+let idPlantillaActual = null;
+let tipoActual = 'quirurgico';
+
+// Cargar plantilla al abrir o cambiar selector
+async function cargarPlantillaDinamica() {
+  const select = document.getElementById('selectTipoConsentimiento');
+  const codigo = select.value;
+
+  // Toggle bloques condicionales
+  document.getElementById('bloqueExtraRCP').style.display = (codigo === 'HOSPITALIZACION_V1') ? 'block' : 'none';
+  document.getElementById('bloqueExtraASA').style.display = (codigo === 'QUIRURGICO_V1' || codigo === 'ANESTESIA_V1') ? 'block' : 'none';
+  document.getElementById('bloqueExtraDestino').style.display = (codigo === 'EUTANASIA_V1') ? 'block' : 'none';
+
+  const rcpVal = document.getElementById('rcpChoiceSi') ? document.getElementById('rcpChoiceSi').checked : null;
+  const asaVal = document.getElementById('selectASA') ? document.getElementById('selectASA').value : '';
+  const destinoVal = document.getElementById('selectDestinoCuerpo') ? document.getElementById('selectDestinoCuerpo').value : '';
+
+  try {
+    const res = await fetch('/consentimientos/preparar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({
+        mascota_id: ID_MASCOTA_ACTUAL,
+        codigo_plantilla: codigo,
+        diagnostico_motivo: document.getElementById('inputMotivoConsentimiento').value,
+        autoriza_rcp: rcpVal,
+        clasificacion_asa: asaVal,
+        destino_cuerpo: destinoVal
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      idPlantillaActual = data.plantilla_id;
+      tipoActual = data.tipo;
+      document.getElementById('inputTituloConsentimiento').value = data.titulo;
+      document.getElementById('editorTextoConsentimiento').value = data.contenido;
+    }
+  } catch (e) {
+    console.error("Error al cargar plantilla:", e);
+  }
+}
+
+function actualizarPlaceholderDiagnostico() {
+  cargarPlantillaDinamica();
+}
+
+// Inicializar al abrir modal
+document.getElementById('modalEmitirConsentimiento')?.addEventListener('shown.bs.modal', function () {
+  cargarPlantillaDinamica();
+});
+
+// Emisión genérica
+async function emitirConsentimientoBase() {
+  const contenido = document.getElementById('editorTextoConsentimiento').value.trim();
+  const titulo = document.getElementById('inputTituloConsentimiento').value.trim();
+  const motivo = document.getElementById('inputMotivoConsentimiento').value.trim();
+
+  if (!contenido) {
+    alert("El contenido del consentimiento no puede estar vacío.");
+    return null;
+  }
+
+  const rcpVal = (tipoActual === 'hospitalizacion') ? document.getElementById('rcpChoiceSi').checked : null;
+  const asaVal = document.getElementById('selectASA') ? document.getElementById('selectASA').value : null;
+  const destinoVal = document.getElementById('selectDestinoCuerpo') ? document.getElementById('selectDestinoCuerpo').value : null;
+
+  try {
+    const res = await fetch('/consentimientos/emitir', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({
+        mascota_id: ID_MASCOTA_ACTUAL,
+        plantilla_id: idPlantillaActual,
+        tipo: tipoActual,
+        titulo: titulo,
+        contenido_final: contenido,
+        diagnostico_motivo: motivo,
+        clasificacion_asa: asaVal,
+        autoriza_rcp: rcpVal,
+        destino_cuerpo: destinoVal
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      return data;
+    } else {
+      alert(data.error || "Error al emitir el consentimiento.");
+      return null;
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Error de conexión al emitir consentimiento.");
+    return null;
+  }
+}
+
+// Opción 1: Guardar Borrador / Pendiente
+async function guardarConsentimientoBorrador() {
+  const emitido = await emitirConsentimientoBase();
+  if (emitido) {
+    alert("Consentimiento emitido como pendiente de firma.");
+    window.location.reload();
+  }
+}
+
+// Opción 2: Emitir y Enviar por WhatsApp
+async function emitirYEnviarWhatsApp() {
+  const emitido = await emitirConsentimientoBase();
+  if (emitido && emitido.enlace_whatsapp) {
+    window.open(emitido.enlace_whatsapp, '_blank');
+    window.location.reload();
+  }
+}
+
+// Opción 3: Firma Presencial en Canvas
+let canvasPresencial = document.getElementById('canvasFirmaPresencial');
+let ctxPresencial = canvasPresencial ? canvasPresencial.getContext('2d') : null;
+let dibujandoPresencial = false;
+let trazoPresencialHecho = false;
+let consentimientoEmitidoId = null;
+let tokenEmitidoPublico = null;
+
+if (canvasPresencial && ctxPresencial) {
+  function getPosP(e) {
+    let rect = canvasPresencial.getBoundingClientRect();
+    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * (canvasPresencial.width / rect.width),
+      y: (clientY - rect.top) * (canvasPresencial.height / rect.height)
+    };
+  }
+  function startP(e) {
+    dibujandoPresencial = true;
+    trazoPresencialHecho = true;
+    let pos = getPosP(e);
+    ctxPresencial.beginPath();
+    ctxPresencial.moveTo(pos.x, pos.y);
+    if (e.cancelable && e.type.startsWith('touch')) e.preventDefault();
+  }
+  function moveP(e) {
+    if (!dibujandoPresencial) return;
+    let pos = getPosP(e);
+    ctxPresencial.lineWidth = 3;
+    ctxPresencial.lineCap = 'round';
+    ctxPresencial.lineJoin = 'round';
+    ctxPresencial.strokeStyle = '#0F172A';
+    ctxPresencial.lineTo(pos.x, pos.y);
+    ctxPresencial.stroke();
+    if (e.cancelable && e.type.startsWith('touch')) e.preventDefault();
+  }
+  function stopP() { dibujandoPresencial = false; }
+
+  canvasPresencial.addEventListener('mousedown', startP);
+  canvasPresencial.addEventListener('mousemove', moveP);
+  window.addEventListener('mouseup', stopP);
+
+  canvasPresencial.addEventListener('touchstart', startP, { passive: false });
+  canvasPresencial.addEventListener('touchmove', moveP, { passive: false });
+  window.addEventListener('touchend', stopP);
+}
+
+function limpiarCanvasPresencial() {
+  if (!canvasPresencial || !ctxPresencial) return;
+  ctxPresencial.clearRect(0, 0, canvasPresencial.width, canvasPresencial.height);
+  trazoPresencialHecho = false;
+}
+
+async function iniciarFirmaPresencial() {
+  const emitido = await emitirConsentimientoBase();
+  if (!emitido) return;
+
+  consentimientoEmitidoId = emitido.consentimiento_id;
+  tokenEmitidoPublico = emitido.token_publico;
+
+  limpiarCanvasPresencial();
+  new bootstrap.Modal(document.getElementById('modalCanvasFirmaPresencial')).show();
+}
+
+async function guardarFirmaPresencial() {
+  if (!trazoPresencialHecho) {
+    alert("Por favor solicite la firma del tutor en el recuadro.");
+    return;
+  }
+  const btn = document.getElementById('btnConfirmarFirmaPresencial');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sellando...';
+
+  const trazoBase64 = canvasPresencial.toDataURL('image/png');
+  const nombre = document.getElementById('nombreFirmantePresencial').value.trim();
+  const doc = document.getElementById('docFirmantePresencial').value.trim();
+
+  try {
+    const res = await fetch(`/consentimientos/firmar/${tokenEmitidoPublico}/guardar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({
+        firma_png: trazoBase64,
+        nombre_firmante: nombre,
+        documento_firmante: doc,
+        canal_firma: 'presencial_tablet'
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      alert("¡Consentimiento firmado y certificado con éxito!");
+      window.location.reload();
+    } else {
+      alert(data.error || "Error al procesar la firma.");
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Confirmar y Sellar';
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Error de conexión al guardar la firma.");
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Confirmar y Sellar';
+  }
+}
+</script>

@@ -95,6 +95,9 @@
         <a href="{{ url_for('historias.cirugia_nueva', mascota_id=mascota.id) }}" class="btn btn-outline-dark btn-sm w-100 fw-bold">
           <i class="bi bi-scissors me-1"></i> Registrar Cirugía
         </a>
+        <button type="button" class="btn btn-outline-danger btn-sm w-100 fw-bold d-flex align-items-center justify-content-center gap-1 shadow-2xs" data-bs-toggle="modal" data-bs-target="#modalEmitirConsentimiento">
+          <i class="bi bi-file-earmark-medical me-1"></i> + Emitir Consentimiento
+        </button>
         <div class="dropdown">
           <button class="btn btn-outline-primary btn-sm w-100 fw-bold dropdown-toggle text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             <span><i class="bi bi-clipboard2-pulse me-1"></i> + Ayuda Diagnóstica</span>
@@ -146,6 +149,11 @@
           <li class="nav-item" role="presentation">
             <button class="nav-link rounded-pill px-3" id="peso-tab-btn" data-bs-toggle="tab" data-bs-target="#peso" type="button" role="tab">
               <i class="bi bi-graph-up me-1"></i> Peso
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill px-3" id="consentimientos-tab" data-bs-toggle="tab" data-bs-target="#consentimientos" type="button" role="tab">
+              <i class="bi bi-file-earmark-medical me-1"></i> Consentimientos <span class="badge bg-danger text-white rounded-pill ms-1">{{ mascota.consentimientos|length }}</span>
             </button>
           </li>
         </ul>
@@ -635,11 +643,93 @@
             {% endif %}
           </div>
 
+          <!-- Pestaña 6: Consentimientos Informados Digitales -->
+          <div class="tab-pane fade" id="consentimientos" role="tabpanel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-file-earmark-medical text-danger me-1"></i> Consentimientos Informados Digitales</h5>
+              <button type="button" class="btn btn-sm btn-danger fw-bold rounded-pill shadow-xs" data-bs-toggle="modal" data-bs-target="#modalEmitirConsentimiento">
+                <i class="bi bi-plus-circle me-1"></i> + Emitir Nuevo Consentimiento
+              </button>
+            </div>
+
+            {% if mascota.consentimientos %}
+            <div class="row g-3">
+              {% for c in mascota.consentimientos %}
+              <div class="col-12">
+                <div class="card border rounded-4 p-3 shadow-2xs bg-white hover-shadow transition">
+                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="badge bg-light text-secondary border px-2.5 py-1 font-monospace">#CONS-{{ "%04d"|format(c.id) }}</span>
+                      <span class="badge bg-danger-subtle text-danger fw-bold rounded-pill px-2.5 py-1">{{ c.tipo_etiqueta }}</span>
+                      <small class="text-muted"><i class="bi bi-calendar-event me-1"></i>{{ c.creado_en.strftime('%d/%m/%Y %I:%M %p') }}</small>
+                    </div>
+                    <div>
+                      {% if c.estado == 'firmado' %}
+                      <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5 fw-bold">
+                        <i class="bi bi-check-circle-fill me-1"></i> Firmado el {{ c.firma.firmado_en.strftime('%d/%m/%Y %I:%M %p') }}
+                      </span>
+                      {% elif c.estado == 'pendiente_firma' %}
+                      <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1.5 fw-bold text-dark">
+                        <i class="bi bi-clock-history me-1"></i> Pendiente de Firma
+                      </span>
+                      {% else %}
+                      <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-3 py-1.5">
+                        {{ c.estado_etiqueta }}
+                      </span>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  <h6 class="fw-bold text-dark mb-1">{{ c.titulo }}</h6>
+                  {% if c.diagnostico_motivo %}
+                  <div class="small text-muted mb-2">
+                    <strong>Motivo/Diagnóstico:</strong> <span class="text-dark">{{ c.diagnostico_motivo }}</span>
+                  </div>
+                  {% endif %}
+
+                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 border-top pt-2 mt-2">
+                    <div class="small text-muted">
+                      <i class="bi bi-person-badge text-danger me-1"></i>Dr.(a) {{ c.veterinario.nombre }}
+                    </div>
+                    <div class="d-flex flex-wrap gap-1">
+                      <a href="{{ c.url_documento() }}" class="btn btn-sm btn-light border rounded-pill px-3 fw-semibold" title="Ver documento membretado">
+                        <i class="bi bi-printer-fill me-1"></i> Documento Oficial
+                      </a>
+                      {% if not c.esta_firmado and c.estado != 'anulado' %}
+                      <a href="{{ c.enlace_whatsapp() }}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold" title="Compartir enlace por WhatsApp">
+                        <i class="bi bi-whatsapp me-1"></i> WhatsApp
+                      </a>
+                      <a href="{{ c.url_firma_publica() }}" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" title="Firmar en pantalla táctil">
+                        <i class="bi bi-pen-fill me-1"></i> Firmar
+                      </a>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="card border-0 bg-light rounded-4 text-center py-5">
+              <i class="bi bi-file-earmark-medical display-5 text-muted opacity-50 mb-2"></i>
+              <h6 class="fw-bold text-dark mb-1">Sin consentimientos informados emitidos</h6>
+              <p class="small text-muted mb-3">Emita autorizaciones para cirugías, anestesia, hospitalización, eutanasia o declinación de servicios.</p>
+              <div>
+                <button type="button" class="btn btn-danger btn-sm rounded-pill px-4 fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalEmitirConsentimiento">
+                  <i class="bi bi-plus-circle me-1"></i> Emitir Primer Consentimiento
+                </button>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+
         </div>
       </div>
     </div>
   </div>
 </div>
+
+{% include "consentimientos/modal_emision.html" %}
 {% endblock %}
 
 {% block scripts %}

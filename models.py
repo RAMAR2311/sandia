@@ -8,6 +8,8 @@ Convenciones:
   PostgreSQL (cada valor nuevo exigiría un ``ALTER TYPE`` en migración).
 """
 
+import hashlib
+import uuid
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
@@ -38,6 +40,10 @@ def _generar_url_segura(endpoint: str, **values) -> str:
         return f"/pos/venta/{values.get('id')}/pdf"
     elif endpoint in ("spa.cita_spa_pdf", "spa.cita_pdf"):
         return f"/spa/cita/{values.get('id')}/pdf"
+    elif endpoint == "consentimientos.vista_firma_publica":
+        return f"/consentimientos/firmar/{values.get('token')}"
+    elif endpoint == "consentimientos.documento_publico":
+        return f"/consentimientos/{values.get('id')}/documento"
     return "/"
 
 
@@ -90,6 +96,7 @@ class Usuario(UserMixin, BaseModel):
     telefono = db.Column(db.String(20))
     password_hash = db.Column(db.String(255), nullable=False)
     rol = db.Column(db.String(20), nullable=False)
+    tarjeta_profesional = db.Column(db.String(50))
     activo = db.Column(db.Boolean, nullable=False, default=True)
     fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
     ultimo_acceso = db.Column(db.DateTime(timezone=True))
@@ -421,6 +428,9 @@ class Tutor(BaseModel):
 
     creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
     mascotas = db.relationship("Mascota", back_populates="tutor", order_by="Mascota.nombre")
+    consentimientos = db.relationship(
+        "ConsentimientoEmitido", back_populates="tutor", order_by="ConsentimientoEmitido.creado_en.desc()"
+    )
 
     @validates("nombre_completo")
     def _indexar_nombre(self, _clave, valor):
@@ -508,6 +518,12 @@ class Mascota(BaseModel):
     creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
     registros_peso = db.relationship(
         "RegistroPeso", back_populates="mascota", order_by="RegistroPeso.fecha", cascade="all, delete-orphan"
+    )
+    consentimientos = db.relationship(
+        "ConsentimientoEmitido",
+        back_populates="mascota",
+        order_by="ConsentimientoEmitido.creado_en.desc()",
+        cascade="all, delete-orphan",
     )
 
     @validates("nombre")
@@ -2010,3 +2026,164 @@ class AbonoCuentaTutor(BaseModel):
 
     def __repr__(self):
         return f"<AbonoCuentaTutor {self.id} cuenta={self.cuenta_id} monto={self.monto}>"
+
+
+# ---------------------------------------------------------------------------
+# Consentimientos Informados Digitales
+# ---------------------------------------------------------------------------
+
+TIPOS_CONSENTIMIENTO = {
+    "eutanasia": "Eutanasia Humanitaria",
+    "anestesia": "Anestesia y Sedación",
+    "quirurgico": "Acto Quirúrgico",
+    "hospitalizacion": "Hospitalización y Cuidados Críticos",
+    "alta_voluntaria": "Declinación de Servicios / Alta Voluntaria",
+    "personalizado": "Consentimiento Personalizado",
+}
+
+ESTADOS_CONSENTIMIENTO = {
+    "borrador": "Borrador",
+    "pendiente_firma": "Pendiente de firma",
+    "firmado": "Firmado",
+    "rechazado": "Rechazado",
+    "anulado": "Anulado",
+}
+
+DESTINOS_CUERPO = {
+    "cremacion_individual": "Cremación Individual (con cenizas)",
+    "cremacion_comun": "Cremación Comunitaria",
+    "biologico": "Disposición Biológica Normativa",
+    "retiro_tutor": "Retiro por el Tutor",
+}
+
+CLASIFICACIONES_ASA = {
+    "I": "ASA I - Paciente sano",
+    "II": "ASA II - Enfermedad sistémica leve",
+    "III": "ASA III - Enfermedad sistémica grave",
+    "IV": "ASA IV - Enfermedad sistémica grave con amenaza vital",
+    "V": "ASA V - Paciente moribundo",
+    "E": "Sufijo E - Procedimiento de Emergencia",
+}
+
+
+class PlantillaConsentimiento(BaseModel):
+    __tablename__ = "plantillas_consentimientos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    codigo = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    tipo = db.Column(db.String(40), nullable=False, index=True)
+    titulo = db.Column(db.String(150), nullable=False)
+    descripcion_corta = db.Column(db.String(255))
+    contenido_template = db.Column(db.Text, nullable=False)
+    es_sistema = db.Column(db.Boolean, nullable=False, default=False)
+    activo = db.Column(db.Boolean, nullable=False, default=True)
+    version = db.Column(db.Integer, nullable=False, default=1)
+    creado_en = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    actualizado_en = db.Column(db.DateTime(timezone=True), default=obtener_hora_bogota, onupdate=obtener_hora_bogota)
+
+    consentimientos = db.relationship("ConsentimientoEmitido", back_populates="plantilla")
+
+    @property
+    def tipo_etiqueta(self) -> str:
+        return TIPOS_CONSENTIMIENTO.get(self.tipo, self.tipo)
+
+    def __repr__(self):
+        return f"<PlantillaConsentimiento {self.codigo} ({self.tipo})>"
+
+
+class ConsentimientoEmitido(BaseModel):
+    __tablename__ = "consentimientos_emitidos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    token_publico = db.Column(
+        db.String(64), unique=True, nullable=False, index=True, default=lambda: uuid.uuid4().hex
+    )
+    plantilla_id = db.Column(db.Integer, db.ForeignKey("plantillas_consentimientos.id", ondelete="SET NULL"))
+    mascota_id = db.Column(db.Integer, db.ForeignKey("mascotas.id", ondelete="RESTRICT"), nullable=False, index=True)
+    tutor_id = db.Column(db.Integer, db.ForeignKey("tutores.id", ondelete="RESTRICT"), nullable=False, index=True)
+    veterinario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False)
+    consulta_id = db.Column(db.Integer, db.ForeignKey("consultas_medicas.id", ondelete="SET NULL"))
+
+    tipo = db.Column(db.String(40), nullable=False)
+    titulo = db.Column(db.String(180), nullable=False)
+    contenido_final = db.Column(db.Text, nullable=False)
+
+    diagnostico_motivo = db.Column(db.String(255))
+    procedimiento_propuesto = db.Column(db.String(255))
+    clasificacion_asa = db.Column(db.String(10))
+    autoriza_rcp = db.Column(db.Boolean)
+    destino_cuerpo = db.Column(db.String(50))
+    datos_adicionales = db.Column(db.JSON)
+
+    estado = db.Column(db.String(25), nullable=False, default="pendiente_firma", index=True)
+    creado_en = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    expira_en = db.Column(db.DateTime(timezone=True))
+
+    plantilla = db.relationship("PlantillaConsentimiento", back_populates="consentimientos")
+    mascota = db.relationship("Mascota", back_populates="consentimientos")
+    tutor = db.relationship("Tutor", back_populates="consentimientos")
+    veterinario = db.relationship("Usuario", foreign_keys=[veterinario_id])
+    consulta = db.relationship("ConsultaMedica", foreign_keys=[consulta_id])
+    firma = db.relationship(
+        "FirmaConsentimiento", uselist=False, back_populates="consentimiento", cascade="all, delete-orphan"
+    )
+
+    @property
+    def tipo_etiqueta(self) -> str:
+        return TIPOS_CONSENTIMIENTO.get(self.tipo, self.tipo)
+
+    @property
+    def estado_etiqueta(self) -> str:
+        return ESTADOS_CONSENTIMIENTO.get(self.estado, self.estado)
+
+    @property
+    def esta_firmado(self) -> bool:
+        return self.estado == "firmado" and self.firma is not None
+
+    def calcular_hash_integridad(self) -> str:
+        """Genera hash SHA-256 inmutable de los datos del documento."""
+        cadena = f"{self.id}|{self.token_publico}|{self.tutor_id}|{self.mascota_id}|{self.contenido_final}"
+        return hashlib.sha256(cadena.encode("utf-8")).hexdigest()
+
+    def url_firma_publica(self) -> str:
+        return _generar_url_segura("consentimientos.vista_firma_publica", token=self.token_publico)
+
+    def url_documento(self) -> str:
+        return _generar_url_segura("consentimientos.documento_publico", id=self.id)
+
+    def enlace_whatsapp(self) -> str:
+        url_firma = self.url_firma_publica()
+        mensaje = (
+            f"Hola {self.tutor.nombre_completo}, desde *Sandía · Medicina y Spa Veterinario* "
+            f"le compartimos el *{self.titulo}* para su paciente *{self.mascota.nombre}*.\n\n"
+            f"Por favor ingrese al siguiente enlace para leer y firmar digitalmente desde su teléfono:\n"
+            f"{url_firma}\n\nMuchas gracias."
+        )
+        return self.tutor.enlace_whatsapp(mensaje)
+
+    def __repr__(self):
+        return f"<ConsentimientoEmitido {self.id} {self.tipo} estado={self.estado}>"
+
+
+class FirmaConsentimiento(BaseModel):
+    __tablename__ = "firmas_consentimientos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    consentimiento_id = db.Column(
+        db.Integer, db.ForeignKey("consentimientos_emitidos.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    nombre_firmante = db.Column(db.String(150), nullable=False)
+    documento_firmante = db.Column(db.String(30), nullable=False)
+    parentesco_o_calidad = db.Column(db.String(50), nullable=False, default="Propietario / Tutor Legal")
+    trazo_firma_png = db.Column(db.Text, nullable=False)
+    ip_origen = db.Column(db.String(45))
+    user_agent = db.Column(db.String(255))
+    canal_firma = db.Column(db.String(30), nullable=False, default="presencial")
+    firmado_en = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    hash_documento_sha256 = db.Column(db.String(64), nullable=False)
+
+    consentimiento = db.relationship("ConsentimientoEmitido", back_populates="firma")
+
+    def __repr__(self):
+        return f"<FirmaConsentimiento {self.id} doc={self.documento_firmante} consent={self.consentimiento_id}>"
+

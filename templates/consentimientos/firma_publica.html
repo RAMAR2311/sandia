@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#E53935">
+  <title>{{ doc.titulo }} - {{ doc.mascota.nombre }} | Sandía · Medicina y Spa Veterinario</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/icon-192.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+  <style>
+    :root {
+      --sandia-rojo: #E53935;
+      --sandia-rojo-oscuro: #B71C1C;
+      --sandia-verde: #4CAF50;
+      --sandia-crema: #FDF6EE;
+      --sandia-gris-claro: #F1F5F9;
+      --sandia-tinta: #1E293B;
+      --sandia-borde: #E2E8F0;
+    }
+    body {
+      background-color: #F8FAFC;
+      color: var(--sandia-tinta);
+      font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+      padding-bottom: 3rem;
+    }
+    .hoja-firma {
+      max-width: 780px;
+      margin: 1.5rem auto;
+      background: #FFFFFF;
+      border-radius: 20px;
+      box-shadow: 0 12px 36px -4px rgba(229, 57, 53, 0.12), 0 4px 16px -2px rgba(0,0,0,0.04);
+      border: 1px solid #FFE4E6;
+      overflow: hidden;
+    }
+    .cabecera-clinica {
+      background: linear-gradient(135deg, #FFFFFF 0%, #FFF5F5 100%);
+      border-bottom: 2.5px solid var(--sandia-rojo);
+      padding: 1.5rem 1.75rem;
+    }
+    .titulo-marca {
+      font-family: 'Fredoka', 'Quicksand', sans-serif;
+      font-size: 1.6rem;
+      color: var(--sandia-rojo);
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
+    .subtitulo-marca {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--sandia-verde);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .card-info-paciente {
+      background: #F8FAFC;
+      border: 1px solid var(--sandia-borde);
+      border-radius: 14px;
+      padding: 1rem 1.25rem;
+    }
+    .caja-texto-legal {
+      background: #FAFAFA;
+      border: 1.5px solid var(--sandia-borde);
+      border-radius: 14px;
+      padding: 1.25rem;
+      white-space: pre-wrap;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      color: #334155;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .canvas-firma-container {
+      background: #FFFFFF;
+      border: 2px dashed #CBD5E1;
+      border-radius: 14px;
+      position: relative;
+      touch-action: none;
+      transition: border-color 0.2s;
+    }
+    .canvas-firma-container:focus-within, .canvas-firma-container:hover {
+      border-color: var(--sandia-rojo);
+    }
+    .btn-firmar {
+      background: linear-gradient(135deg, #E53935 0%, #D32F2F 100%);
+      color: #FFFFFF;
+      border: none;
+      font-weight: 800;
+      font-size: 1.05rem;
+      padding: 0.85rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(229, 57, 53, 0.35);
+      transition: all 0.2s ease;
+    }
+    .btn-firmar:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(229, 57, 53, 0.45);
+      color: #FFFFFF;
+    }
+    .badge-certificado {
+      background: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+      border-radius: 999px;
+      padding: 0.35rem 0.85rem;
+      font-weight: 700;
+      font-size: 0.82rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container px-3">
+  <div class="hoja-firma">
+
+    <!-- Encabezado Institucional Oficial Sandía -->
+    <div class="cabecera-clinica d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <img src="{{ url_for('static', filename='img/dog_icon.png') }}" alt="Sandía" style="height: 52px; width: auto;">
+        <div>
+          <div class="titulo-marca">SANDÍA</div>
+          <div class="subtitulo-marca">Medicina y Spa Veterinario</div>
+          <small class="text-muted" style="font-size: 0.78rem;">
+            {% if clinica.nit %}NIT: {{ clinica.nit }} · {% endif %}
+            {% if clinica.direccion %}{{ clinica.direccion }} · {% endif %}
+            {% if clinica.telefono %}Tel: {{ clinica.telefono }}{% endif %}
+          </small>
+        </div>
+      </div>
+      <div>
+        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill fw-bold" style="font-size: 0.8rem;">
+          <i class="bi bi-shield-check me-1"></i> Consentimiento Médico Legal
+        </span>
+      </div>
+    </div>
+
+    <div class="p-4 p-md-5">
+
+      <!-- Título del Documento -->
+      <div class="text-center mb-4">
+        <h4 class="fw-bold text-dark mb-1" style="font-family: 'Fredoka', 'Quicksand', sans-serif; letter-spacing: -0.01em;">
+          {{ doc.titulo }}
+        </h4>
+        <div class="text-muted small">
+          Fecha de Emisión: <strong>{{ doc.creado_en.strftime('%d/%m/%Y %I:%M %p') }}</strong> · Ref: <code>#CONS-{{ "%04d"|format(doc.id) }}</code>
+        </div>
+      </div>
+
+      <!-- Resumen Paciente y Tutor -->
+      <div class="card-info-paciente mb-4">
+        <div class="row g-2 small">
+          <div class="col-sm-6">
+            <span class="text-muted d-block" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Paciente:</span>
+            <strong class="text-dark fs-6">{{ doc.mascota.nombre }}</strong>
+            <span class="text-muted">({{ doc.mascota.especie_etiqueta }} · {{ doc.mascota.raza.nombre if doc.mascota.raza else 'Mestizo' }})</span>
+          </div>
+          <div class="col-sm-6">
+            <span class="text-muted d-block" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Tutor / Propietario:</span>
+            <strong class="text-dark">{{ doc.tutor.nombre_completo }}</strong>
+            <span class="text-muted">· Doc: {{ doc.tutor.documento_texto or doc.tutor.numero_documento or 'N/A' }}</span>
+          </div>
+          <div class="col-sm-6 mt-2">
+            <span class="text-muted d-block" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Médico Veterinario:</span>
+            <span>Dr.(a) {{ doc.veterinario.nombre }}</span>
+            <small class="text-muted">(T.P. {{ doc.veterinario.tarjeta_profesional or 'En trámite' }})</small>
+          </div>
+          <div class="col-sm-6 mt-2">
+            <span class="text-muted d-block" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700;">Diagnóstico / Indicación:</span>
+            <span class="text-danger fw-bold">{{ doc.diagnostico_motivo or 'Procedimiento clínico institucional' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Texto Legal Completo -->
+      <div class="mb-4">
+        <label class="form-label fw-bold text-dark d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-file-text-fill text-danger"></i> Términos del Consentimiento Informado:
+        </label>
+        <div class="caja-texto-legal">
+{{ doc.contenido_final }}
+        </div>
+      </div>
+
+      {% if doc.esta_firmado %}
+      <!-- ESTADO: YA FIRMADO -->
+      <div class="p-4 bg-success-subtle border border-success-subtle rounded-4 text-center mb-3">
+        <div class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle mb-2" style="width: 48px; height: 48px;">
+          <i class="bi bi-check-lg fs-3"></i>
+        </div>
+        <h5 class="fw-bold text-success mb-1">Documento Firmado y Certificado</h5>
+        <p class="small text-muted mb-3">Este consentimiento fue firmado digitalmente y cuenta con sello de integridad criptográfica inmutable.</p>
+        
+        <div class="bg-white p-3 rounded-3 border d-inline-block text-start mb-3 shadow-2xs" style="max-width: 460px;">
+          <div class="text-center mb-2">
+            <img src="{{ doc.firma.trazo_firma_png }}" alt="Firma Digital" style="max-height: 90px; max-width: 100%;">
+            <div class="border-top pt-1 mt-1 small text-muted">Línea de firma registrada</div>
+          </div>
+          <div class="small">
+            <div><strong>Firmante:</strong> {{ doc.firma.nombre_firmante }} (Doc: {{ doc.firma.documento_firmante }})</div>
+            <div><strong>Fecha y Hora:</strong> {{ doc.firma.firmado_en.strftime('%d/%m/%Y %I:%M:%S %p') }}</div>
+            <div><strong>Certificado SHA-256:</strong> <code class="text-break" style="font-size: 0.72rem;">{{ doc.firma.hash_documento_sha256 }}</code></div>
+          </div>
+        </div>
+
+        <div>
+          <a href="{{ doc.url_documento() }}" class="btn btn-danger rounded-pill px-4 fw-bold shadow-xs">
+            <i class="bi bi-printer-fill me-1"></i> Ver / Imprimir Documento Oficial
+          </a>
+        </div>
+      </div>
+
+      {% else %}
+      <!-- FORMULARIO DE FIRMA DIGITAL -->
+      <div id="seccionFirma">
+        <div class="p-3 p-md-4 bg-white border border-danger-subtle rounded-4 mb-4 shadow-2xs">
+          <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-pen-fill text-danger"></i> Firma Digital del Tutor Responsable
+          </h5>
+          <p class="small text-muted mb-3">
+            Al firmar en el recuadro inferior con su dedo o lápiz táctil, usted certifica que ha leído y aceptado en su totalidad las cláusulas y condiciones médicas aquí descritas.
+          </p>
+
+          <div class="row g-2 mb-3">
+            <div class="col-sm-6">
+              <label class="form-label small fw-bold text-muted">Nombre Completo del Firmante</label>
+              <input type="text" id="nombreFirmante" class="form-control rounded-3" value="{{ doc.tutor.nombre_completo }}" required>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label small fw-bold text-muted">Documento de Identidad (C.C. / DNI / Pasaporte)</label>
+              <input type="text" id="docFirmante" class="form-control rounded-3" value="{{ doc.tutor.numero_documento or '' }}" placeholder="Número de documento" required>
+            </div>
+          </div>
+
+          <label class="form-label small fw-bold text-muted mb-1 d-flex justify-content-between">
+            <span>Dibuje su firma aquí:</span>
+            <button type="button" class="btn btn-link btn-sm text-danger p-0 text-decoration-none fw-bold" onclick="limpiarFirma()">
+              <i class="bi bi-eraser-fill me-1"></i>Borrar y repetir
+            </button>
+          </label>
+
+          <div class="canvas-firma-container p-1 mb-2">
+            <canvas id="canvasFirma" width="680" height="220" style="width: 100%; height: 200px; cursor: crosshair; display: block;"></canvas>
+            <div class="text-center pb-1 text-muted pointer-events-none" style="position: absolute; bottom: 8px; left: 0; right: 0;">
+              <small style="font-size: 0.75rem; color: #94A3B8;">— Área de firma táctil —</small>
+            </div>
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="checkAcepto" checked>
+            <label class="form-check-label small text-muted" for="checkAcepto">
+              He leído detenidamente, comprendo la información suministrada y autorizo el procedimiento médico bajo mi libre y espontánea voluntad.
+            </label>
+          </div>
+
+          <button type="button" class="btn btn-firmar w-100 d-flex align-items-center justify-content-center gap-2" id="btnGuardarFirma" onclick="enviarFirma()">
+            <i class="bi bi-check2-circle fs-5"></i> Confirmar y Firmar Documento
+          </button>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Pie de Página Institucional -->
+    <div class="p-3 bg-light border-top text-center text-muted small" style="font-size: 0.78rem;">
+      Documento médico-legal digital emitido por <strong>SANDÍA · Medicina y Spa Veterinario</strong> · Sistema seguro con certificación digital.
+    </div>
+
+  </div>
+</div>
+
+<script>
+let canvas = document.getElementById('canvasFirma');
+let ctx = canvas ? canvas.getContext('2d') : null;
+let dibujando = false;
+let trazoRealizado = false;
+
+if (canvas && ctx) {
+  function getPos(e) {
+    let rect = canvas.getBoundingClientRect();
+    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height)
+    };
+  }
+
+  function iniciar(e) {
+    dibujando = true;
+    trazoRealizado = true;
+    let pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    if (e.cancelable && e.type.startsWith('touch')) e.preventDefault();
+  }
+
+  function mover(e) {
+    if (!dibujando) return;
+    let pos = getPos(e);
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#0F172A';
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    if (e.cancelable && e.type.startsWith('touch')) e.preventDefault();
+  }
+
+  function detener() {
+    dibujando = false;
+  }
+
+  canvas.addEventListener('mousedown', iniciar);
+  canvas.addEventListener('mousemove', mover);
+  window.addEventListener('mouseup', detener);
+
+  canvas.addEventListener('touchstart', iniciar, { passive: false });
+  canvas.addEventListener('touchmove', mover, { passive: false });
+  window.addEventListener('touchend', detener);
+}
+
+function limpiarFirma() {
+  if (!canvas || !ctx) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  trazoRealizado = false;
+}
+
+async function enviarFirma() {
+  if (!trazoRealizado) {
+    alert("Por favor dibuje su firma en el recuadro antes de confirmar.");
+    return;
+  }
+  const check = document.getElementById('checkAcepto');
+  if (check && !check.checked) {
+    alert("Debe marcar la casilla de aceptación para continuar.");
+    return;
+  }
+
+  const nombre = document.getElementById('nombreFirmante').value.trim();
+  const doc = document.getElementById('docFirmante').value.trim();
+  if (!nombre || !doc) {
+    alert("Por favor complete el nombre y documento de identidad del firmante.");
+    return;
+  }
+
+  const btn = document.getElementById('btnGuardarFirma');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sellando documento...';
+
+  const trazoBase64 = canvas.toDataURL('image/png');
+
+  try {
+    const res = await fetch('/consentimientos/firmar/{{ doc.token_publico }}/guardar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firma_png: trazoBase64,
+        nombre_firmante: nombre,
+        documento_firmante: doc,
+        canal_firma: 'remoto_web'
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      alert("¡Consentimiento firmado y certificado exitosamente!");
+      window.location.reload();
+    } else {
+      alert(data.error || "Hubo un problema al registrar la firma.");
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check2-circle fs-5 me-1"></i> Confirmar y Firmar Documento';
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Error de conexión al procesar la firma digital.");
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check2-circle fs-5 me-1"></i> Confirmar y Firmar Documento';
+  }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ doc.titulo }} - {{ doc.mascota.nombre }} | Sandía · Medicina y Spa Veterinario</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/icon-192.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+  <style>
+    :root {
+      --sandia-rojo: #E53935;
+      --sandia-verde: #4CAF50;
+      --sandia-tinta: #0F172A;
+      --sandia-borde: #E2E8F0;
+    }
+    body {
+      background-color: #F1F5F9;
+      color: var(--sandia-tinta);
+      font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+      padding-bottom: 3rem;
+    }
+    .documento-hoja {
+      max-width: 860px;
+      margin: 1.5rem auto;
+      background: #FFFFFF;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      border: 1px solid var(--sandia-borde);
+      overflow: hidden;
+    }
+    .documento-toolbar {
+      max-width: 860px;
+      margin: 1.5rem auto 0;
+    }
+    .cabecera-oficial {
+      padding: 1.5rem 2rem;
+      border-bottom: 2.5px solid var(--sandia-rojo);
+      background: #FFFFFF;
+    }
+    .titulo-marca {
+      font-family: 'Fredoka', 'Quicksand', sans-serif;
+      font-size: 1.65rem;
+      color: var(--sandia-rojo);
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
+    .subtitulo-marca {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--sandia-verde);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .cuerpo-documento {
+      padding: 2rem 2.5rem;
+    }
+    .caja-metadatos {
+      border: 1.5px solid var(--sandia-borde);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      background: #F8FAFC;
+      margin-bottom: 1.5rem;
+    }
+    .texto-legal-bloque {
+      white-space: pre-wrap;
+      font-size: 0.95rem;
+      line-height: 1.65;
+      color: #1E293B;
+      text-align: justify;
+    }
+    .bloque-firma {
+      border: 1px solid var(--sandia-borde);
+      border-radius: 12px;
+      padding: 1rem;
+      background: #FFFFFF;
+      min-height: 160px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      text-align: center;
+    }
+    .sello-seguridad {
+      background: #F8FAFC;
+      border: 1px dashed #CBD5E1;
+      border-radius: 10px;
+      padding: 0.65rem 1rem;
+      font-size: 0.75rem;
+      color: #64748B;
+    }
+    @media print {
+      body {
+        background: #FFFFFF;
+        padding: 0;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .documento-hoja {
+        box-shadow: none;
+        border: none;
+        margin: 0;
+        max-width: 100%;
+        border-radius: 0;
+      }
+      .cuerpo-documento {
+        padding: 1rem 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de Herramientas Superior (No imprimible) -->
+  <div class="documento-toolbar d-flex flex-wrap align-items-center justify-content-between gap-2 px-3 no-print">
+    <div class="d-flex align-items-center gap-2">
+      <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
+        <i class="bi bi-arrow-left me-1"></i> Volver
+      </a>
+      <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1.5 rounded-pill fw-bold">
+        #CONS-{{ "%04d"|format(doc.id) }} · {{ doc.estado_etiqueta }}
+      </span>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      {% if not doc.esta_firmado %}
+      <a href="{{ doc.enlace_whatsapp() }}" target="_blank" class="btn btn-success btn-sm rounded-pill fw-bold shadow-xs px-3">
+        <i class="bi bi-whatsapp me-1"></i> Enviar a WhatsApp
+      </a>
+      <a href="{{ doc.url_firma_publica() }}" class="btn btn-danger btn-sm rounded-pill fw-bold shadow-xs px-3">
+        <i class="bi bi-pen-fill me-1"></i> Firmar en Pantalla
+      </a>
+      {% endif %}
+      <button onclick="window.print()" class="btn btn-dark btn-sm rounded-pill fw-bold shadow-xs px-3">
+        <i class="bi bi-printer-fill me-1"></i> Imprimir / Guardar PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- Documento Membretado Oficial -->
+  <div class="documento-hoja">
+    
+    <!-- Membrete Institucional Sandía -->
+    <div class="cabecera-oficial d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-3">
+        <img src="{{ url_for('static', filename='img/dog_icon.png') }}" alt="Logo Sandía" style="height: 56px; width: auto;">
+        <div>
+          <div class="titulo-marca">SANDÍA</div>
+          <div class="subtitulo-marca">Medicina y Spa Veterinario</div>
+          <div class="text-muted small" style="font-size: 0.78rem;">
+            {% if clinica.nit %}NIT: {{ clinica.nit }} · {% endif %}
+            {% if clinica.direccion %}{{ clinica.direccion }} · {% endif %}
+            {% if clinica.ciudad %}{{ clinica.ciudad }} · {% endif %}
+            {% if clinica.telefono %}Tel: {{ clinica.telefono }}{% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="text-end">
+        <div class="fw-bold text-danger text-uppercase small" style="letter-spacing: 0.05em;">Documento Clínico Legal</div>
+        <div class="small text-muted">Folio No: <strong>#CONS-{{ "%04d"|format(doc.id) }}</strong></div>
+        <div class="small text-muted">Fecha: <strong>{{ doc.creado_en.strftime('%d/%m/%Y %I:%M %p') }}</strong></div>
+      </div>
+    </div>
+
+    <!-- Cuerpo del Documento -->
+    <div class="cuerpo-documento">
+
+      <!-- Título Central -->
+      <div class="text-center mb-4">
+        <h4 class="fw-bold text-dark text-uppercase mb-1" style="font-family: 'Fredoka', 'Quicksand', sans-serif; letter-spacing: 0.02em;">
+          {{ doc.titulo }}
+        </h4>
+        <div class="badge bg-light text-secondary border px-3 py-1 rounded-pill" style="font-size: 0.8rem;">
+          {{ doc.tipo_etiqueta }}
+        </div>
+      </div>
+
+      <!-- Cuadro de Datos del Paciente, Tutor y Médico -->
+      <div class="caja-metadatos">
+        <div class="row g-2 small">
+          <div class="col-6 col-md-3">
+            <span class="text-muted d-block" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700;">Paciente:</span>
+            <strong class="text-dark fs-6">{{ doc.mascota.nombre }}</strong>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-muted d-block" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700;">Especie / Raza:</span>
+            <span>{{ doc.mascota.especie_etiqueta }} · {{ doc.mascota.raza.nombre if doc.mascota.raza else 'Mestizo' }}</span>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-muted d-block" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700;">Sexo / Edad:</span>
+            <span>{{ doc.mascota.sexo_etiqueta }} · {{ doc.mascota.edad or 'N/A' }}</span>
+          </div>
+          <div class="col-6 col-md-3">
+            <span class="text-muted d-block" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700;">Peso / Microchip:</span>
+            <span>{{ doc.mascota.peso_actual.peso_kg if doc.mascota.peso_actual else '--' }} kg · {{ doc.mascota.microchip or 'Sin chip' }}</span>
+          </div>
+
+          <div class="col-12"><hr class="my-1 border-secondary opacity-15"></div>
+
+          <div class="col-sm-6">
+            <span class="text-muted d-block" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700;">Tutor Legal:</span>
+            <strong class="text-dark">{{ doc.tutor.nombre_completo }}</strong>
+            <span class="text-muted">· Doc: {{ doc.tutor.documento_texto or doc.tutor.numero_documento or 'N/A' }}</span>
+          </div>
+          <div class="col-sm-6">
+            <span class="text-muted d-block" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700;">Médico Veterinario Tratante:</span>
+            <strong class="text-dark">Dr.(a) {{ doc.veterinario.nombre }}</strong>
+            <span class="text-muted">· T.P. {{ doc.veterinario.tarjeta_profesional or 'En trámite' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenido Legal Formal -->
+      <div class="texto-legal-bloque mb-4">
+{{ doc.contenido_final }}
+      </div>
+
+      <!-- Sección de Firmas -->
+      <div class="row g-4 mt-2">
+        
+        <!-- Firma del Tutor -->
+        <div class="col-md-6">
+          <div class="bloque-firma">
+            {% if doc.esta_firmado %}
+              <div class="text-center mb-1">
+                <img src="{{ doc.firma.trazo_firma_png }}" alt="Firma Tutor" style="max-height: 75px; max-width: 90%;">
+              </div>
+              <div class="border-top pt-2">
+                <strong class="d-block small text-dark">{{ doc.firma.nombre_firmante }}</strong>
+                <small class="text-muted d-block">Doc: {{ doc.firma.documento_firmante }}</small>
+                <small class="text-muted" style="font-size: 0.72rem;">{{ doc.firma.parentesco_o_calidad }}</small>
+              </div>
+            {% else %}
+              <div style="height: 70px;"></div>
+              <div class="border-top pt-2">
+                <strong class="d-block small text-dark">{{ doc.tutor.nombre_completo }}</strong>
+                <small class="text-muted d-block">Doc: {{ doc.tutor.documento_texto or doc.tutor.numero_documento or '________________' }}</small>
+                <small class="text-muted" style="font-size: 0.72rem;">Firma del Tutor (Pendiente)</small>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Firma del Médico Veterinario -->
+        <div class="col-md-6">
+          <div class="bloque-firma">
+            <div style="height: 70px; display: flex; align-items: center; justify-content: center;">
+              <span class="badge bg-light text-muted border px-2 py-1 small">Sello Profesional</span>
+            </div>
+            <div class="border-top pt-2">
+              <strong class="d-block small text-dark">Dr.(a) {{ doc.veterinario.nombre }}</strong>
+              <small class="text-muted d-block">Tarjeta Profesional: {{ doc.veterinario.tarjeta_profesional or 'En trámite' }}</small>
+              <small class="text-muted" style="font-size: 0.72rem;">Médico Veterinario · Sandía</small>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Sello de Seguridad y Auditoría Criptográfica -->
+      <div class="sello-seguridad mt-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <i class="bi bi-shield-check text-success fs-6 me-1"></i>
+            <strong>Certificación Digital de Integridad:</strong>
+            {% if doc.esta_firmado %}
+              Firmado electrónicamente el {{ doc.firma.firmado_en.strftime('%d/%m/%Y %I:%M:%S %p') }} (Canal: {{ doc.firma.canal_firma }}).
+            {% else %}
+              Documento emitido pendiente de firma.
+            {% endif %}
+          </div>
+          {% if doc.esta_firmado %}
+          <div>
+            Hash SHA-256: <code style="font-size: 0.68rem;">{{ doc.firma.hash_documento_sha256[:24] }}...{{ doc.firma.hash_documento_sha256[-12:] }}</code>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Pie de Página Institucional -->
+    <div class="p-3 bg-light border-top text-center text-muted small" style="font-size: 0.75rem;">
+      SANDÍA · Medicina y Spa Veterinario · Documento emitido mediante el Sistema Clínico Institucional.
+    </div>
+
+  </div>
+
+</body>
+</html>
