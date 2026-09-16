@@ -327,6 +327,54 @@ def calcular_estado_pago_servidor(app: Flask) -> dict | None:
             }
 
         # A partir de la fecha de inicio (Octubre 2026 en adelante)
+        # 1. Verificar si existe algún mes anterior que haya quedado impago (deuda histórica)
+        cursor_anio = fecha_inicio.year
+        cursor_mes = fecha_inicio.month
+        meses_anteriores_impagos = []
+
+        while (cursor_anio < anio_actual) or (cursor_anio == anio_actual and cursor_mes < mes_actual):
+            pago_historico = ServerPayment.query.filter_by(anio=cursor_anio, mes=cursor_mes, estado="pagado").first()
+            if not pago_historico:
+                meses_anteriores_impagos.append((cursor_anio, cursor_mes))
+            cursor_mes += 1
+            if cursor_mes > 12:
+                cursor_mes = 1
+                cursor_anio += 1
+
+        # Si hay un mes anterior sin pagar, el sistema se bloquea por ese mes pendiente más antiguo
+        if meses_anteriores_impagos:
+            anio_pendiente, mes_pendiente = meses_anteriores_impagos[0]
+            nombre_pendiente = MESES_NOMBRES[mes_pendiente - 1]
+            serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
+            token = serializer.dumps({"anio": anio_pendiente, "mes": mes_pendiente}, salt="server-payment-salt")
+            try:
+                confirmar_url = url_for("servidor.confirmar_pago", token=token, _external=True)
+            except Exception:
+                confirmar_url = f"/servidor/confirmar-pago?token={token}"
+
+            mensaje_wa = (
+                f"Hola, adjunto el comprobante de pago de la mensualidad vencida del servidor Zenic (${monto} COP) para {nombre_pendiente} {anio_pendiente}.\n\n"
+                f"Para confirmar mi pago en el sistema con 1 solo clic, toca aquí:\n{confirmar_url}"
+            )
+            whatsapp_url = f"https://wa.me/573115643557?text={urllib.parse.quote(mensaje_wa)}"
+
+            return {
+                "estado": "vencido",
+                "pagado": False,
+                "mes_nombre": nombre_pendiente,
+                "mes": mes_pendiente,
+                "anio": anio_pendiente,
+                "dia": dia_actual,
+                "monto": monto,
+                "dias_restantes": 0,
+                "dias_gabela": 0,
+                "whatsapp_url": whatsapp_url,
+                "confirmar_url": confirmar_url,
+                "nu_llave": "@QEI910",
+                "nequi_num": "3505422186",
+            }
+
+        # 2. Evaluación del mes actual
         pago_db = ServerPayment.query.filter_by(anio=anio_actual, mes=mes_actual, estado="pagado").first()
 
         serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"])
