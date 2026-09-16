@@ -49,14 +49,14 @@
 
 {# Banner Hero: Perfil Principal del Paciente y Tutor #}
 <div class="perfil-mascota-hero mb-4">
-  <div class="p-4 p-md-4 position-relative" style="z-index: 2;">
+  <div class="p-4 position-relative" style="z-index: 2;">
     <div class="row g-4 align-items-center">
       <div class="col-12 col-md-7 col-xl-8">
-        <div class="d-flex align-items-start gap-3">
+        <div class="d-flex align-items-center gap-3.5 flex-wrap flex-sm-nowrap">
           {# Avatar con badge de especie y botón interactivo para cambiar foto #}
           <div class="position-relative flex-shrink-0">
             <div class="perfil-mascota-avatar-wrapper">
-              {{ avatar_mascota(mascota, 88, 'rounded-circle') }}
+              {{ avatar_mascota(mascota, 90, 'rounded-circle') }}
               {% if puede_editar and not mascota.fallecido %}
               <button type="button" class="btn btn-sm btn-danger position-absolute bottom-0 end-0 rounded-circle shadow p-0 d-flex align-items-center justify-content-center border border-2 border-white" 
                       style="width: 28px; height: 28px; background: #E11D48;" data-bs-toggle="modal" data-bs-target="#modal-foto" title="{{ 'Cambiar foto' if mascota.foto else 'Agregar foto' }}">
@@ -71,33 +71,33 @@
           </div>
 
           <div class="flex-grow-1 min-w-0">
-            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1.5">
               <h1 class="perfil-mascota-nombre mb-0">{{ mascota.nombre }}</h1>
               {% if mascota.fallecido %}
-                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1.5 fw-bold">🕊️ Fallecido</span>
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1 fw-bold">🕊️ Fallecido</span>
               {% elif not mascota.activo %}
-                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1.5 fw-bold">Inactiva</span>
+                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1 fw-bold">Inactiva</span>
               {% else %}
-                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1">
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-bold d-inline-flex align-items-center gap-1">
                   <span class="spinner-grow spinner-grow-sm text-success" style="width: 6px; height: 6px;" role="status"></span> Activo
                 </span>
               {% endif %}
 
               {% if puede_editar and not mascota.fallecido %}
-              <button type="button" class="btn btn-xs btn-outline-light rounded-pill px-2.5 py-1 shadow-xs fw-semibold bg-white bg-opacity-10 border-white border-opacity-25 text-white" data-bs-toggle="modal" data-bs-target="#modal-foto">
+              <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2.5 py-1 shadow-2xs fw-semibold bg-white" data-bs-toggle="modal" data-bs-target="#modal-foto">
                 <i class="bi bi-camera me-1"></i>{{ 'Cambiar foto' if mascota.foto else 'Agregar foto' }}
               </button>
               {% endif %}
             </div>
 
-            <div class="small mb-2.5 d-flex align-items-center flex-wrap gap-1" style="color: #94a3b8;">
-              <span class="fw-bold text-white fs-6">{{ mascota.especie_etiqueta }}</span>
+            <div class="small mb-2.5 d-flex align-items-center flex-wrap gap-1.5 text-secondary">
+              <span class="fw-bold text-dark fs-6">{{ mascota.especie_etiqueta }}</span>
               {% if mascota.raza %}
-                <span style="color: #64748b;">·</span>
-                <span class="fw-semibold" style="color: #e2e8f0;">{{ mascota.raza.nombre }}</span>
+                <span class="text-muted">·</span>
+                <span class="fw-semibold text-dark">{{ mascota.raza.nombre }}</span>
               {% endif %}
-              <span style="color: #64748b;">·</span>
-              <span>{{ mascota.sexo_etiqueta }}</span>
+              <span class="text-muted">·</span>
+              <span class="badge bg-light text-secondary border px-2 py-0.5">{{ mascota.sexo_etiqueta }}</span>
             </div>
 
             <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -117,7 +117,7 @@
                 </span>
               {% endif %}
               {% if mascota.esterilizado %}
-                <span class="perfil-badge-chip" style="color: #059669; border-color: #A7F3D0; background: #ECFDF5;">
+                <span class="perfil-badge-chip perfil-badge-chip--green">
                   <i class="bi bi-check2-circle"></i> Esterilizado/a
                 </span>
               {% endif %}
