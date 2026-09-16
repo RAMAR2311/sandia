@@ -108,84 +108,90 @@
             Selecciona el rol operativo del colaborador:
           </label>
 
-          {# Tarjetas Interactivas de Rol #}
-          <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-2.5 mb-4" id="selector-tarjetas-rol">
+          {# Tarjetas Interactivas de Rol Simplificadas para el Equipo #}
+          <div class="row g-3 mb-3" id="selector-tarjetas-rol">
             
-            {# 1. Administrador #}
-            <div class="col">
-              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="admin" style="background: #FFFBFB;">
-                <div class="d-flex align-items-center gap-2 mb-1.5">
-                  <span class="fs-4">👑</span>
-                  <strong class="text-dark" style="font-size: 0.92rem;">Administrador</strong>
+            {# 1. Administrador / Médico Veterinario #}
+            <div class="col-12 col-md-6">
+              <div class="tarjeta-rol-item p-3.5 rounded-4 border h-100 cursor-pointer transition-all shadow-xs" data-rol="admin" style="background: #FFFBFB; border-width: 2px !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="fs-3">👑</span>
+                    <div>
+                      <strong class="text-dark d-block" style="font-size: 1.05rem;">Administrador / Dirección</strong>
+                      <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill" style="font-size: 0.7rem;">Control Total</span>
+                    </div>
+                  </div>
+                  <i class="bi bi-check-circle-fill fs-5 text-danger rol-check-icon d-none"></i>
                 </div>
-                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
-                  Acceso total a todos los módulos, reportes financieros, gastos y configuración.
+                <p class="text-secondary small mb-2" style="font-size: 0.8rem; line-height: 1.35;">
+                  <strong>Perfil para la Dra. Daniela Pulido</strong>: Acceso total al consultorio (SOAP, recetas con firma digital, certificados), control de caja, inventario, reportes financieros y configuración general.
                 </p>
+                <div class="small fw-bold text-danger" style="font-size: 0.72rem;">
+                  ✓ Clínico 100% &nbsp; ✓ Financiero &nbsp; ✓ Configuración
+                </div>
               </div>
             </div>
 
-            {# 2. Veterinario #}
-            <div class="col">
-              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="veterinario" style="background: #F8FAFC;">
-                <div class="d-flex align-items-center gap-2 mb-1.5">
-                  <span class="fs-4">🩺</span>
-                  <strong class="text-dark" style="font-size: 0.92rem;">Veterinario/a</strong>
+            {# 2. Auxiliar Integral & Operativo #}
+            <div class="col-12 col-md-6">
+              <div class="tarjeta-rol-item p-3.5 rounded-4 border h-100 cursor-pointer transition-all shadow-xs" data-rol="auxiliar" style="background: #F0FDF4; border-width: 2px !important;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="fs-3">🐾</span>
+                    <div>
+                      <strong class="text-dark d-block" style="font-size: 1.05rem;">Auxiliar Integral & Operativo</strong>
+                      <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.7rem;">Chicos de Apoyo</span>
+                    </div>
+                  </div>
+                  <i class="bi bi-check-circle-fill fs-5 text-success rol-check-icon d-none"></i>
                 </div>
-                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
-                  Historias clínicas SOAP, recetas, vacunas, cirugías y certificados.
+                <p class="text-secondary small mb-2" style="font-size: 0.8rem; line-height: 1.35;">
+                  <strong>Perfil para los colaboradores del centro</strong>: Manejo de Agenda integral (médica y spa), cobro en Punto de Venta (POS) y caja, registro de pacientes, spa & grooming y consentimientos.
                 </p>
+                <div class="small fw-bold text-success" style="font-size: 0.72rem;">
+                  ✓ Agenda & Spa &nbsp; ✓ Caja / POS &nbsp; ✓ Pacientes & Tutores
+                </div>
               </div>
             </div>
+          </div>
 
-            {# 3. Auxiliar #}
-            <div class="col">
-              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="auxiliar" style="background: #F8FAFC;">
-                <div class="d-flex align-items-center gap-2 mb-1.5">
-                  <span class="fs-4">🩹</span>
-                  <strong class="text-dark" style="font-size: 0.92rem;">Auxiliar</strong>
-                </div>
-                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
-                  Hospitalización, triaje, aplicación de vacunas y apoyo clínico.
-                </p>
-              </div>
-            </div>
+          {# Opción desplegable para roles secundarios o restringidos (opcional) #}
+          <div class="mb-3">
+            <button class="btn btn-sm btn-link text-decoration-none text-muted p-0 d-flex align-items-center gap-1" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRolesSecundarios" aria-expanded="false" style="font-size: 0.78rem;">
+              <i class="bi bi-sliders"></i>
+              <span>¿Necesitas un perfil restringido específico? (Recepción, Groomer, Cajero, Veterinario auxiliar)</span>
+              <i class="bi bi-chevron-down ms-1" style="font-size: 0.7rem;"></i>
+            </button>
 
-            {# 4. Groomer #}
-            <div class="col">
-              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="groomer" style="background: #F8FAFC;">
-                <div class="d-flex align-items-center gap-2 mb-1.5">
-                  <span class="fs-4">✂️</span>
-                  <strong class="text-dark" style="font-size: 0.92rem;">Groomer / Spa</strong>
+            <div class="collapse mt-2" id="collapseRolesSecundarios">
+              <div class="p-3 bg-light rounded-4 border">
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-2">
+                  <div class="col">
+                    <div class="tarjeta-rol-item p-2.5 rounded-3 border bg-white cursor-pointer h-100" data-rol="veterinario">
+                      <div class="fw-bold small text-dark">🩺 Veterinario/a</div>
+                      <small class="text-muted" style="font-size: 0.7rem;">Solo historias y consultas.</small>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div class="tarjeta-rol-item p-2.5 rounded-3 border bg-white cursor-pointer h-100" data-rol="groomer">
+                      <div class="fw-bold small text-dark">✂️ Groomer / Spa</div>
+                      <small class="text-muted" style="font-size: 0.7rem;">Solo agenda de peluquería.</small>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div class="tarjeta-rol-item p-2.5 rounded-3 border bg-white cursor-pointer h-100" data-rol="cajero">
+                      <div class="fw-bold small text-dark">💳 Cajero/a POS</div>
+                      <small class="text-muted" style="font-size: 0.7rem;">Solo ventas y arqueo de caja.</small>
+                    </div>
+                  </div>
+                  <div class="col">
+                    <div class="tarjeta-rol-item p-2.5 rounded-3 border bg-white cursor-pointer h-100" data-rol="recepcion">
+                      <div class="fw-bold small text-dark">📋 Recepción</div>
+                      <small class="text-muted" style="font-size: 0.7rem;">Solo agenda y tutores.</small>
+                    </div>
+                  </div>
                 </div>
-                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
-                  Agenda de spa, estados de baño/corte y fotos de ingreso/salida.
-                </p>
-              </div>
-            </div>
-
-            {# 5. Cajero #}
-            <div class="col">
-              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="cajero" style="background: #F8FAFC;">
-                <div class="d-flex align-items-center gap-2 mb-1.5">
-                  <span class="fs-4">💳</span>
-                  <strong class="text-dark" style="font-size: 0.92rem;">Cajero/a POS</strong>
-                </div>
-                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
-                  Punto de venta, cobro de facturas, apertura y arqueo de caja.
-                </p>
-              </div>
-            </div>
-
-            {# 6. Recepción #}
-            <div class="col">
-              <div class="tarjeta-rol-item p-3 rounded-4 border h-100 cursor-pointer transition-all" data-rol="recepcion" style="background: #F8FAFC;">
-                <div class="d-flex align-items-center gap-2 mb-1.5">
-                  <span class="fs-4">📋</span>
-                  <strong class="text-dark" style="font-size: 0.92rem;">Recepción</strong>
-                </div>
-                <p class="text-secondary small mb-0" style="font-size: 0.74rem; line-height: 1.3;">
-                  Registro de tutores, pacientes, agenda general y consentimientos.
-                </p>
               </div>
             </div>
           </div>
@@ -397,11 +403,14 @@
       '✅ Consulta de Inventario y Medicamentos'
     ],
     'auxiliar': [
-      '✅ Historias Clínicas & Triaje',
-      '✅ Hospitalizaciones & Curvas de Peso',
-      '✅ Aplicación de Vacunas y Desparasitaciones',
-      '✅ Directorio de Pacientes y Tutores',
-      '✅ Consulta de Stock en Inventario'
+      '✅ Agenda General (Médica y Spa)',
+      '✅ Punto de Venta (POS) & Cobro de Facturas',
+      '✅ Apertura y Manejo de Turno de Caja',
+      '✅ Spa & Grooming y Avisos por WhatsApp',
+      '✅ Fichas de Mascotas y Directorio de Tutores',
+      '✅ Historias Clínicas, Triaje y Vacunación',
+      '✅ Consentimientos y Certificados de Salud',
+      '✅ Consulta de Productos y Stock en Inventario'
     ],
     'groomer': [
       '✅ Agenda de Spa & Grooming',
