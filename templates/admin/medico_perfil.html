@@ -245,12 +245,12 @@
               <div class="mt-4 pt-3 text-center" style="max-width: 280px; margin: 0 auto;">
                 <div id="preview-firma-box" class="d-flex align-items-center justify-content-center mb-1" style="height: 70px;">
                   {% if url_firma_preview %}
-                  <img id="preview-img-firma" src="{{ url_firma_preview }}" alt="Firma" style="max-height: 70px; max-width: 180px; object-fit: contain;">
+                  <img id="preview-img-firma" src="{{ url_firma_preview }}" data-url-inicial="{{ url_firma_preview }}" alt="Firma" style="max-height: 70px; max-width: 180px; object-fit: contain;">
                   {% else %}
                   <div id="preview-sin-firma" class="text-muted small fst-italic" style="font-size: 0.72rem; color: #94A3B8 !important;">
                     (Firma manuscrita digital)
                   </div>
-                  <img id="preview-img-firma" src="" alt="Firma" class="d-none" style="max-height: 70px; max-width: 180px; object-fit: contain;">
+                  <img id="preview-img-firma" src="" data-url-inicial="" alt="Firma" class="d-none" style="max-height: 70px; max-width: 180px; object-fit: contain;">
                   {% endif %}
                 </div>
 
@@ -455,13 +455,18 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.clearRect(0, 0, rect.width, rect.height);
         haDibujado = false;
         if (inputFirmaCanvas) inputFirmaCanvas.value = '';
-        {% if not url_firma_preview %}
-        if (previewImgFirma) {
-          previewImgFirma.src = '';
-          previewImgFirma.classList.add('d-none');
+        const urlInicial = previewImgFirma ? (previewImgFirma.dataset.urlInicial || '') : '';
+        if (urlInicial) {
+          previewImgFirma.src = urlInicial;
+          previewImgFirma.classList.remove('d-none');
+          if (previewSinFirma) previewSinFirma.classList.add('d-none');
+        } else {
+          if (previewImgFirma) {
+            previewImgFirma.src = '';
+            previewImgFirma.classList.add('d-none');
+          }
+          if (previewSinFirma) previewSinFirma.classList.remove('d-none');
         }
-        if (previewSinFirma) previewSinFirma.classList.remove('d-none');
-        {% endif %}
       });
     }
   }
