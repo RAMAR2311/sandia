@@ -531,7 +531,7 @@
   }
 
   // Inicializar rol actual
-  const rolInicial = selectRol ? selectRol.value : '{{ usuario.rol if usuario else "admin" }}';
+  const rolInicial = (selectRol && selectRol.value) ? selectRol.value : 'admin';
   actualizarRolVisual(rolInicial || 'admin');
 
   // Toggle Ver/Ocultar contraseña
