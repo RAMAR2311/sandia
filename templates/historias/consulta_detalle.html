@@ -225,7 +225,7 @@
               <span class="fs-4 fw-bold text-primary font-monospace">Rx</span>
               <span class="fw-bold text-dark">Fórmula Médica / Prescripción</span>
             </div>
-            <span class="badge bg-primary text-white rounded-pill">Sandía VetCare</span>
+            <span class="badge bg-primary text-white rounded-pill">{{ clinica.nombre if clinica and clinica.nombre else 'Sandía' }}</span>
           </div>
           <pre class="bg-white p-3 border rounded text-dark font-monospace mb-0" style="white-space: pre-wrap; font-size: 0.95rem;">{{ consulta.receta_medica }}</pre>
         </div>

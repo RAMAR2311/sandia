@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import encabezado %}
-{% block titulo %}Aprobaciones de precio - VetCare{% endblock %}
+{% block titulo %}Aprobaciones de precio - {{ clinica.nombre if clinica and clinica.nombre else 'Sandía' }}{% endblock %}
 
 {% block contenido %}
 {% call encabezado("Aprobaciones de precio mínimo", "Solicitudes de cajeros para vender por debajo del precio mínimo") %}

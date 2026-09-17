@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import avatar_mascota, boton_whatsapp %}
-{% block titulo %}Ficha Médica de {{ mascota.nombre }} · Sandía VetCare{% endblock %}
+{% block titulo %}Ficha Médica de {{ mascota.nombre }} · {{ clinica.nombre if clinica and clinica.nombre else 'Sandía' }}{% endblock %}
 
 {% block contenido %}
 <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
@@ -71,7 +71,7 @@
           </div>
           {% if mascota.tutor.whatsapp_efectivo %}
             <div class="d-grid">
-              {{ boton_whatsapp(mascota.tutor, mensaje='Hola ' ~ mascota.tutor.nombre_completo ~ ', te contactamos de VetCare sobre ' ~ mascota.nombre, texto='Chat Directo WhatsApp', clase='btn-whatsapp-sm justify-content-center py-2') }}
+              {{ boton_whatsapp(mascota.tutor, mensaje='Hola ' ~ mascota.tutor.nombre_completo ~ ', te contactamos de ' ~ (clinica.nombre if clinica and clinica.nombre else 'Sandía') ~ ' sobre ' ~ mascota.nombre, texto='Chat Directo WhatsApp', clase='btn-whatsapp-sm justify-content-center py-2') }}
             </div>
           {% endif %}
         </div>

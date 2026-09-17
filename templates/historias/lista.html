@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import avatar_mascota, boton_whatsapp, paginacion %}
-{% block titulo %}Historias Clínicas · Sandía VetCare{% endblock %}
+{% block titulo %}Historias Clínicas · {{ clinica.nombre if clinica and clinica.nombre else 'Sandía' }}{% endblock %}
 
 {% block contenido %}
 <!-- Hero Banner Historias Clínicas -->
@@ -130,7 +130,7 @@
             <i class="bi bi-person-fill text-danger me-1"></i>{{ m.tutor.nombre_completo }}
           </div>
           {% if m.tutor.whatsapp_efectivo %}
-            {{ boton_whatsapp(m.tutor, mensaje='Hola ' ~ m.tutor.nombre_completo ~ ', te escribimos de VetCare sobre la salud de ' ~ m.nombre, texto='Chat', clase='btn-whatsapp-sm') }}
+            {{ boton_whatsapp(m.tutor, mensaje='Hola ' ~ m.tutor.nombre_completo ~ ', te escribimos de ' ~ (clinica.nombre if clinica and clinica.nombre else 'Sandía') ~ ' sobre la salud de ' ~ m.nombre, texto='Chat', clase='btn-whatsapp-sm') }}
           {% endif %}
         </div>
         {% if m.tutor.documento_texto %}

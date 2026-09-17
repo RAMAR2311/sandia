@@ -122,6 +122,39 @@ def _resolver_solicitud_precio(usuario, producto, variante, descripcion, precio_
     return solicitud
 
 
+def _limpiar_monto(val) -> str:
+    """Limpia cadenas de texto con montos monetarios o formato de miles COP para procesar con DecimalField."""
+    if val is None:
+        return ""
+    if isinstance(val, (int, float, Decimal)):
+        return str(val)
+    val_str = str(val).strip()
+    if not val_str:
+        return ""
+    val_str = val_str.replace("$", "").replace(" ", "").replace("\xa0", "")
+    if not val_str:
+        return ""
+    if "." in val_str and "," in val_str:
+        if val_str.rfind(",") > val_str.rfind("."):
+            val_str = val_str.replace(".", "").replace(",", ".")
+        else:
+            val_str = val_str.replace(",", "")
+    elif "," in val_str:
+        partes = val_str.split(",")
+        if len(partes) == 2 and len(partes[1]) <= 2:
+            val_str = val_str.replace(",", ".")
+        else:
+            val_str = val_str.replace(",", "")
+    elif "." in val_str:
+        partes = val_str.split(".")
+        if len(partes) > 2:
+            val_str = val_str.replace(".", "")
+        elif len(partes) == 2:
+            if len(partes[1]) == 3:
+                val_str = val_str.replace(".", "")
+    return val_str
+
+
 # ---------------------------------------------------------------------------
 # Gestión de Caja
 # ---------------------------------------------------------------------------
@@ -284,8 +317,13 @@ def cerrar_caja():
             db.session.rollback()
             current_app.logger.exception("Error al cerrar turno de caja")
             flash("Error al procesar el cierre de caja.", "danger")
+    else:
+        for errs in form.errors.values():
+            for e in errs:
+                flash(e, "danger")
+        if not form.errors:
+            flash("Datos de cierre inválidos.", "danger")
 
-    flash("Datos de cierre inválidos.", "danger")
     return redirect(url_for("pos.caja_estado"))
 
 

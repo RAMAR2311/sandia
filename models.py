@@ -34,7 +34,10 @@ def _generar_url_segura(endpoint: str, **values) -> str:
                 return url_for(endpoint, _external=False, **values)
     except Exception:
         pass
-    if endpoint == "historias.consulta_documento_publico":
+    if endpoint == "static":
+        filename = values.get("filename", "")
+        return f"/static/{filename}" if filename else "/"
+    elif endpoint == "historias.consulta_documento_publico":
         return f"/historias/consulta/{values.get('id')}/documento"
     elif endpoint == "pos.venta_pdf":
         return f"/pos/venta/{values.get('id')}/pdf"
@@ -148,9 +151,9 @@ class Usuario(UserMixin, BaseModel):
         """Devuelve la URL pública o ruta a la firma digital si existe."""
         if not self.firma_digital:
             return None
-        if self.firma_digital.startswith("data:") or self.firma_digital.startswith("/"):
+        if self.firma_digital.startswith("data:") or self.firma_digital.startswith("/") or self.firma_digital.startswith("http://") or self.firma_digital.startswith("https://"):
             return self.firma_digital
-        return _generar_url_segura("static", filename=f"uploads/firmas/{self.firma_digital}")
+        return f"/static/uploads/firmas/{self.firma_digital}"
 
     @property
     def texto_profesional_completo(self) -> str:
@@ -319,10 +322,10 @@ class ConfiguracionSistema(BaseModel):
         firma_archivo = cls.obtener("medico_principal_firma") or ""
         url_firma = None
         if firma_archivo:
-            if firma_archivo.startswith("data:") or firma_archivo.startswith("/"):
+            if firma_archivo.startswith("data:") or firma_archivo.startswith("/") or firma_archivo.startswith("http://") or firma_archivo.startswith("https://"):
                 url_firma = firma_archivo
             else:
-                url_firma = _generar_url_segura("static", filename=f"uploads/firmas/{firma_archivo}")
+                url_firma = f"/static/uploads/firmas/{firma_archivo}"
 
         return {
             "nombre": cls.obtener("clinica_nombre"),
@@ -1469,8 +1472,9 @@ class VacunaMascota(BaseModel):
         """Mensaje pre-redactado de recordatorio de vacunación."""
         nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
         nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
+        clinica_nombre = ConfiguracionSistema.obtener("clinica_nombre", "Sandía")
         return (
-            f"Hola {nombre_tutor}, te recordamos desde VetCare que a {nombre_mascota} le corresponde "
+            f"Hola {nombre_tutor}, te recordamos desde {clinica_nombre} que a {nombre_mascota} le corresponde "
             f"la vacuna {self.nombre_vacuna} ({self.fecha_proxima.strftime('%d/%m/%Y')}). "
             "Agenda cuando puedas. 🐾💉"
         )
@@ -1528,11 +1532,12 @@ class DesparasitacionMascota(BaseModel):
         nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
         nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
         proxima_str = self.fecha_proxima.strftime("%d/%m/%Y") if self.fecha_proxima and hasattr(self.fecha_proxima, "strftime") else "próximamente"
+        clinica_nombre = ConfiguracionSistema.obtener("clinica_nombre", "Sandía")
         return (
             f"Hola {nombre_tutor}, te enviamos el registro de desparasitación de {nombre_mascota}:\n"
             f"• Producto: {self.producto} ({self.tipo.capitalize()})\n"
             f"• Próxima dosis: {proxima_str}\n"
-            "¡Gracias por cuidar la salud de tu mascota con Sandía VetCare! 🐾"
+            f"¡Gracias por cuidar la salud de tu mascota con {clinica_nombre}! 🐾"
         )
 
     @property

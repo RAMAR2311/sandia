@@ -232,7 +232,7 @@
               <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <div class="d-flex align-items-center gap-2">
                   <img src="{{ static_url('img/dog_icon.png') }}" alt="Logo" style="height: 26px; width: auto;">
-                  <span class="fw-bold small" style="color: #E53935; font-family: 'Fredoka', sans-serif;">SANDÍA VETCARE</span>
+                  <span class="fw-bold small" style="color: #E53935; font-family: 'Fredoka', sans-serif;">{{ clinica.nombre|upper if clinica and clinica.nombre else 'SANDÍA' }}</span>
                 </div>
                 <span class="text-muted" style="font-size: 0.68rem;">INFORME OFICIAL</span>
               </div>

@@ -407,7 +407,7 @@ class AperturaCajaForm(FlaskForm):
     monto_apertura = DecimalField(
         "Monto de apertura en caja (Efectivo base COP)",
         places=2,
-        validators=[DataRequired("Ingresa el monto inicial."), NumberRange(min=Decimal("0"))],
+        validators=[InputRequired("Ingresa el monto inicial."), NumberRange(min=Decimal("0"))],
         default=Decimal("0.00"),
     )
     notas = TextAreaField("Notas de apertura (opcional)", validators=[Optional(), Length(max=500)])
