@@ -238,6 +238,7 @@ class MascotaForm(FlaskForm):
     esterilizado = BooleanField("Esterilizado/a")
     alergias = TextAreaField("Alergias", validators=[Optional(), Length(max=2000)])
     condiciones_preexistentes = TextAreaField("Condiciones preexistentes", validators=[Optional(), Length(max=4000)])
+    alimentacion = StringField("Alimentación / Dieta habitual", validators=[Optional(), Length(max=255)])
     foto = FileField("Foto", validators=[Optional()])
     enviar = SubmitField("Guardar")
 

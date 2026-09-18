@@ -1032,3 +1032,18 @@ def remision_detalle_json(id: int):
 
     return {"ok": True, "remision": remision.to_dict()}
 
+
+@bp.route("/mascota/<int:mascota_id>/dieta/actualizar", methods=["POST"])
+@login_required
+@clinico_required
+def actualizar_dieta(mascota_id: int):
+    mascota = db.session.get(Mascota, mascota_id)
+    if not mascota:
+        abort(404)
+    nueva_dieta = (request.form.get("alimentacion") or "").strip()
+    mascota.alimentacion = nueva_dieta if nueva_dieta else None
+    db.session.commit()
+    flash(f"Alimentación y dieta de {mascota.nombre} actualizada correctamente.", "success")
+    return redirect(url_for("historias.ficha_medica", mascota_id=mascota.id))
+
+

@@ -236,11 +236,18 @@
             {{ form.alergias(class_="form-control bg-light border-danger-subtle", rows="2", placeholder="Ej: Alérgico a la penicilina, intolerancia al pollo...") }}
           </div>
 
-          <div>
+          <div class="mb-3">
             <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.condiciones_preexistentes.id }}">
               <i class="bi bi-heart-pulse me-1 text-danger"></i>Condiciones Preexistentes o Tratamientos Activos
             </label>
             {{ form.condiciones_preexistentes(class_="form-control bg-light", rows="2", placeholder="Ej: Cardiopatía leve, displasia de cadera, tratamiento dermatológico...") }}
+          </div>
+
+          <div>
+            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.alimentacion.id }}">
+              <i class="bi bi-egg-fried me-1 text-warning"></i>Alimentación y Dieta Habitual
+            </label>
+            {{ form.alimentacion(class_="form-control bg-light", placeholder="Ej: Royal Canin Mini Adult 150g/día, Dieta BARF casera, Hill's Metabolic...") }}
           </div>
         </div>
       </div>

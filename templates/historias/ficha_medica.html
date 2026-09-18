@@ -56,11 +56,22 @@
           </div>
           {% endif %}
           {% if mascota.microchip %}
-          <div class="d-flex justify-content-between">
+          <div class="d-flex justify-content-between mb-1">
             <span class="text-slate-300" style="color: #94a3b8;">Microchip:</span>
             <span class="fw-bold text-white">{{ mascota.microchip }}</span>
           </div>
           {% endif %}
+          <div class="pt-2 mt-1 border-top border-white border-opacity-10 d-flex justify-content-between align-items-center">
+            <div class="min-w-0 me-2">
+              <span class="text-slate-300 d-block" style="color: #94a3b8; font-size: 0.75rem;"><i class="bi bi-egg-fried text-warning me-1"></i>Alimentación / Dieta:</span>
+              <span class="fw-bold text-white d-inline-block text-truncate" style="max-width: 170px;" title="{{ mascota.alimentacion or 'Sin registrar' }}">
+                {{ mascota.alimentacion or 'Sin registrar' }}
+              </span>
+            </div>
+            <button type="button" class="btn btn-xs btn-outline-light rounded-pill px-2 py-0.5 border-opacity-25" data-bs-toggle="modal" data-bs-target="#modalEditarAlimentacion" title="Actualizar alimentación">
+              <i class="bi bi-pencil-fill" style="font-size: 0.7rem;"></i>
+            </button>
+          </div>
         </div>
 
         <!-- Información del Tutor y WhatsApp directo -->
@@ -983,6 +994,36 @@
 
 {% include "consentimientos/modal_emision.html" %}
 {% include "historias/modal_remision.html" %}
+
+<!-- Modal para Actualizar Alimentación / Dieta Rápido -->
+<div class="modal fade" id="modalEditarAlimentacion" tabindex="-1" aria-labelledby="modalEditarAlimentacionLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom bg-light px-4 py-3">
+        <h5 class="modal-title fw-bold text-dark fs-6" id="modalEditarAlimentacionLabel">
+          <i class="bi bi-egg-fried text-warning me-2"></i>Alimentación / Dieta Habitual
+        </h5>
+        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <form action="{{ url_for('historias.actualizar_dieta', mascota_id=mascota.id) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body p-4">
+          <label class="form-label small fw-bold text-secondary mb-1">Marca, tipo de comida, porciones o dieta:</label>
+          <input type="text" name="alimentacion" class="form-control form-control-lg rounded-3 fs-6" value="{{ mascota.alimentacion or '' }}" placeholder="Ej: Royal Canin Maxi Adult 200g/día, Dieta BARF casera, etc.">
+          <div class="form-text small text-muted mt-2">
+            Este dato se actualizará de forma permanente en el expediente de <strong>{{ mascota.nombre }}</strong>.
+          </div>
+        </div>
+        <div class="modal-footer bg-light px-4 py-3 border-top">
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-warning text-dark fw-bold rounded-pill px-4">
+            <i class="bi bi-check-lg me-1"></i>Guardar Alimentación
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}

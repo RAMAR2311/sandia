@@ -183,11 +183,14 @@
 </div>
 
 {# Alertas Médicas (Alergias o Preexistencias) #}
-{% if mascota.alergias or mascota.condiciones_preexistentes %}
+{% if mascota.alergias or mascota.condiciones_preexistentes or mascota.alimentacion %}
 <div class="alert alert-danger border-0 shadow-sm rounded-4 p-3 mb-4 d-flex align-items-start gap-3 bg-danger-subtle text-danger-emphasis" role="alert">
   <span class="fs-4">🚨</span>
   <div>
-    <div class="fw-bold fs-6">Alertas Médicas y Condiciones Especiales</div>
+    <div class="fw-bold fs-6">Información Clínica y Dietética</div>
+    {% if mascota.alimentacion %}
+      <div class="small mt-1"><strong>Alimentación / Dieta habitual:</strong> {{ mascota.alimentacion }}</div>
+    {% endif %}
     {% if mascota.alergias %}
       <div class="small mt-1"><strong>Alergias conocidas:</strong> {{ mascota.alergias }}</div>
     {% endif %}

@@ -87,6 +87,7 @@ def _aplicar_formulario(mascota: Mascota, form: MascotaForm, raza) -> None:
     mascota.esterilizado = form.esterilizado.data
     mascota.alergias = (form.alergias.data or "").strip() or None
     mascota.condiciones_preexistentes = (form.condiciones_preexistentes.data or "").strip() or None
+    mascota.alimentacion = (form.alimentacion.data or "").strip() or None
 
 
 def _microchip_en_uso(microchip, excluir_id=None) -> bool:

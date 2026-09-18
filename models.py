@@ -556,6 +556,7 @@ class Mascota(BaseModel):
     tamano = db.Column(db.String(10))
     alergias = db.Column(db.Text)
     condiciones_preexistentes = db.Column(db.Text)
+    alimentacion = db.Column(db.String(255))
     foto = db.Column(db.String(255))
     activo = db.Column(db.Boolean, nullable=False, default=True)
     fallecido = db.Column(db.Boolean, nullable=False, default=False)
