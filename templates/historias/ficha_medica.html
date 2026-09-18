@@ -17,6 +17,99 @@
   </div>
 </div>
 
+<!-- BANNER SUPERIOR: Resumen Clínico Esencial (Alimentación, Última Desparasitación, Última Vacunación) -->
+<div class="row g-3 mb-4">
+  <!-- 1. Alimentación y Dieta Actual -->
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white" style="border-left: 4.5px solid #f59e0b !important;">
+      <div class="d-flex align-items-center justify-content-between mb-1">
+        <span class="small fw-bold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+          <i class="bi bi-egg-fried text-warning me-1"></i> Alimentación / Dieta
+        </span>
+        <button type="button" class="btn btn-xs btn-outline-warning text-dark fw-bold rounded-pill px-2.5 py-0.5" data-bs-toggle="modal" data-bs-target="#modalEditarAlimentacion">
+          <i class="bi bi-pencil-fill me-1"></i>Editar
+        </button>
+      </div>
+      <div class="fw-bold text-dark fs-6 text-truncate" title="{{ mascota.alimentacion or 'Sin registrar' }}">
+        {{ mascota.alimentacion or 'Sin registrar' }}
+      </div>
+      <div class="small text-muted mt-1" style="font-size: 0.75rem;">
+        {% if mascota.alimentacion %}Dieta habitual reportada{% else %}Haz clic en editar para registrar{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Última Desparasitación -->
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white" style="border-left: 4.5px solid #06b6d4 !important;">
+      <div class="d-flex align-items-center justify-content-between mb-1">
+        <span class="small fw-bold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+          <i class="bi bi-capsule text-info me-1"></i> Última Desparasitación
+        </span>
+        <a href="{{ url_for('historias.desparasitacion_nueva', mascota_id=mascota.id) }}" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-0.5 fw-bold text-decoration-none">
+          <i class="bi bi-plus-lg me-1"></i>Nueva
+        </a>
+      </div>
+      {% if mascota.desparasitaciones %}
+        {% set ult_desp = mascota.desparasitaciones[0] %}
+        <div class="d-flex align-items-center justify-content-between gap-2">
+          <div class="fw-bold text-dark fs-6 text-truncate" title="{{ ult_desp.producto }} ({{ ult_desp.tipo|capitalize }})">
+            {{ ult_desp.producto }}
+          </div>
+          {% if ult_desp.estado_vencimiento == 'al_dia' %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5">Al día</span>
+          {% elif ult_desp.estado_vencimiento == 'proxima_vencer' %}
+            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5">Próxima</span>
+          {% else %}
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5">Vencida</span>
+          {% endif %}
+        </div>
+        <div class="small text-muted mt-1" style="font-size: 0.75rem;">
+          Aplicada: <strong>{{ ult_desp.fecha_aplicacion|fecha }}</strong> · Próx: <strong>{{ ult_desp.fecha_proxima|fecha if ult_desp.fecha_proxima else 'N/R' }}</strong>
+        </div>
+      {% else %}
+        <div class="text-secondary small fw-semibold">Sin registros previos</div>
+        <div class="small text-muted mt-1" style="font-size: 0.75rem;">No se registran desparasitaciones</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 3. Última Vacuna -->
+  <div class="col-12 col-md-4">
+    <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white" style="border-left: 4.5px solid #10b981 !important;">
+      <div class="d-flex align-items-center justify-content-between mb-1">
+        <span class="small fw-bold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+          <i class="bi bi-shield-check text-success me-1"></i> Última Vacuna
+        </span>
+        <a href="{{ url_for('historias.vacuna_nueva', mascota_id=mascota.id) }}" class="btn btn-xs btn-outline-success rounded-pill px-2.5 py-0.5 fw-bold text-decoration-none">
+          <i class="bi bi-plus-lg me-1"></i>Nueva
+        </a>
+      </div>
+      {% if mascota.vacunas %}
+        {% set ult_vac = mascota.vacunas[0] %}
+        <div class="d-flex align-items-center justify-content-between gap-2">
+          <div class="fw-bold text-dark fs-6 text-truncate" title="{{ ult_vac.nombre_vacuna }}">
+            {{ ult_vac.nombre_vacuna }}
+          </div>
+          {% if ult_vac.estado_vencimiento == 'al_dia' %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5">Al día</span>
+          {% elif ult_vac.estado_vencimiento == 'proxima_vencer' %}
+            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-0.5">Próxima</span>
+          {% else %}
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-0.5">Vencida</span>
+          {% endif %}
+        </div>
+        <div class="small text-muted mt-1" style="font-size: 0.75rem;">
+          Aplicada: <strong>{{ ult_vac.fecha_aplicacion|fecha }}</strong> · Próx: <strong>{{ ult_vac.fecha_proxima|fecha if ult_vac.fecha_proxima else 'N/R' }}</strong>
+        </div>
+      {% else %}
+        <div class="text-secondary small fw-semibold">Sin registros previos</div>
+        <div class="small text-muted mt-1" style="font-size: 0.75rem;">No se registran vacunas</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
 <div class="row g-4">
   <!-- COLUMNA IZQUIERDA: Perfil del Paciente y Acciones Clínicas Fijas -->
   <div class="col-12 col-lg-4">

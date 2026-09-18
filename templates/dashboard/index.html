@@ -758,37 +758,77 @@
   </div>
 </section>
 
-<!-- 4. Recordatorios de Vacunación Prioritarios (Compactos) -->
-{% if vacunas_pendientes %}
-<section class="card mb-3 border-0 shadow-sm rounded-3 overflow-hidden" style="border: 1.5px solid #fecaca !important; border-top: 3.5px solid #e11d48 !important;">
-  <div class="card-header bg-danger-subtle d-flex align-items-center justify-content-between py-1 px-3">
-    <span class="fw-bold text-danger-emphasis d-flex align-items-center gap-2" style="font-size: 0.82rem;">
-      <i class="bi bi-bell-fill text-danger"></i>Vacunaciones por Vencer
-    </span>
-    <span class="badge bg-danger rounded-pill px-2" style="font-size: 0.7rem;">{{ vacunas_pendientes|length }}</span>
-  </div>
-  <div class="list-group list-group-flush" style="max-height: 150px; overflow-y: auto;">
-    {% for v in vacunas_pendientes %}
-    <div class="list-group-item d-flex align-items-center justify-content-between gap-2 flex-wrap py-1 px-3 border-bottom-0">
-      <div class="small">
-        <strong class="text-dark">{{ v.mascota.especie_emoji or '🐾' }} {{ v.mascota.nombre }}</strong>
-        <span class="text-muted">· {{ v.tutor.nombre_completo }}</span>
-        <span class="badge bg-light text-dark border ms-1" style="font-size: 0.68rem;">{{ v.nombre_vacuna }}</span>
-        {% if v.estado_vencimiento == 'vencida' %}
-          <span class="badge bg-danger text-white rounded-pill px-2" style="font-size: 0.65rem;">Vencida {{ v.fecha_proxima|fecha }}</span>
-        {% else %}
-          <span class="badge bg-warning text-dark rounded-pill px-2" style="font-size: 0.65rem;">Vence {{ v.fecha_proxima|fecha }}</span>
-        {% endif %}
+<!-- 4. Recordatorios de Vacunación y Desparasitación Prioritarios -->
+{% if vacunas_pendientes or desparasitaciones_pendientes %}
+<div class="row g-3 mb-3">
+  {% if vacunas_pendientes %}
+  <div class="{% if desparasitaciones_pendientes %}col-12 col-lg-6{% else %}col-12{% endif %}">
+    <section class="card border-0 shadow-sm rounded-3 overflow-hidden h-100" style="border: 1.5px solid #fecaca !important; border-top: 3.5px solid #e11d48 !important;">
+      <div class="card-header bg-danger-subtle d-flex align-items-center justify-content-between py-1 px-3">
+        <span class="fw-bold text-danger-emphasis d-flex align-items-center gap-2" style="font-size: 0.82rem;">
+          <i class="bi bi-shield-fill-plus text-danger"></i>Vacunaciones por Vencer / Vencidas
+        </span>
+        <span class="badge bg-danger rounded-pill px-2" style="font-size: 0.7rem;">{{ vacunas_pendientes|length }}</span>
       </div>
-      {% if v.enlace_whatsapp %}
-      <a href="{{ v.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-xs btn-success py-1 px-2 fw-bold" style="background-color: #25D366; border-color: #25D366; font-size: 0.72rem;">
-        <i class="bi bi-whatsapp me-1"></i>Avisar
-      </a>
-      {% endif %}
-    </div>
-    {% endfor %}
+      <div class="list-group list-group-flush" style="max-height: 160px; overflow-y: auto;">
+        {% for v in vacunas_pendientes %}
+        <div class="list-group-item d-flex align-items-center justify-content-between gap-2 flex-wrap py-1 px-3 border-bottom">
+          <div class="small">
+            <strong class="text-dark">{{ v.mascota.especie_emoji or '🐾' }} {{ v.mascota.nombre }}</strong>
+            <span class="text-muted">· {{ v.tutor.nombre_completo }}</span>
+            <span class="badge bg-light text-dark border ms-1" style="font-size: 0.68rem;">{{ v.nombre_vacuna }}</span>
+            {% if v.estado_vencimiento == 'vencida' %}
+              <span class="badge bg-danger text-white rounded-pill px-2" style="font-size: 0.65rem;">Vencida {{ v.fecha_proxima|fecha }}</span>
+            {% else %}
+              <span class="badge bg-warning text-dark rounded-pill px-2" style="font-size: 0.65rem;">Vence {{ v.fecha_proxima|fecha }}</span>
+            {% endif %}
+          </div>
+          {% if v.enlace_whatsapp %}
+          <a href="{{ v.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-xs btn-success py-1 px-2 fw-bold" style="background-color: #25D366; border-color: #25D366; font-size: 0.72rem;" title="Enviar recordatorio WhatsApp">
+            <i class="bi bi-whatsapp me-1"></i>Avisar
+          </a>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
   </div>
-</section>
+  {% endif %}
+
+  {% if desparasitaciones_pendientes %}
+  <div class="{% if vacunas_pendientes %}col-12 col-lg-6{% else %}col-12{% endif %}">
+    <section class="card border-0 shadow-sm rounded-3 overflow-hidden h-100" style="border: 1.5px solid #cffafe !important; border-top: 3.5px solid #0891b2 !important;">
+      <div class="card-header bg-info-subtle d-flex align-items-center justify-content-between py-1 px-3">
+        <span class="fw-bold text-info-emphasis d-flex align-items-center gap-2" style="font-size: 0.82rem;">
+          <i class="bi bi-capsule text-info"></i>Desparasitaciones por Vencer / Vencidas
+        </span>
+        <span class="badge bg-info text-white rounded-pill px-2" style="font-size: 0.7rem;">{{ desparasitaciones_pendientes|length }}</span>
+      </div>
+      <div class="list-group list-group-flush" style="max-height: 160px; overflow-y: auto;">
+        {% for d in desparasitaciones_pendientes %}
+        <div class="list-group-item d-flex align-items-center justify-content-between gap-2 flex-wrap py-1 px-3 border-bottom">
+          <div class="small">
+            <strong class="text-dark">{{ d.mascota.especie_emoji or '🐾' }} {{ d.mascota.nombre }}</strong>
+            <span class="text-muted">· {{ d.tutor.nombre_completo }}</span>
+            <span class="badge bg-light text-dark border ms-1" style="font-size: 0.68rem;">{{ d.producto }} ({{ d.tipo|capitalize }})</span>
+            {% if d.estado_vencimiento == 'vencida' %}
+              <span class="badge bg-danger text-white rounded-pill px-2" style="font-size: 0.65rem;">Vencida {{ d.fecha_proxima|fecha }}</span>
+            {% else %}
+              <span class="badge bg-warning text-dark rounded-pill px-2" style="font-size: 0.65rem;">Vence {{ d.fecha_proxima|fecha }}</span>
+            {% endif %}
+          </div>
+          {% if d.enlace_whatsapp %}
+          <a href="{{ d.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-xs btn-success py-1 px-2 fw-bold" style="background-color: #25D366; border-color: #25D366; font-size: 0.72rem;" title="Enviar recordatorio WhatsApp">
+            <i class="bi bi-whatsapp me-1"></i>Avisar
+          </a>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+  {% endif %}
+</div>
 {% endif %}
 
 {% macro render_modulo(modulo, es_secundario=False) %}

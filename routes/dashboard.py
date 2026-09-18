@@ -13,6 +13,7 @@ from models import (
     ROLES_TODOS,
     Cita,
     CitaSpa,
+    DesparasitacionMascota,
     Mascota,
     Producto,
     TurnoCaja,
@@ -249,6 +250,34 @@ def vacunas_por_vencer(limite_dias: int = 15, tope: int = 20):
         return []
 
 
+def desparasitaciones_por_vencer(limite_dias: int = 15, tope: int = 20):
+    """Última desparasitación de cada mascota activa cuya próxima dosis está vencida o por vencer."""
+    try:
+        ultima_por_mascota = (
+            select(DesparasitacionMascota.mascota_id, func.max(DesparasitacionMascota.fecha_aplicacion).label("ultima_fecha"))
+            .group_by(DesparasitacionMascota.mascota_id)
+            .subquery()
+        )
+        limite = hoy_bogota() + timedelta(days=limite_dias)
+        consulta = (
+            select(DesparasitacionMascota)
+            .join(
+                ultima_por_mascota,
+                (DesparasitacionMascota.mascota_id == ultima_por_mascota.c.mascota_id)
+                & (DesparasitacionMascota.fecha_aplicacion == ultima_por_mascota.c.ultima_fecha),
+            )
+            .join(Mascota, DesparasitacionMascota.mascota_id == Mascota.id)
+            .options(selectinload(DesparasitacionMascota.mascota), selectinload(DesparasitacionMascota.tutor))
+            .where(Mascota.activo.is_(True), Mascota.fallecido.is_(False), DesparasitacionMascota.fecha_proxima <= limite)
+            .order_by(DesparasitacionMascota.fecha_proxima.asc())
+            .limit(tope)
+        )
+        return db.session.execute(consulta).scalars().all()
+    except Exception:
+        db.session.rollback()
+        return []
+
+
 def obtener_mascotas_pendientes_recogida():
     """Obtiene citas de spa listas para entrega y calcula tiempo transcurrido y nivel de urgencia."""
     try:
@@ -317,8 +346,9 @@ def obtener_mascotas_pendientes_recogida():
 @bp.route("/")
 @login_required
 def index():
-    # Alertas de vacunaciones por vencer para todo el equipo operativo
+    # Alertas de vacunaciones y desparasitaciones por vencer para todo el equipo operativo
     vacunas_pendientes = vacunas_por_vencer()
+    desparasitaciones_pendientes = desparasitaciones_por_vencer()
 
     mascotas_recogida = obtener_mascotas_pendientes_recogida()
     form_csrf = SoloCsrfForm()
@@ -423,6 +453,7 @@ def index():
         modulos_esenciales=modulos_esenciales,
         modulos_secundarios=modulos_secundarios,
         vacunas_pendientes=vacunas_pendientes,
+        desparasitaciones_pendientes=desparasitaciones_pendientes,
         mascotas_recogida=mascotas_recogida,
         citas_spa_hoy=citas_spa_hoy,
         citas_medicas_hoy=citas_medicas_hoy,
