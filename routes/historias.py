@@ -324,11 +324,13 @@ def consulta_nueva(mascota_id: int):
         # Prellenar última desparasitación
         if mascota.desparasitaciones:
             d = mascota.desparasitaciones[0]
-            form.desparasitacion_ultima.data = f"{d.producto} ({d.tipo.capitalize()}) - {d.fecha_aplicacion.strftime('%d/%m/%Y')}"
+            form.desparasitacion_producto.data = f"{d.producto} ({d.tipo.capitalize()})"
+            form.desparasitacion_fecha.data = d.fecha_aplicacion
         # Prellenar última vacuna
         if mascota.vacunas:
             v = mascota.vacunas[0]
-            form.vacunacion_ultima.data = f"{v.nombre_vacuna} - {v.fecha_aplicacion.strftime('%d/%m/%Y')}"
+            form.vacunacion_producto.data = v.nombre_vacuna
+            form.vacunacion_fecha.data = v.fecha_aplicacion
 
     if form.validate_on_submit():
         # Validar si el examen de sistemas viene en formato JSON estructurado
@@ -365,8 +367,10 @@ def consulta_nueva(mascota_id: int):
                 motivo_consulta=form.motivo_consulta.data.strip(),
                 anamnesis=form.anamnesis.data.strip() if form.anamnesis.data else None,
                 alimentacion=(form.alimentacion.data or "").strip() or None,
-                desparasitacion_ultima=(form.desparasitacion_ultima.data or "").strip() or None,
-                vacunacion_ultima=(form.vacunacion_ultima.data or "").strip() or None,
+                desparasitacion_producto=(form.desparasitacion_producto.data or "").strip() or None,
+                desparasitacion_fecha=form.desparasitacion_fecha.data,
+                vacunacion_producto=(form.vacunacion_producto.data or "").strip() or None,
+                vacunacion_fecha=form.vacunacion_fecha.data,
                 peso_kg=form.peso_kg.data,
                 temperatura_c=form.temperatura_c.data,
                 frecuencia_cardiaca=form.frecuencia_cardiaca.data,

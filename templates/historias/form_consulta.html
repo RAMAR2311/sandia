@@ -104,28 +104,45 @@
             </div>
             
             <div class="row g-3">
-              <!-- Alimentación -->
-              <div class="col-12 col-md-4">
+              <!-- 1. Alimentación -->
+              <div class="col-12 col-lg-4">
                 <label for="alimentacion" class="form-label fw-bold small text-dark mb-1">
                   <i class="bi bi-egg-fried text-warning me-1"></i>Alimentación / Dieta Actual
                 </label>
                 {{ form.alimentacion(class="form-control bg-white shadow-xs", placeholder="Ej: Royal Canin Mini 150g/día, BARF...") }}
+                <div class="form-text text-muted" style="font-size: 0.72rem;">Marca o tipo de alimento habitual</div>
               </div>
               
-              <!-- Última Desparasitación -->
-              <div class="col-12 col-md-4">
-                <label for="desparasitacion_ultima" class="form-label fw-bold small text-dark mb-1">
-                  <i class="bi bi-capsule text-info me-1"></i>Última Desparasitación
+              <!-- 2. Última Desparasitación (Producto + Fecha separada) -->
+              <div class="col-12 col-md-6 col-lg-4">
+                <label class="form-label fw-bold small text-dark mb-1 d-flex justify-content-between">
+                  <span><i class="bi bi-capsule text-info me-1"></i>Última Desparasitación</span>
                 </label>
-                {{ form.desparasitacion_ultima(class="form-control bg-white shadow-xs", placeholder="Ej: Nexgard Spectra - 15/08/2026...") }}
+                <div class="row g-1">
+                  <div class="col-7">
+                    {{ form.desparasitacion_producto(class="form-control bg-white shadow-xs form-control-sm", placeholder="Producto / Antiparasitario") }}
+                  </div>
+                  <div class="col-5">
+                    {{ form.desparasitacion_fecha(class="form-control bg-white shadow-xs form-control-sm", type="date") }}
+                  </div>
+                </div>
+                <div class="form-text text-muted" style="font-size: 0.72rem;">Producto y fecha de aplicación</div>
               </div>
               
-              <!-- Última Vacunación -->
-              <div class="col-12 col-md-4">
-                <label for="vacunacion_ultima" class="form-label fw-bold small text-dark mb-1">
-                  <i class="bi bi-shield-plus text-success me-1"></i>Última Vacunación
+              <!-- 3. Última Vacunación (Vacuna + Fecha separada) -->
+              <div class="col-12 col-md-6 col-lg-4">
+                <label class="form-label fw-bold small text-dark mb-1 d-flex justify-content-between">
+                  <span><i class="bi bi-shield-plus text-success me-1"></i>Última Vacunación</span>
                 </label>
-                {{ form.vacunacion_ultima(class="form-control bg-white shadow-xs", placeholder="Ej: Séxtuple + Rabia - 10/05/2026...") }}
+                <div class="row g-1">
+                  <div class="col-7">
+                    {{ form.vacunacion_producto(class="form-control bg-white shadow-xs form-control-sm", placeholder="Nombre vacuna / antígeno") }}
+                  </div>
+                  <div class="col-5">
+                    {{ form.vacunacion_fecha(class="form-control bg-white shadow-xs form-control-sm", type="date") }}
+                  </div>
+                </div>
+                <div class="form-text text-muted" style="font-size: 0.72rem;">Vacuna y fecha de aplicación</div>
               </div>
             </div>
             <div class="form-text small text-muted mt-2">

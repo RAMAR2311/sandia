@@ -1325,8 +1325,10 @@ class ConsultaMedica(BaseModel):
     motivo_consulta = db.Column(db.String(255), nullable=False)
     anamnesis = db.Column(db.Text)  # Subjetivo (S)
     alimentacion = db.Column(db.String(255))  # Dieta reportada en esta consulta
-    desparasitacion_ultima = db.Column(db.String(255))  # Estatus / fecha desparasitación
-    vacunacion_ultima = db.Column(db.String(255))  # Estatus / fecha vacunación
+    desparasitacion_producto = db.Column(db.String(150))
+    desparasitacion_fecha = db.Column(db.Date)
+    vacunacion_producto = db.Column(db.String(150))
+    vacunacion_fecha = db.Column(db.Date)
 
     # Examen físico / Constantes vitales (Objetivo - O)
     peso_kg = db.Column(db.Numeric(6, 2))

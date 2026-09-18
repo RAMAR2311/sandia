@@ -302,6 +302,20 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
         [Paragraph(f"<b>Motivo de Consulta:</b> {consulta.motivo_consulta}", estilos['TextoNormal'])],
         [Paragraph(f"<b>Anamnesis / Historia Previa:</b> {anamnesis_texto}", estilos['TextoNormal'])],
     ]
+
+    preventivo_items = []
+    if consulta.alimentacion:
+        preventivo_items.append(f"<b>Dieta/Alimentación:</b> {consulta.alimentacion}")
+    if consulta.desparasitacion_producto or consulta.desparasitacion_fecha:
+        f_desp = consulta.desparasitacion_fecha.strftime("%d/%m/%Y") if consulta.desparasitacion_fecha else ""
+        preventivo_items.append(f"<b>Última Desparasitación:</b> {consulta.desparasitacion_producto or ''} {'(' + f_desp + ')' if f_desp else ''}".strip())
+    if consulta.vacunacion_producto or consulta.vacunacion_fecha:
+        f_vac = consulta.vacunacion_fecha.strftime("%d/%m/%Y") if consulta.vacunacion_fecha else ""
+        preventivo_items.append(f"<b>Última Vacuna:</b> {consulta.vacunacion_producto or ''} {'(' + f_vac + ')' if f_vac else ''}".strip())
+    
+    if preventivo_items:
+        subjetivo_data.append([Paragraph(" · ".join(preventivo_items), estilos['TextoPequeno'])])
+
     t_subjetivo = Table(subjetivo_data, colWidths=[188 * mm])
     t_subjetivo.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F0F9FF")),
