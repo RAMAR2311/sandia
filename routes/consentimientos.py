@@ -106,6 +106,8 @@ def lista():
     tipo = request.args.get("tipo", "").strip()
     estado = request.args.get("estado", "").strip()
 
+    pagina_num = request.args.get("page", 1, type=int)
+
     stmt = (
         select(ConsentimientoEmitido)
         .options(
@@ -132,7 +134,8 @@ def lista():
             )
         )
 
-    consentimientos = db.session.execute(stmt).scalars().all()
+    paginacion = db.paginate(stmt, page=pagina_num, per_page=10, error_out=False)
+    consentimientos = paginacion.items
     plantillas = db.session.execute(
         select(PlantillaConsentimiento).where(PlantillaConsentimiento.activo.is_(True)).order_by(PlantillaConsentimiento.tipo)
     ).scalars().all()
@@ -140,6 +143,7 @@ def lista():
     return render_template(
         "consentimientos/lista.html",
         consentimientos=consentimientos,
+        pagina=paginacion,
         plantillas=plantillas,
         tipos=TIPOS_CONSENTIMIENTO,
         estados=ESTADOS_CONSENTIMIENTO,
@@ -404,3 +408,60 @@ def anular(id: int):
     db.session.commit()
     flash(f"Consentimiento #{doc.id} anulado.", "warning")
     return redirect(request.referrer or url_for("consentimientos.lista"))
+
+
+# ---------------------------------------------------------------------------
+# Gestión y Edición de Plantillas Base
+# ---------------------------------------------------------------------------
+
+
+@bp_consentimientos.route("/plantilla/<int:id>", methods=["GET"])
+@login_required
+@clinico_required
+def obtener_plantilla(id: int):
+    """Retorna los datos de una plantilla para su edición."""
+    plantilla = db.session.execute(select(PlantillaConsentimiento).where(PlantillaConsentimiento.id == id)).scalar_one_or_none()
+    if not plantilla:
+        return jsonify({"success": False, "error": "Plantilla no encontrada"}), 404
+    return jsonify({
+        "success": True,
+        "id": plantilla.id,
+        "codigo": plantilla.codigo,
+        "tipo": plantilla.tipo,
+        "tipo_etiqueta": plantilla.tipo_etiqueta,
+        "titulo": plantilla.titulo,
+        "descripcion_corta": plantilla.descripcion_corta or "",
+        "contenido_template": plantilla.contenido_template,
+        "version": plantilla.version,
+    })
+
+
+@bp_consentimientos.route("/plantilla/<int:id>/guardar", methods=["POST"])
+@login_required
+@clinico_required
+def guardar_plantilla(id: int):
+    """Guarda las modificaciones realizadas a una plantilla maestra."""
+    plantilla = db.session.execute(select(PlantillaConsentimiento).where(PlantillaConsentimiento.id == id)).scalar_one_or_none()
+    if not plantilla:
+        return jsonify({"success": False, "error": "Plantilla no encontrada"}), 404
+
+    data = request.get_json() or {}
+    titulo = (data.get("titulo") or "").strip()
+    descripcion = (data.get("descripcion_corta") or "").strip()
+    contenido = (data.get("contenido_template") or "").strip()
+
+    if not titulo or not contenido:
+        return jsonify({"success": False, "error": "El título y el contenido son obligatorios."}), 400
+
+    plantilla.titulo = titulo
+    plantilla.descripcion_corta = descripcion
+    plantilla.contenido_template = contenido
+    plantilla.version += 1
+    plantilla.actualizado_en = obtener_hora_bogota()
+
+    db.session.commit()
+    return jsonify({
+        "success": True,
+        "mensaje": f"Plantilla '{plantilla.titulo}' guardada exitosamente (v{plantilla.version}).",
+        "version": plantilla.version,
+    })

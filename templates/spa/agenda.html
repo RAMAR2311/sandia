@@ -290,6 +290,16 @@
             <i class="bi bi-sliders"></i>
             <span>Gestionar Turno</span>
           </a>
+
+          {% if current_user.rol in ('admin', 'recepcion', 'auxiliar', 'groomer') and not c.venta_id %}
+          <form method="post" action="{{ url_for('spa.cita_eliminar', id=c.id) }}" class="m-0" onsubmit="return confirm('¿Eliminar la cita de spa de {{ c.mascota.nombre }}?')">
+            {{ form_csrf.csrf_token }}
+            <input type="hidden" name="next" value="{{ url_for('spa.agenda', fecha=fecha_sel.strftime('%Y-%m-%d')) }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 fw-semibold shadow-xs d-inline-flex align-items-center gap-1" style="font-size: 0.8rem; height: 32px;" title="Eliminar Turno">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+          {% endif %}
         </div>
       </div>
 

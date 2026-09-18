@@ -141,6 +141,15 @@
           <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
         </a>
 
+        <!-- 1.1 Nuevo Control -->
+        <a href="{{ url_for('historias.control_nuevo', mascota_id=mascota.id) }}" class="btn-accion-clinica btn-accion-clinica--control">
+          <div class="btn-accion-clinica__icono">
+            <i class="bi bi-clipboard2-check-fill"></i>
+          </div>
+          <span class="btn-accion-clinica__texto">Nuevo Control</span>
+          <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
+        </a>
+
         <!-- 2. Vacunación -->
         <a href="{{ url_for('historias.vacuna_nueva', mascota_id=mascota.id) }}" class="btn-accion-clinica btn-accion-clinica--vacuna">
           <div class="btn-accion-clinica__icono">
@@ -232,10 +241,17 @@
       <div class="ficha-tabs-header">
         <ul class="ficha-tabs-nav" id="fichaTabs" role="tablist">
           <li class="nav-item" role="presentation">
-            <button class="ficha-tab-btn active" id="soap-tab" data-bs-toggle="tab" data-bs-target="#soap" type="button" role="tab">
+            <button class="ficha-tab-btn {% if not tab_activa or tab_activa == 'soap' %}active{% endif %}" id="soap-tab" data-bs-toggle="tab" data-bs-target="#soap" type="button" role="tab">
               <i class="bi bi-journal-medical"></i>
               <span>Consultas SOAP</span>
               <span class="ficha-tab-badge">{{ mascota.consultas|length }}</span>
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="ficha-tab-btn {% if tab_activa == 'controles' %}active{% endif %}" id="controles-tab" data-bs-toggle="tab" data-bs-target="#controles" type="button" role="tab">
+              <i class="bi bi-clipboard2-check"></i>
+              <span>Controles</span>
+              <span class="ficha-tab-badge">{{ mascota.controles|length }}</span>
             </button>
           </li>
           <li class="nav-item" role="presentation">
@@ -383,13 +399,16 @@
                     </div>
 
                     <div class="mt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
-                      {% if c.enlace_whatsapp %}
-                      <a href="{{ c.enlace_whatsapp }}" target="_blank" class="btn btn-sm btn-success fw-bold rounded-pill">
-                        <i class="bi bi-whatsapp me-1"></i> Enviar consulta vía WhatsApp
-                      </a>
-                      {% else %}
-                      <span></span>
-                      {% endif %}
+                      <div class="d-flex flex-wrap align-items-center gap-2">
+                        {% if c.enlace_whatsapp %}
+                        <a href="{{ c.enlace_whatsapp }}" target="_blank" class="btn btn-sm btn-success fw-bold rounded-pill">
+                          <i class="bi bi-whatsapp me-1"></i> Enviar consulta vía WhatsApp
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('historias.consulta_editar', id=c.id) }}" class="btn btn-sm btn-outline-secondary fw-bold rounded-pill" title="Editar consulta SOAP">
+                          <i class="bi bi-pencil-square me-1"></i> Editar
+                        </a>
+                      </div>
                       <a href="{{ url_for('historias.consulta_detalle', id=c.id) }}" class="btn btn-sm btn-outline-primary fw-bold rounded-pill">
                         Ver detalle completo <i class="bi bi-chevron-right ms-1"></i>
                       </a>
@@ -411,6 +430,155 @@
             {% endif %}
           </div>
 
+          <!-- Pestaña: Controles Médicos y Evolución -->
+          <div class="tab-pane fade {% if tab_activa == 'controles' %}show active{% endif %}" id="controles" role="tabpanel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                <i class="bi bi-clipboard2-check text-info"></i>
+                <span>Historial de Controles Médicos y Evolución</span>
+                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill">{{ mascota.controles|length }}</span>
+              </h5>
+              <a href="{{ url_for('historias.control_nuevo', mascota_id=mascota.id) }}" class="btn btn-sm btn-info text-white fw-bold rounded-pill px-3 shadow-xs">
+                <i class="bi bi-plus-lg me-1"></i> Registrar Nuevo Control
+              </a>
+            </div>
+
+            {% if mascota.controles %}
+            <div class="soap-timeline">
+              {% for ctrl in mascota.controles %}
+              <div class="soap-timeline-item">
+                <div class="soap-timeline-marker bg-info text-white shadow-xs">
+                  <i class="bi bi-clipboard2-check"></i>
+                </div>
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-3">
+                  <div class="card-header bg-light py-2.5 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                      <span class="fw-bold text-dark"><i class="bi bi-calendar3 text-primary me-1"></i>{{ ctrl.fecha_hora|fecha_hora }}</span>
+                      {% if ctrl.motivo %}
+                      <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 fw-bold">
+                        <i class="bi bi-tag-fill me-1"></i>{{ ctrl.motivo }}
+                      </span>
+                      {% endif %}
+                      {% if ctrl.consulta_origen %}
+                      <a href="{{ url_for('historias.consulta_detalle', id=ctrl.consulta_origen_id) }}" class="badge bg-secondary-subtle text-secondary border text-decoration-none rounded-pill" title="Ver Consulta SOAP #{{ ctrl.consulta_origen_id }}">
+                        <i class="bi bi-link-45deg me-0.5"></i>SOAP #{{ ctrl.consulta_origen_id }}
+                      </a>
+                      {% endif %}
+                    </div>
+                    <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2.5 py-1">
+                      <i class="bi bi-person-badge me-1"></i>Dr/a. {{ ctrl.veterinario.nombre if ctrl.veterinario else 'Veterinario' }}
+                    </span>
+                  </div>
+
+                  <div class="card-body p-3">
+                    <!-- Constantes vitales del control (si existen) -->
+                    {% if ctrl.peso_kg or ctrl.temperatura_c %}
+                    <div class="vitales-strip mb-3">
+                      {% if ctrl.peso_kg %}<span class="vital-pill"><i class="bi bi-speedometer2 text-primary"></i> Peso: {{ ctrl.peso_kg }} kg</span>{% endif %}
+                      {% if ctrl.temperatura_c %}<span class="vital-pill"><i class="bi bi-thermometer-half text-danger"></i> Temp: {{ ctrl.temperatura_c }} °C</span>{% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Avances / Comentarios de evolución -->
+                    <div class="soap-seccion soap-seccion--s small mb-2 p-2.5 rounded-3" style="background-color: #f0f9ff; border-left: 4px solid #0ea5e9;">
+                      <div class="fw-bold text-info mb-1"><i class="bi bi-chat-left-dots-fill me-1"></i>Avances y Comentarios de Evolución:</div>
+                      <div class="text-dark">{{ ctrl.avances }}</div>
+                    </div>
+
+                    <!-- Diagnóstico / Estado clínico -->
+                    {% if ctrl.diagnostico %}
+                    <div class="soap-seccion soap-seccion--a small mb-2 p-2.5 rounded-3" style="background-color: #fffbeb; border-left: 4px solid #f59e0b;">
+                      <div class="fw-bold text-warning-emphasis mb-1"><i class="bi bi-search me-1"></i>Diagnóstico / Re-evaluación:</div>
+                      <div class="text-dark fw-semibold">{{ ctrl.diagnostico }}</div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Plan Terapéutico -->
+                    <div class="soap-seccion soap-seccion--p small mb-2 p-2.5 rounded-3" style="background-color: #fef2f2; border-left: 4px solid #ef4444;">
+                      <div class="fw-bold text-danger mb-1"><i class="bi bi-clipboard2-pulse-fill me-1"></i>Plan Terapéutico y Recomendaciones:</div>
+                      <div class="text-dark">{{ ctrl.plan_terapeutico }}</div>
+                    </div>
+
+                    <!-- Medicamentos / Prescripción formulada -->
+                    {% if ctrl.medicamento %}
+                    <div class="p-2.5 rounded-3 bg-white border border-secondary border-opacity-25 small mb-2">
+                      <div class="fw-bold text-primary mb-1"><i class="bi bi-capsule me-1"></i>Medicamentos / Prescripción:</div>
+                      <div class="text-dark font-monospace" style="white-space: pre-wrap;">{{ ctrl.medicamento }}</div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Observaciones -->
+                    {% if ctrl.observaciones %}
+                    <div class="small text-muted mt-2">
+                      <i class="bi bi-info-circle me-1"></i><strong>Observaciones:</strong> {{ ctrl.observaciones }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Próximo Control Programado y Agendamiento -->
+                    {% if ctrl.fecha_proximo_control %}
+                    <div class="p-2.5 rounded-3 border small mt-2 d-flex flex-wrap align-items-center justify-content-between gap-2" style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%); border-color: #a7f3d0 !important;">
+                      <div>
+                        <div class="fw-bold text-success"><i class="bi bi-calendar-check-fill me-1"></i>Próximo Control Programado:</div>
+                        <div class="text-dark fw-bold fs-6">{{ ctrl.fecha_proximo_control|fecha_hora }}</div>
+                      </div>
+                      <div class="d-flex flex-wrap gap-1.5 align-items-center">
+                        {% if ctrl.enlace_google_calendar %}
+                        <a href="{{ ctrl.enlace_google_calendar }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill fw-bold py-1 px-2.5" title="Agendar en Google Calendar">
+                          <i class="bi bi-google me-1"></i>Google Calendar
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('historias.control_ics', id=ctrl.id) }}" class="btn btn-sm btn-outline-dark rounded-pill fw-bold py-1 px-2.5" title="Descargar evento para Apple / iPhone Calendar">
+                          <i class="bi bi-apple me-1"></i>iPhone / Apple (.ics)
+                        </a>
+                      </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Botones de Acción -->
+                    <div class="mt-3 pt-2 border-top d-flex flex-wrap justify-content-between align-items-center gap-2">
+                      <div class="d-flex flex-wrap align-items-center gap-2">
+                        {% if ctrl.enlace_whatsapp %}
+                        <a href="{{ ctrl.enlace_whatsapp }}" target="_blank" class="btn btn-sm btn-success fw-bold rounded-pill">
+                          <i class="bi bi-whatsapp me-1"></i> Enviar Control por WhatsApp
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('historias.control_editar', id=ctrl.id) }}" class="btn btn-sm btn-outline-secondary fw-bold rounded-pill" title="Editar este control">
+                          <i class="bi bi-pencil-square me-1"></i> Editar
+                        </a>
+                        {% if current_user.rol in ('admin', 'veterinario') %}
+                        <form method="post" action="{{ url_for('historias.control_eliminar', id=ctrl.id) }}" class="m-0" onsubmit="return confirm('¿Deseas eliminar este control médico de {{ mascota.nombre }}?')">
+                          {{ form_csrf.csrf_token }}
+                          <input type="hidden" name="next" value="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='controles') }}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger fw-bold rounded-pill" title="Eliminar control médico">
+                            <i class="bi bi-trash me-1"></i> Eliminar
+                          </button>
+                        </form>
+                        {% endif %}
+                      </div>
+                      {% if ctrl.consulta_origen_id %}
+                      <a href="{{ url_for('historias.consulta_detalle', id=ctrl.consulta_origen_id) }}" class="btn btn-sm btn-outline-info rounded-pill">
+                        <i class="bi bi-journal-medical me-1"></i> Ver última consulta SOAP
+                      </a>
+                      {% endif %}
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+              <div class="display-4 text-muted mb-2"><i class="bi bi-clipboard2-x"></i></div>
+              <h5 class="fw-bold">Sin controles médicos registrados</h5>
+              <p class="text-muted small mb-3">Registra los controles de seguimiento para evaluar la evolución clínica de {{ mascota.nombre }}.</p>
+              <a href="{{ url_for('historias.control_nuevo', mascota_id=mascota.id) }}" class="btn btn-info text-white rounded-pill px-4 fw-bold shadow-xs">
+                <i class="bi bi-plus-lg me-1"></i> Registrar Primer Control
+              </a>
+            </div>
+            {% endif %}
+          </div>
+
           <!-- Pestaña 2: Vacunas -->
           <div class="tab-pane fade" id="vacunas" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -419,7 +587,7 @@
                 {% if mascota.vacunas and mascota.tutor.whatsapp_efectivo %}
                   {% set msg_vacunas = "Hola " ~ mascota.tutor.nombre_completo ~ ", te compartimos el estado del carnet de vacunación de " ~ mascota.nombre ~ ":" %}
                   <a href="{{ mascota.tutor.enlace_whatsapp(msg_vacunas) }}" target="_blank" class="btn btn-sm btn-success fw-bold rounded-pill">
-                    <i class="bi bi-whatsapp me-1"></i> Enviar Carnet por WhatsApp
+                    <i class="bi bi-whatsapp me-1"></i> Enviar por WhatsApp
                   </a>
                 {% endif %}
                 <a href="{{ url_for('historias.vacuna_nueva', mascota_id=mascota.id) }}" class="btn btn-sm btn-success fw-bold">
@@ -456,11 +624,22 @@
                       {% endif %}
                     </td>
                     <td class="text-end">
-                      {% if v.enlace_whatsapp %}
-                      <a href="{{ v.enlace_whatsapp }}" target="_blank" class="btn btn-xs btn-success rounded-pill px-2 py-1 small" title="Enviar recordatorio por WhatsApp">
-                        <i class="bi bi-whatsapp me-1"></i>Enviar
-                      </a>
-                      {% endif %}
+                      <div class="d-inline-flex align-items-center gap-1">
+                        {% if v.enlace_whatsapp %}
+                        <a href="{{ v.enlace_whatsapp }}" target="_blank" class="btn btn-xs btn-success rounded-pill px-2 py-1 small" title="Enviar recordatorio por WhatsApp">
+                          <i class="bi bi-whatsapp me-1"></i>Enviar
+                        </a>
+                        {% endif %}
+                        {% if current_user.rol in ('admin', 'veterinario') %}
+                        <form method="post" action="{{ url_for('historias.vacuna_eliminar', id=v.id) }}" class="m-0" onsubmit="return confirm('¿Deseas eliminar este registro de vacuna {{ v.nombre_vacuna }} de {{ mascota.nombre }}?')">
+                          {{ form_csrf.csrf_token }}
+                          <input type="hidden" name="next" value="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='vacunas') }}">
+                          <button type="submit" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1 small" title="Eliminar registro de vacuna">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </form>
+                        {% endif %}
+                      </div>
                     </td>
                   </tr>
                   {% else %}
@@ -520,11 +699,22 @@
                       {% endif %}
                     </td>
                     <td class="text-end">
-                      {% if d.enlace_whatsapp %}
-                      <a href="{{ d.enlace_whatsapp }}" target="_blank" class="btn btn-xs btn-success rounded-pill px-2 py-1 small" title="Enviar recordatorio por WhatsApp">
-                        <i class="bi bi-whatsapp me-1"></i>Enviar
-                      </a>
-                      {% endif %}
+                      <div class="d-inline-flex align-items-center gap-1">
+                        {% if d.enlace_whatsapp %}
+                        <a href="{{ d.enlace_whatsapp }}" target="_blank" class="btn btn-xs btn-success rounded-pill px-2 py-1 small" title="Enviar recordatorio por WhatsApp">
+                          <i class="bi bi-whatsapp me-1"></i>Enviar
+                        </a>
+                        {% endif %}
+                        {% if current_user.rol in ('admin', 'veterinario') %}
+                        <form method="post" action="{{ url_for('historias.desparasitacion_eliminar', id=d.id) }}" class="m-0" onsubmit="return confirm('¿Deseas eliminar este registro de desparasitación {{ d.producto }} de {{ mascota.nombre }}?')">
+                          {{ form_csrf.csrf_token }}
+                          <input type="hidden" name="next" value="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='desparasitaciones') }}">
+                          <button type="submit" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1 small" title="Eliminar registro de desparasitación">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </form>
+                        {% endif %}
+                      </div>
                     </td>
                   </tr>
                   {% else %}
@@ -975,9 +1165,23 @@
                       {% endif %}
                       <small class="text-muted"><i class="bi bi-calendar-event me-1"></i>{{ r.fecha_remision.strftime('%d/%m/%Y %I:%M %p') }}</small>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold btn-ver-detalle-remision" data-id="{{ r.id }}">
-                      <i class="bi bi-eye-fill me-1"></i> Ver Detalle Completo
-                    </button>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      {% if r.enlace_whatsapp %}
+                      <a href="{{ r.enlace_whatsapp }}" target="_blank" class="btn btn-sm btn-success rounded-pill px-3 fw-bold shadow-2xs" style="background-color: #25D366; border-color: #25D366;" title="Enviar orden de remisión por WhatsApp">
+                        <i class="bi bi-whatsapp me-1"></i>WhatsApp
+                      </a>
+                      {% endif %}
+                      <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-bold btn-ver-detalle-remision" data-id="{{ r.id }}">
+                        <i class="bi bi-eye-fill me-1"></i> Ver Detalle
+                      </button>
+                      <form method="POST" action="{{ url_for('historias.remision_eliminar', id=r.id) }}" class="d-inline" onsubmit="return confirm('¿Estás seguro de eliminar esta remisión clínica? Esta acción no se puede deshacer.');">
+                        {{ form_csrf.hidden_tag() }}
+                        <input type="hidden" name="next" value="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='remisiones') }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle p-1 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Eliminar remisión">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </form>
+                    </div>
                   </div>
 
                   <div class="mb-2">
@@ -987,13 +1191,13 @@
 
                   <div class="row g-2 p-2.5 bg-light rounded-3 small text-muted mb-2">
                     <div class="col-12 col-md-4">
-                      <strong><i class="bi bi-egg-fried me-1 text-warning"></i>Dieta:</strong> {{ r.dieta_marca_tipo or 'No especificada' }}
+                      <strong><i class="bi bi-telephone-fill me-1 text-success"></i>Contacto:</strong> {{ r.telefono_destino or 'No especificado' }}
                     </div>
                     <div class="col-12 col-md-4">
-                      <strong><i class="bi bi-shield-check me-1 text-success"></i>Vacunas:</strong> {{ 'Al día' if r.vacunacion_al_dia else 'Incompleta / Pendiente' }}
+                      <strong><i class="bi bi-geo-alt-fill me-1 text-danger"></i>Ubicación:</strong> {{ r.direccion_destino or (r.centro_medico_destino or 'No especificada') }}
                     </div>
                     <div class="col-12 col-md-4">
-                      <strong><i class="bi bi-capsule me-1 text-primary"></i>Desparasitación:</strong> {{ r.desparasitacion_interna_producto or 'Sin reg.' }}
+                      <strong><i class="bi bi-shield-check me-1 text-primary"></i>Vacunas:</strong> {{ 'Al día' if r.vacunacion_al_dia else 'Incompleta / Pendiente' }}
                     </div>
                   </div>
 
@@ -1016,7 +1220,7 @@
             <div class="card border-0 bg-light rounded-4 text-center py-5">
               <i class="bi bi-send-check display-5 text-muted opacity-50 mb-2"></i>
               <h6 class="fw-bold text-dark mb-1">Sin remisiones clínicas registradas</h6>
-              <p class="small text-muted mb-3">Registra derivaciones a especialistas externos o centros de referencia con el historial preventivo y nutricional del paciente.</p>
+              <p class="small text-muted mb-3">Registra derivaciones a especialistas externos o centros de referencia con los datos de contacto, ubicación y antecedentes del paciente.</p>
               <div>
                 <button type="button" class="btn btn-info text-white btn-sm rounded-pill px-4 fw-bold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalNuevaRemision" style="background: linear-gradient(135deg, #0284C7, #0EA5E9); border: none;">
                   <i class="bi bi-plus-circle me-1"></i> Registrar Primera Remisión
@@ -1033,30 +1237,27 @@
 </div>
 
 {% include "consentimientos/modal_emision.html" %}
+{# Modales Auxiliares de la Ficha Médica #}
 {% include "historias/modal_remision.html" %}
 
-<!-- Modal para Actualizar Alimentación / Dieta Rápido -->
-<div class="modal fade" id="modalEditarAlimentacion" tabindex="-1" aria-labelledby="modalEditarAlimentacionLabel" aria-hidden="true">
+<!-- Modal para actualizar alimentación/dieta directamente -->
+<div class="modal fade" id="modalActualizarDieta" tabindex="-1" aria-labelledby="modalActualizarDietaLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content rounded-4 border-0 shadow">
-      <div class="modal-header border-bottom bg-light px-4 py-3">
-        <h5 class="modal-title fw-bold text-dark fs-6" id="modalEditarAlimentacionLabel">
-          <i class="bi bi-egg-fried text-warning me-2"></i>Alimentación / Dieta Habitual
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header bg-light border-bottom px-4 py-3">
+        <h5 class="modal-title fw-bold text-dark fs-6 mb-0" id="modalActualizarDietaLabel">
+          <i class="bi bi-egg-fried text-warning me-1"></i> Actualizar Dieta y Alimentación
         </h5>
-        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
-      <form action="{{ url_for('historias.actualizar_dieta', mascota_id=mascota.id) }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <form method="post" action="{{ url_for('historias.actualizar_dieta', mascota_id=mascota.id) }}">
         <div class="modal-body p-4">
-          <label class="form-label small fw-bold text-secondary mb-1">Marca, tipo de comida, porciones o dieta:</label>
-          <input type="text" name="alimentacion" class="form-control form-control-lg rounded-3 fs-6" value="{{ mascota.alimentacion or '' }}" placeholder="Ej: Royal Canin Maxi Adult 200g/día, Dieta BARF casera, etc.">
-          <div class="form-text small text-muted mt-2">
-            Este dato se actualizará de forma permanente en el expediente de <strong>{{ mascota.nombre }}</strong>.
-          </div>
+          <label class="form-label small fw-semibold text-dark mb-1">Marca, tipo de alimento o dieta actual:</label>
+          <input type="text" name="alimentacion" class="form-control" value="{{ mascota.alimentacion or '' }}" placeholder="Ej: Royal Canin Gastrointestinal, Taste of the Wild, Dieta Natural..." required maxlength="255">
         </div>
-        <div class="modal-footer bg-light px-4 py-3 border-top">
-          <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-warning text-dark fw-bold rounded-pill px-4">
+        <div class="modal-footer bg-light border-top px-4 py-3">
+          <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-sm btn-primary rounded-pill px-4 fw-semibold">
             <i class="bi bi-check-lg me-1"></i>Guardar Alimentación
           </button>
         </div>
@@ -1075,6 +1276,7 @@ document.addEventListener("DOMContentLoaded", function() {
   const modalDetalleEl = document.getElementById("modalDetalleRemision");
   const cuerpoDetalle = document.getElementById("cuerpo-detalle-remision");
   const fechaDetalle = document.getElementById("det-fecha-remision");
+  const btnWaContainer = document.getElementById("det-btn-whatsapp-container");
 
   if (modalDetalleEl && botonesDetalle.length > 0) {
     const modalDetalle = new bootstrap.Modal(modalDetalleEl);
@@ -1088,6 +1290,7 @@ document.addEventListener("DOMContentLoaded", function() {
             <div class="small text-muted mt-2">Cargando detalles de la remisión...</div>
           </div>
         `;
+        if (btnWaContainer) btnWaContainer.innerHTML = '';
         modalDetalle.show();
 
         fetch(`/historias/remisiones/${remisionId}/json`)
@@ -1100,12 +1303,20 @@ document.addEventListener("DOMContentLoaded", function() {
             const r = data.remision;
             fechaDetalle.textContent = `Fecha de emisión: ${r.fecha_remision} · Por Dr.(a) ${r.veterinario_nombre}`;
 
+            if (btnWaContainer && r.enlace_whatsapp) {
+              btnWaContainer.innerHTML = `
+                <a href="${r.enlace_whatsapp}" target="_blank" class="btn btn-sm btn-success rounded-pill fw-bold shadow-xs px-3.5 py-1.5" style="background-color: #25D366; border-color: #25D366;">
+                  <i class="bi bi-whatsapp me-1.5"></i>Enviar por WhatsApp
+                </a>
+              `;
+            }
+
             cuerpoDetalle.innerHTML = `
               <div class="d-flex flex-column gap-3">
                 <div class="p-3 bg-info-subtle border border-info-subtle rounded-3">
                   <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
                     <span class="badge bg-info text-white fs-6 px-3 py-1.5 rounded-pill"><i class="bi bi-hospital me-1"></i>${r.especialidad_destino}</span>
-                    ${r.centro_medico_destino ? `<span class="badge bg-light text-dark border px-2.5 py-1.5"><i class="bi bi-geo-alt-fill text-danger me-1"></i>${r.centro_medico_destino}</span>` : ''}
+                    ${r.centro_medico_destino ? `<span class="badge bg-light text-dark border px-2.5 py-1.5"><i class="bi bi-building text-primary me-1"></i>${r.centro_medico_destino}</span>` : ''}
                   </div>
                   <div class="mt-2">
                     <strong class="text-dark small d-block">Motivo Principal:</strong>
@@ -1120,8 +1331,17 @@ document.addEventListener("DOMContentLoaded", function() {
                 </div>
 
                 <div class="card border rounded-3 p-3 bg-light">
-                  <h6 class="fw-bold text-dark small text-uppercase mb-2"><i class="bi bi-egg-fried text-warning me-1"></i> Alimentación y Dieta</h6>
-                  <div class="small text-dark fw-semibold">${r.dieta_marca_tipo}</div>
+                  <h6 class="fw-bold text-dark small text-uppercase mb-2"><i class="bi bi-telephone-outbound text-primary me-1"></i> Contacto y Ubicación del Destino</h6>
+                  <div class="row g-2 small">
+                    <div class="col-md-6">
+                      <span class="text-muted d-block"><i class="bi bi-telephone-fill text-success me-1"></i>Teléfono / WhatsApp:</span>
+                      <span class="text-dark fw-bold">${r.telefono_destino || 'No especificado'}</span>
+                    </div>
+                    <div class="col-md-6">
+                      <span class="text-muted d-block"><i class="bi bi-geo-alt-fill text-danger me-1"></i>Dirección / Sede:</span>
+                      <span class="text-dark fw-bold">${r.direccion_destino || (r.centro_medico_destino || 'No especificada')}</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="card border rounded-3 p-3 bg-light">
@@ -1171,6 +1391,3 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 {% endblock %}
-
-
-

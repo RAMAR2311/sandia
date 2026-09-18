@@ -5,6 +5,9 @@
 {% block contenido %}
 {% call encabezado("Consulta Médica #" ~ consulta.id, "Paciente: " ~ consulta.mascota.nombre ~ " | Fecha: " ~ consulta.fecha_hora|fecha_hora) %}
   <div class="d-flex flex-wrap gap-2">
+    <a href="{{ url_for('historias.consulta_editar', id=consulta.id) }}" class="btn btn-warning rounded-pill fw-bold shadow-xs">
+      <i class="bi bi-pencil-square me-1"></i>Editar Consulta
+    </a>
     <a href="{{ url_for('historias.consulta_pdf', id=consulta.id) }}" class="btn btn-danger rounded-pill fw-bold shadow-xs">
       <i class="bi bi-file-earmark-pdf-fill me-1"></i>Descargar PDF
     </a>
@@ -312,6 +315,90 @@
         {% endif %}
       </div>
     </div>
+
+    <!-- PRÓXIMO CONTROL AGENDADO (SI EXISTE) -->
+    {% if consulta.controles_asociados %}
+      {% set ctl = consulta.controles_asociados[0] %}
+      <div class="card border-0 shadow-sm mb-4" style="border-radius: 16px; overflow: hidden; border: 1.5px solid #A7F3D0 !important; background: linear-gradient(180deg, #F0FDF4 0%, #FFFFFF 100%);">
+        <div class="card-header py-3 px-4 border-0 d-flex flex-wrap align-items-center justify-content-between gap-2" style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #ffffff;">
+          <div class="d-flex align-items-center gap-2">
+            <div class="rounded-circle bg-white text-success d-flex align-items-center justify-content-center shadow-sm" style="width: 38px; height: 38px; font-size: 1.15rem;">
+              <i class="bi bi-calendar-check-fill"></i>
+            </div>
+            <div>
+              <h5 class="fw-bold mb-0 text-white">Próximo Control Médico Programado</h5>
+              <small class="text-white-50">Cita de seguimiento agendada para el paciente</small>
+            </div>
+          </div>
+          <span class="badge bg-white text-success rounded-pill px-3 py-1.5 fw-bold shadow-xs">
+            <i class="bi bi-bell-fill me-1 text-warning"></i>Cita Programada
+          </span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3 align-items-center mb-4">
+            <div class="col-md-6 col-lg-4">
+              <div class="p-3 bg-white rounded-3 border shadow-2xs">
+                <span class="text-muted small fw-bold text-uppercase d-block mb-1">
+                  <i class="bi bi-calendar-event text-success me-1"></i>Fecha y Hora Programada:
+                </span>
+                <span class="fs-5 fw-bold text-dark font-monospace">
+                  {{ ctl.fecha_proximo_control|fecha_hora if ctl.fecha_proximo_control else (ctl.fecha_hora|fecha_hora) }}
+                </span>
+              </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+              <div class="p-3 bg-white rounded-3 border shadow-2xs">
+                <span class="text-muted small fw-bold text-uppercase d-block mb-1">
+                  <i class="bi bi-bookmark-heart text-primary me-1"></i>Motivo del Control:
+                </span>
+                <span class="fs-6 fw-bold text-primary">
+                  {{ ctl.motivo or 'Control de ' ~ consulta.diagnostico }}
+                </span>
+              </div>
+            </div>
+            <div class="col-md-12 col-lg-4">
+              <div class="p-3 bg-white rounded-3 border shadow-2xs">
+                <span class="text-muted small fw-bold text-uppercase d-block mb-1">
+                  <i class="bi bi-person-badge text-secondary me-1"></i>Médico Veterinario:
+                </span>
+                <span class="fs-6 fw-bold text-dark">
+                  Dr/a. {{ ctl.veterinario.nombre if ctl.veterinario else (consulta.veterinario.nombre if consulta.veterinario else 'Veterinario') }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botones de Acción para el Control: WhatsApp y Calendarios -->
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 pt-3 border-top">
+            <div class="d-flex flex-wrap gap-2">
+              {% if ctl.enlace_whatsapp %}
+              <a href="{{ ctl.enlace_whatsapp }}" target="_blank" class="btn btn-success rounded-pill fw-bold shadow-xs px-3 py-2" style="background-color: #25D366; border-color: #25D366;">
+                <i class="bi bi-whatsapp me-1.5 fs-6"></i>Enviar Control por WhatsApp
+              </a>
+              {% endif %}
+              {% if ctl.enlace_google_calendar %}
+              <a href="{{ ctl.enlace_google_calendar }}" target="_blank" rel="noopener" class="btn btn-outline-primary rounded-pill fw-semibold shadow-2xs px-3 py-2">
+                <i class="bi bi-google me-1.5"></i>Google Calendar
+              </a>
+              {% endif %}
+              {% if ctl.enlace_apple_calendar %}
+              <a href="{{ ctl.enlace_apple_calendar }}" class="btn btn-outline-dark rounded-pill fw-semibold shadow-2xs px-3 py-2">
+                <i class="bi bi-apple me-1.5"></i>Apple Calendar (.ics)
+              </a>
+              {% endif %}
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <a href="{{ url_for('historias.control_editar', id=ctl.id) }}" class="btn btn-outline-warning rounded-pill btn-sm fw-bold px-3">
+                <i class="bi bi-pencil me-1"></i>Modificar Control
+              </a>
+              <a href="{{ url_for('historias.ficha_medica', mascota_id=consulta.mascota_id, tab='controles') }}" class="btn btn-light rounded-pill btn-sm text-secondary fw-semibold border px-3">
+                <i class="bi bi-journal-text me-1"></i>Ver en Ficha
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
 
   </div>
 </div>

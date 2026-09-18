@@ -170,6 +170,7 @@ def lista():
         fecha_siguiente=fecha_siguiente,
         ESTADOS_CITA=ESTADOS_CITA,
         TIPOS_CITA=TIPOS_CITA,
+        form_csrf=SoloCsrfForm(),
     )
 
 
@@ -264,3 +265,34 @@ def marcar_recordatorio(id: int):
         current_app.logger.exception("Error al marcar recordatorio de la cita %d", id)
         return {"error": "No se pudo registrar el recordatorio."}, 500
     return {"ok": True}
+
+
+@bp.route("/<int:id>/eliminar", methods=["POST"])
+@login_required
+@recepcion_required
+def eliminar(id: int):
+    cita = db.session.get(Cita, id)
+    if not cita:
+        flash("La cita médica no existe o ya fue eliminada.", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("agenda.lista"))
+
+    form = SoloCsrfForm()
+    if not form.validate_on_submit():
+        flash("Error de validación de seguridad (CSRF).", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("agenda.lista"))
+
+    try:
+        mascota_nombre = cita.mascota.nombre if cita.mascota else "Paciente"
+        db.session.delete(cita)
+        db.session.commit()
+        flash(f"La cita médica de {mascota_nombre} ha sido eliminada correctamente.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al eliminar cita médica %d", id)
+        flash("Error interno al intentar eliminar la cita médica.", "danger")
+
+    next_url = request.form.get("next")
+    return redirect(next_url or url_for("agenda.lista"))
+

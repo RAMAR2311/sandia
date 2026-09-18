@@ -19,6 +19,11 @@
       <i class="bi bi-cart-check-fill me-1"></i> Facturar en POS
     </a>
     {% endif %}
+    {% if not cita.venta and current_user.rol in ('admin', 'recepcion', 'auxiliar', 'groomer') %}
+    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-xs fw-semibold" data-bs-toggle="modal" data-bs-target="#modalEliminarCitaSpa">
+      <i class="bi bi-trash me-1"></i> Eliminar Turno
+    </button>
+    {% endif %}
   </div>
 </div>
 
@@ -482,16 +487,34 @@
   </div>
 </div>
 
-{# MODAL ZOOM / LIGHTBOX #}
-<div class="modal fade" id="modal-zoom-foto" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden bg-dark">
-      <div class="modal-header bg-transparent border-0 text-white p-3">
-        <h6 class="modal-title fw-bold" id="zoom-foto-titulo">Fotografía de Spa</h6>
-        <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+{# MODAL CONFIRMAR ELIMINACIÓN DE CITA SPA #}
+<div class="modal fade" id="modalEliminarCitaSpa" tabindex="-1" aria-labelledby="modalEliminarCitaSpaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header bg-danger-subtle text-danger border-0 p-3">
+        <h5 class="modal-title fw-bold fs-6" id="modalEliminarCitaSpaLabel">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Eliminación de Turno
+        </h5>
+        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
-      <div class="modal-body p-0 text-center bg-black d-flex align-items-center justify-content-center" style="min-height: 380px; max-height: 80vh;">
-        <img src="" id="zoom-foto-img" alt="Foto ampliada" class="img-fluid" style="max-height: 80vh; object-fit: contain;">
+      <div class="modal-body p-4 text-center">
+        <div class="display-6 text-danger mb-3">
+          <i class="bi bi-trash3-fill"></i>
+        </div>
+        <h6 class="fw-bold text-dark mb-2">¿Estás seguro de eliminar el turno de {{ cita.mascota.nombre }}?</h6>
+        <p class="text-secondary small mb-0">
+          Esta acción eliminará el turno agendado (<strong>{{ cita.servicio_spa.nombre }}</strong>) y sus fotografías registradas. Esta operación no se puede deshacer.
+        </p>
+      </div>
+      <div class="modal-footer bg-light border-0 p-3 justify-content-center">
+        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        <form method="post" action="{{ url_for('spa.cita_eliminar', id=cita.id) }}" class="m-0">
+          {{ form_estado.csrf_token }}
+          <input type="hidden" name="next" value="{{ url_for('spa.agenda') }}">
+          <button type="submit" class="btn btn-danger rounded-pill px-4 shadow-sm fw-bold">
+            <i class="bi bi-trash-fill me-1"></i> Sí, Eliminar Turno
+          </button>
+        </form>
       </div>
     </div>
   </div>

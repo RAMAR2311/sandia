@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+{% from "_macros.html" import encabezado %}
+{% block titulo %}{{ ('Editar Control Médico #' ~ control.id) if control else 'Nuevo Control Médico' }} - {{ mascota.nombre }}{% endblock %}
+
+{% block contenido %}
+{% call encabezado(('Editar Control Médico #' ~ control.id) if control else 'Nuevo Control Médico y Evolución', "Paciente: " ~ mascota.nombre ~ " | Tutor: " ~ (mascota.tutor.nombre_completo if mascota.tutor else "Sin tutor")) %}
+  <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="btn btn-outline-secondary rounded-pill fw-bold">
+    <i class="bi bi-arrow-left me-1"></i>Volver a Ficha Médica
+  </a>
+{% endcall %}
+
+<!-- Banner Resumen del Paciente -->
+<div class="card shadow-sm border-0 mb-4" style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); color: #FFFFFF; border-radius: 16px;">
+  <div class="card-body p-3 p-md-4">
+    <div class="row align-items-center g-3">
+      <div class="col-auto">
+        <div class="bg-white text-dark rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 58px; height: 58px; font-size: 1.75rem;">
+          {% if mascota.especie == 'canino' %}🐶
+          {% elif mascota.especie == 'felino' %}🐱
+          {% elif mascota.especie == 'ave' %}🦜
+          {% elif mascota.especie == 'roedor' %}🐹
+          {% else %}🐾{% endif %}
+        </div>
+      </div>
+      <div class="col">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+          <h4 class="fw-bold mb-0 text-white">{{ mascota.nombre }}</h4>
+          <span class="badge bg-danger rounded-pill">{{ mascota.especie|capitalize }}</span>
+          {% if mascota.raza %}<span class="badge bg-secondary rounded-pill">{{ mascota.raza.nombre }}</span>{% endif %}
+          <span class="badge bg-dark border border-secondary rounded-pill text-capitalize">{{ mascota.sexo or 'Sexo N/R' }}</span>
+        </div>
+        <div class="small text-white-50 d-flex flex-wrap gap-3">
+          <span><i class="bi bi-person me-1"></i>Tutor: <strong class="text-white">{{ mascota.tutor.nombre_completo if mascota.tutor else 'N/A' }}</strong></span>
+          <span><i class="bi bi-calendar-event me-1"></i>Edad: <strong class="text-white">{{ mascota.edad_formateada if mascota.edad_formateada else (mascota.edad or 'N/R') }}</strong></span>
+          <span><i class="bi bi-speedometer2 me-1"></i>Último peso: <strong class="text-white">{{ (mascota.peso_actual.peso_kg ~ ' kg') if mascota.peso_actual else 'Sin registro' }}</strong></span>
+        </div>
+      </div>
+      <div class="col-auto text-end d-none d-md-block">
+        <span class="badge bg-info bg-opacity-25 text-info border border-info px-3 py-2 rounded-pill fw-bold fs-6">
+          <i class="bi bi-clipboard2-pulse me-1"></i>Módulo de Control
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<form method="post" id="form-control-medico" novalidate>
+  {{ form.csrf_token }}
+  {{ form.consulta_origen_id }}
+
+  <div class="row g-4">
+    <!-- =========================================================
+         COLUMNA IZQUIERDA (Widgets de Soporte y Agendamiento)
+         ========================================================= -->
+    <div class="col-12 col-lg-4 order-2 order-lg-1">
+      
+      <!-- WIDGET 1: REFERENCIA A LA ÚLTIMA CONSULTA (SOAP) -->
+      {% if consulta_previa %}
+      <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden" style="border-top: 4px solid #0284c7 !important;">
+        <div class="card-header bg-white py-3 px-3.5 border-bottom d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-journal-medical text-primary fs-5"></i>
+            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Última Consulta SOAP</span>
+          </div>
+          <span class="badge bg-light text-muted border small">#{{ consulta_previa.id }}</span>
+        </div>
+        <div class="card-body p-3.5">
+          <div class="small text-muted mb-3 d-flex align-items-center gap-1">
+            <i class="bi bi-clock-history text-primary"></i>
+            <span>Atendida el: <strong>{{ consulta_previa.fecha_hora|fecha_hora }}</strong></span>
+          </div>
+          
+          <div class="mb-3 p-3 rounded-3 bg-light border">
+            <span class="text-muted d-block small fw-bold text-uppercase mb-1" style="font-size: 0.72rem; letter-spacing: 0.3px;">Motivo de Consulta:</span>
+            <span class="fw-semibold text-dark small d-block" style="line-height: 1.4;">{{ consulta_previa.motivo_consulta }}</span>
+          </div>
+
+          <div class="mb-3 p-3 rounded-3 bg-warning-subtle bg-opacity-50 border border-warning-subtle">
+            <span class="text-warning-emphasis d-block small fw-bold text-uppercase mb-1" style="font-size: 0.72rem; letter-spacing: 0.3px;">Diagnóstico Establecido:</span>
+            <span class="fw-bold text-dark small d-block" style="line-height: 1.4;">{{ consulta_previa.diagnostico or 'Sin diagnóstico registrado' }}</span>
+          </div>
+
+          {% if consulta_previa.plan_tratamiento %}
+          <div class="mb-3 p-3 rounded-3 bg-danger-subtle bg-opacity-30 border border-danger-subtle">
+            <span class="text-danger d-block small fw-bold text-uppercase mb-1" style="font-size: 0.72rem; letter-spacing: 0.3px;">Plan Terapéutico Inicial:</span>
+            <span class="text-secondary small d-block" style="line-height: 1.4;">{{ consulta_previa.plan_tratamiento|truncate(120) }}</span>
+          </div>
+          {% endif %}
+
+          <button type="button" class="btn btn-sm btn-outline-info w-100 rounded-pill fw-bold py-2 shadow-xs" data-bs-toggle="modal" data-bs-target="#modalDetalleSoapPrevia">
+            <i class="bi bi-eye-fill me-1"></i>Ver última consulta SOAP
+          </button>
+        </div>
+      </div>
+
+      <!-- MODAL: Detalle de la Consulta SOAP Previa -->
+      <div class="modal fade" id="modalDetalleSoapPrevia" tabindex="-1" aria-labelledby="modalDetalleSoapPreviaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-dark text-white rounded-top-4">
+              <h5 class="modal-title fw-bold" id="modalDetalleSoapPreviaLabel">
+                <i class="bi bi-journal-medical text-info me-2"></i>Consulta SOAP #{{ consulta_previa.id }} · {{ consulta_previa.fecha_hora|fecha_hora }}
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4">
+              <div class="mb-3">
+                <label class="small text-muted fw-bold text-uppercase">Médico Tratante:</label>
+                <div class="fw-bold text-dark">Dr/a. {{ consulta_previa.veterinario.nombre if consulta_previa.veterinario else 'Veterinario' }}</div>
+              </div>
+
+              <!-- Constantes vitales -->
+              <div class="row g-2 mb-3 text-center">
+                <div class="col-4 col-md-2 p-2 bg-light rounded border">
+                  <div class="small text-muted">Peso</div>
+                  <div class="fw-bold">{{ consulta_previa.peso_kg or '—' }} kg</div>
+                </div>
+                <div class="col-4 col-md-2 p-2 bg-light rounded border">
+                  <div class="small text-muted">Temp</div>
+                  <div class="fw-bold">{{ consulta_previa.temperatura_c or '—' }} °C</div>
+                </div>
+                <div class="col-4 col-md-2 p-2 bg-light rounded border">
+                  <div class="small text-muted">FC</div>
+                  <div class="fw-bold">{{ consulta_previa.frecuencia_cardiaca or '—' }} lpm</div>
+                </div>
+                <div class="col-4 col-md-2 p-2 bg-light rounded border">
+                  <div class="small text-muted">FR</div>
+                  <div class="fw-bold">{{ consulta_previa.frecuencia_respiratoria or '—' }}</div>
+                </div>
+                <div class="col-4 col-md-2 p-2 bg-light rounded border">
+                  <div class="small text-muted">Mucosas</div>
+                  <div class="fw-bold text-capitalize">{{ consulta_previa.mucosas or '—' }}</div>
+                </div>
+                <div class="col-4 col-md-2 p-2 bg-light rounded border">
+                  <div class="small text-muted">TLLC</div>
+                  <div class="fw-bold">{{ consulta_previa.tllc_segundos or '—' }}s</div>
+                </div>
+              </div>
+
+              <div class="p-3 bg-light rounded-3 border mb-3">
+                <h6 class="fw-bold text-primary mb-1">Subjetivo (S)</h6>
+                <div class="mb-1"><strong>Motivo:</strong> {{ consulta_previa.motivo_consulta }}</div>
+                {% if consulta_previa.anamnesis %}<div><strong>Anamnesis:</strong> {{ consulta_previa.anamnesis }}</div>{% endif %}
+              </div>
+
+              <div class="p-3 bg-light rounded-3 border mb-3">
+                <h6 class="fw-bold text-success mb-1">Objetivo (O) - Sistemas</h6>
+                {% if consulta_previa.sistemas_evaluados %}
+                  <div class="row g-2 mt-1">
+                    {% for k, s in consulta_previa.sistemas_evaluados.items() %}
+                      <div class="col-12 col-md-6">
+                        <div class="p-2 bg-white rounded border small">
+                          <span class="fw-bold">{{ s.nombre or k }}:</span>
+                          {% if s.estado == 'normal' %}
+                            <span class="badge bg-success-subtle text-success">Normal</span>
+                          {% elif s.estado == 'anormal' %}
+                            <span class="badge bg-danger-subtle text-danger">Anormal</span>
+                          {% endif %}
+                          {% if s.observacion %}<div class="text-muted mt-0.5">{{ s.observacion }}</div>{% endif %}
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% elif consulta_previa.examen_sistemas %}
+                  <p class="mb-0">{{ consulta_previa.examen_sistemas }}</p>
+                {% else %}
+                  <span class="text-muted">Sin observaciones de sistemas</span>
+                {% endif %}
+              </div>
+
+              <div class="p-3 bg-light rounded-3 border mb-3">
+                <h6 class="fw-bold text-warning-emphasis mb-1">Diagnóstico (A)</h6>
+                <p class="mb-0 fw-semibold">{{ consulta_previa.diagnostico }}</p>
+              </div>
+
+              <div class="p-3 bg-light rounded-3 border mb-3">
+                <h6 class="fw-bold text-danger mb-1">Plan de Tratamiento (P)</h6>
+                <p class="mb-0">{{ consulta_previa.plan_tratamiento }}</p>
+              </div>
+
+              {% if consulta_previa.receta_medica %}
+              <div class="p-3 bg-warning-subtle rounded-3 border border-warning-subtle mb-3">
+                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-prescription me-1"></i>Fórmula / Receta Médica:</h6>
+                <p class="mb-0 font-monospace">{{ consulta_previa.receta_medica }}</p>
+              </div>
+              {% endif %}
+            </div>
+            <div class="modal-footer bg-light">
+              <a href="{{ url_for('historias.consulta_detalle', id=consulta_previa.id) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill">
+                Abrir Consulta en nueva pestaña <i class="bi bi-box-arrow-up-right ms-1"></i>
+              </a>
+              <button type="button" class="btn btn-sm btn-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- WIDGET 2: AGENDAMIENTO DE PRÓXIMO CONTROL Y SINCRONIZACIÓN -->
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" style="border-top: 4px solid #10b981 !important; background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);">
+        <div class="card-header bg-white py-3 px-3.5 border-bottom d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-calendar-plus-fill text-success fs-5"></i>
+            <span class="fw-bold text-dark small text-uppercase" style="letter-spacing: 0.5px;">Próxima Cita de Control</span>
+          </div>
+          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small">Recordatorio</span>
+        </div>
+
+        <div class="card-body p-3.5">
+          <label for="fecha_proximo_control" class="form-label fw-bold text-dark small mb-1.5">
+            Fecha y Hora del Próximo Control:
+          </label>
+          {{ form.fecha_proximo_control(class="form-control form-control-lg bg-white shadow-xs border-success border-opacity-50 mb-2.5 fs-6", type="datetime-local", id="fecha_proximo_control") }}
+
+          <!-- Botones Rápidos de Fecha -->
+          <div class="small fw-bold text-muted mb-1.5" style="font-size: 0.72rem;">Sugerir en:</div>
+          <div class="d-flex flex-wrap gap-1 mb-3">
+            <button type="button" class="chip-sugerencia" onclick="sumarDiasProximoControl(3)">+3 días</button>
+            <button type="button" class="chip-sugerencia" onclick="sumarDiasProximoControl(5)">+5 días</button>
+            <button type="button" class="chip-sugerencia" onclick="sumarDiasProximoControl(7)">+7 días</button>
+            <button type="button" class="chip-sugerencia" onclick="sumarDiasProximoControl(15)">+15 días</button>
+            <button type="button" class="chip-sugerencia" onclick="sumarDiasProximoControl(30)">+1 mes</button>
+          </div>
+
+          <!-- Nota aclaratoria limpia sobre la próxima cita -->
+          <div class="text-muted small mt-2 d-flex align-items-start gap-1.5" style="font-size: 0.76rem; line-height: 1.35;">
+            <i class="bi bi-info-circle-fill text-success mt-0.5"></i>
+            <span>Esta fecha se añadirá en el mensaje de WhatsApp del tutor con los enlaces para que pueda guardarla directamente en su calendario de Google o iPhone.</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- =========================================================
+         COLUMNA DERECHA (Formulario Principal de Evaluación)
+         ========================================================= -->
+    <div class="col-12 col-lg-8 order-1 order-lg-2">
+
+      <!-- BLOQUE 1: CONSTANTES Y FECHA DEL CONTROL -->
+      <div class="soap-section-card">
+        <div class="soap-section-header bg-light">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-2 rounded-pill fw-bold fs-6">
+              <i class="bi bi-activity"></i>
+            </span>
+            <div>
+              <h5 class="fw-bold mb-0 text-dark">1. Registro de Atención & Constantes Fisiológicas</h5>
+              <small class="text-muted">Parámetros medidos en este control clínico</small>
+            </div>
+          </div>
+          <span class="badge bg-secondary-subtle text-secondary border px-3 py-1 rounded-pill small">
+            Dr/a. {{ current_user.nombre if current_user.is_authenticated else 'Médico' }}
+          </span>
+        </div>
+
+        <div class="card-body p-3 p-md-4">
+          <!-- Motivo o Nombre del Control -->
+          <div class="mb-4">
+            <label for="motivo" class="form-label fw-bold d-flex justify-content-between align-items-center mb-1">
+              <span class="text-dark"><i class="bi bi-tag-fill text-primary me-1"></i>Nombre o Motivo del Control <span class="text-muted fw-normal small">(¿Sobre qué es este control?)</span></span>
+              <span class="small text-muted fw-normal">Sugerencias rápidas:</span>
+            </label>
+
+            <!-- Chips de sugerencias para motivo -->
+            <div class="d-flex flex-wrap gap-1 mb-2">
+              <button type="button" class="chip-sugerencia" onclick="definirMotivo('Control general y seguimiento')">🩺 Chequeo general</button>
+              <button type="button" class="chip-sugerencia" onclick="definirMotivo('Control postquirúrgico y retiro de puntos')">✂️ Postquirúrgico / Puntos</button>
+              <button type="button" class="chip-sugerencia" onclick="definirMotivo('Control de cuadro gastroentérico')">🤢 Gastrointestinal</button>
+              <button type="button" class="chip-sugerencia" onclick="definirMotivo('Control dermatológico y lesiones de piel')">🐾 Dermatológico / Piel</button>
+              <button type="button" class="chip-sugerencia" onclick="definirMotivo('Control de otitis')">👂 Otitis</button>
+              <button type="button" class="chip-sugerencia" onclick="definirMotivo('Control ortopédico y claudicación')">🦴 Ortopedia / Cojera</button>
+              <button type="button" class="chip-sugerencia" onclick="definirMotivo('Revisión de resultados de laboratorio y exámenes')">🔬 Revisión de exámenes</button>
+            </div>
+
+            {{ form.motivo(class="form-control form-control-lg fs-6 shadow-xs", id="campo_motivo", placeholder="Ej: Control postquirúrgico y retiro de puntos, Control de gastroenteritis, Revisión de dermatitis...") }}
+          </div>
+
+          <div class="row g-3">
+            <!-- Fecha y Hora -->
+            <div class="col-12 col-md-6">
+              <div class="vital-metric-card">
+                <div class="vital-metric-label">
+                  <i class="bi bi-calendar3 text-primary"></i>Fecha y Hora de Atención
+                </div>
+                {{ form.fecha_hora(class="vital-metric-input form-control", type="datetime-local") }}
+              </div>
+            </div>
+
+            <!-- Peso Actual -->
+            <div class="col-6 col-md-3">
+              <div class="vital-metric-card">
+                <div class="vital-metric-label">
+                  <i class="bi bi-speedometer2 text-primary"></i>Peso Actual
+                </div>
+                {{ form.peso_kg(class="vital-metric-input", placeholder="0.00", step="0.01") }}
+                <span class="vital-metric-unit">kg</span>
+              </div>
+            </div>
+
+            <!-- Temperatura -->
+            <div class="col-6 col-md-3">
+              <div class="vital-metric-card">
+                <div class="vital-metric-label">
+                  <i class="bi bi-thermometer-half text-danger"></i>Temperatura
+                </div>
+                {{ form.temperatura_c(class="vital-metric-input", placeholder="0.0", step="0.1") }}
+                <span class="vital-metric-unit">°C</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BLOQUE 2: EVOLUCIÓN, AVANCES Y DIAGNÓSTICO -->
+      <div class="soap-section-card">
+        <div class="soap-section-header bg-light">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge soap-badge-s px-3 py-2 rounded-pill fw-bold fs-6">
+              <i class="bi bi-chat-heart-fill"></i>
+            </span>
+            <div>
+              <h5 class="fw-bold mb-0 text-dark">2. Evolución Clínica & Avances</h5>
+              <small class="text-muted">Respuesta al tratamiento previo y re-evaluación médica</small>
+            </div>
+          </div>
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">Evolución</span>
+        </div>
+
+        <div class="card-body p-3 p-md-4">
+          <!-- Avances / Comentarios de evolución (OBLIGATORIO) -->
+          <div class="mb-4">
+            <label for="avances" class="form-label fw-bold d-flex justify-content-between align-items-center mb-1">
+              <span class="text-dark"><i class="bi bi-chat-left-dots-fill text-info me-1"></i>Avances y Comentarios de Evolución <span class="text-danger">*</span></span>
+              <span class="small text-muted fw-normal">Sugerencias rápidas:</span>
+            </label>
+
+            <!-- Chips de sugerencias para avances -->
+            <div class="d-flex flex-wrap gap-1 mb-2">
+              <button type="button" class="chip-sugerencia" onclick="agregarTextoAvance('Paciente muestra evolución favorable, con disminución notable de los síntomas iniciales.')">🟢 Favorable / Notable mejoría</button>
+              <button type="button" class="chip-sugerencia" onclick="agregarTextoAvance('Paciente se mantiene estable, sin cambios significativos ni empeoramiento clínico.')">🟡 Estable / Sin cambios</button>
+              <button type="button" class="chip-sugerencia" onclick="agregarTextoAvance('Recuperación completa del cuadro clínico. Paciente activo, alerta y reactivo.')">✨ Resolución completa / Alta</button>
+              <button type="button" class="chip-sugerencia" onclick="agregarTextoAvance('Tutor reporta recuperación del apetito, ingesta normal de agua y ánimo positivo.')">🍗 Apetito y ánimo normal</button>
+              <button type="button" class="chip-sugerencia" onclick="agregarTextoAvance('Buena tolerancia gástrica a la medicación prescrita, sin episodios eméticos ni diarrea.')">💊 Buena tolerancia farmacológica</button>
+            </div>
+
+            {{ form.avances(class="form-control form-control-lg fs-6" ~ (' is-invalid' if form.avances.errors else ''), id="campo_avances", rows="4", placeholder="Detalla la evolución de los síntomas, respuesta a fármacos, apetito, ánimo, estado clínico actual reportado por el tutor o examinado en el control...", required=true) }}
+            {% if form.avances.errors %}
+              <div class="invalid-feedback d-block">{{ form.avances.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Diagnóstico / Re-evaluación Clínica -->
+          <div>
+            <label for="diagnostico" class="form-label fw-bold d-flex justify-content-between align-items-center mb-1">
+              <span class="text-dark"><i class="bi bi-search text-warning me-1"></i>Diagnóstico / Re-evaluación Clínica</span>
+              <span class="small text-muted fw-normal">Sugerencias:</span>
+            </label>
+
+            <div class="d-flex flex-wrap gap-1 mb-2">
+              <button type="button" class="chip-sugerencia" onclick="definirDiagnostico('Control: Paciente en fase de recuperación / Evolución favorable')">Recuperación favorable</button>
+              <button type="button" class="chip-sugerencia" onclick="definirDiagnostico('Control: Resolución completa del cuadro clínico. Clínicamente sano.')">Resolución / Sano</button>
+              <button type="button" class="chip-sugerencia" onclick="definirDiagnostico('Control: Continuidad de tratamiento por cuadro crónico / persistente')">Continuidad de cuadro</button>
+            </div>
+
+            {{ form.diagnostico(class="form-control form-control-lg fs-6" ~ (' is-invalid' if form.diagnostico.errors else ''), id="campo_diagnostico", rows="2", placeholder="Confirmación diagnóstica, mejoría clínica, resolución del cuadro o nuevos hallazgos...") }}
+            {% if form.diagnostico.errors %}
+              <div class="invalid-feedback d-block">{{ form.diagnostico.errors[0] }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- BLOQUE 3: PLAN TERAPÉUTICO Y MEDICAMENTOS -->
+      <div class="soap-section-card">
+        <div class="soap-section-header bg-light">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge soap-badge-p px-3 py-2 rounded-pill fw-bold fs-6">
+              <i class="bi bi-prescription2"></i>
+            </span>
+            <div>
+              <h5 class="fw-bold mb-0 text-dark">3. Plan Terapéutico & Medicamentos Formulado</h5>
+              <small class="text-muted">Pautas de manejo, ajustes de prescripción y recomendaciones</small>
+            </div>
+          </div>
+          <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1">Tratamiento</span>
+        </div>
+
+        <div class="card-body p-3 p-md-4">
+          <!-- Plan Terapéutico (OBLIGATORIO) -->
+          <div class="mb-4">
+            <label for="plan_terapeutico" class="form-label fw-bold d-flex justify-content-between align-items-center mb-1">
+              <span class="text-dark"><i class="bi bi-clipboard2-pulse-fill text-danger me-1"></i>Plan Terapéutico y Recomendaciones <span class="text-danger">*</span></span>
+              <span class="small text-muted fw-normal">Pautas rápidas:</span>
+            </label>
+
+            <!-- Chips de sugerencias para plan -->
+            <div class="d-flex flex-wrap gap-1 mb-2">
+              <button type="button" class="chip-sugerencia" onclick="agregarTextoPlan('Continuar tratamiento farmacológico formulado hasta completar los días indicados.')">Continuar tratamiento</button>
+              <button type="button" class="chip-sugerencia" onclick="agregarTextoPlan('Se autoriza suspensión de medicamentos. Mantener observación en casa.')">Suspender fármacos</button>
+              <button type="button" class="chip-sugerencia" onclick="agregarTextoPlan('Mantener dieta blanda/gastrointestinal e hidratación constante por 48 horas más.')">Dieta blanda</button>
+              <button type="button" class="chip-sugerencia" onclick="agregarTextoPlan('Control médico de seguimiento en los días programados o antes si presenta recaída.')">Control de seguimiento</button>
+              <button type="button" class="chip-sugerencia" onclick="agregarTextoPlan('Alta médica definitiva por resolución satisfactoria del cuadro clínico.')">Alta médica</button>
+            </div>
+
+            {{ form.plan_terapeutico(class="form-control form-control-lg fs-6" ~ (' is-invalid' if form.plan_terapeutico.errors else ''), id="campo_plan", rows="3", placeholder="Continuación o ajuste del tratamiento, suspensión de fármacos, recomendaciones dietéticas, pautas de manejo o indicaciones para la casa...", required=true) }}
+            {% if form.plan_terapeutico.errors %}
+              <div class="invalid-feedback d-block">{{ form.plan_terapeutico.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Medicamentos / Prescripción formulada (Estilo Recetario Médico) -->
+          <div class="mb-4">
+            <label for="medicamento" class="form-label fw-bold text-dark mb-1 d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-capsule text-primary me-1"></i>Medicamentos / Fórmula Prescrita en este Control</span>
+              <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill font-monospace" style="font-size: 0.72rem;">Recetario Rx</span>
+            </label>
+            <div class="p-3 rounded-3 border" style="background-color: #fafaf9; border: 1.5px dashed #cbd5e1 !important;">
+              {{ form.medicamento(class="form-control font-monospace bg-white shadow-xs border", rows="3", placeholder="Ej:\n1. Continuar Amoxicilina 250mg: 1 tableta cada 12 horas por 4 días más.\n2. Probióticos orales: 1 sobre diario disuelto en alimento por 5 días.") }}
+              <div class="form-text text-muted small mt-1.5" style="font-size: 0.73rem;">
+                <i class="bi bi-info-circle me-1"></i>Este recetario se incluirá en el informe enviado por WhatsApp al tutor.
+              </div>
+            </div>
+          </div>
+
+          <!-- Observaciones adicionales -->
+          <div>
+            <label for="observaciones" class="form-label fw-bold text-dark small mb-1">
+              <i class="bi bi-chat-square-quote text-secondary me-1"></i>Observaciones Adicionales / Notas Internas (Opcional)
+            </label>
+            {{ form.observaciones(class="form-control shadow-xs", rows="2", placeholder="Notas internas o comentarios adicionales para el equipo médico de la clínica...") }}
+          </div>
+        </div>
+
+        <div class="card-footer bg-white p-3 p-md-4 d-flex flex-wrap justify-content-between align-items-center gap-3 border-top">
+          <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="btn btn-outline-secondary rounded-pill px-4 fw-bold">
+            <i class="bi bi-x-circle me-1"></i>Cancelar
+          </a>
+          <button type="submit" class="btn btn-info text-white btn-lg rounded-pill fw-bold px-5 shadow" style="background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%); border: none;">
+            <i class="bi bi-check-circle-fill me-2"></i>{{ 'Guardar Cambios del Control' if control else 'Guardar Control Médico' }}
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</form>
+
+<script>
+function definirMotivo(texto) {
+  const campo = document.getElementById('campo_motivo');
+  if (!campo) return;
+  campo.value = texto;
+  campo.focus();
+}
+
+function sumarDiasProximoControl(dias) {
+  const input = document.getElementById('fecha_proximo_control');
+  if (!input) return;
+  const hoy = new Date();
+  hoy.setDate(hoy.getDate() + dias);
+  hoy.setHours(10, 0, 0, 0); // Hora por defecto 10:00 AM
+
+  const anio = hoy.getFullYear();
+  const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoy.getDate()).padStart(2, '0');
+  const horas = String(hoy.getHours()).padStart(2, '0');
+  const mins = String(hoy.getMinutes()).padStart(2, '0');
+
+  input.value = `${anio}-${mes}-${dia}T${horas}:${mins}`;
+  input.focus();
+}
+
+function agregarTextoAvance(texto) {
+  const campo = document.getElementById('campo_avances');
+  if (!campo) return;
+  if (campo.value.trim().length > 0) {
+    campo.value = campo.value.trim() + '\n' + texto;
+  } else {
+    campo.value = texto;
+  }
+  campo.focus();
+}
+
+function definirDiagnostico(texto) {
+  const campo = document.getElementById('campo_diagnostico');
+  if (!campo) return;
+  campo.value = texto;
+  campo.focus();
+}
+
+function agregarTextoPlan(texto) {
+  const campo = document.getElementById('campo_plan');
+  if (!campo) return;
+  if (campo.value.trim().length > 0) {
+    campo.value = campo.value.trim() + '\n' + texto;
+  } else {
+    campo.value = texto;
+  }
+  campo.focus();
+}
+</script>
+{% endblock %}

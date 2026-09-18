@@ -17,6 +17,11 @@
     <a href="{{ url_for('historias.consulta_nueva', mascota_id=cita.mascota.id) }}" class="btn btn-sm btn-primary rounded-pill px-3 shadow-xs">
       <i class="bi bi-journal-medical me-1"></i> Iniciar Consulta SOAP
     </a>
+    {% if current_user.rol in ('admin', 'recepcion', 'auxiliar', 'veterinario') %}
+    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-xs fw-semibold" data-bs-toggle="modal" data-bs-target="#modalEliminarCitaMedica">
+      <i class="bi bi-trash me-1"></i> Eliminar Cita
+    </button>
+    {% endif %}
   </div>
 </div>
 
@@ -254,6 +259,39 @@
             <i class="bi bi-chevron-right text-muted"></i>
           </a>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# MODAL CONFIRMAR ELIMINACIÓN DE CITA MÉDICA #}
+<div class="modal fade" id="modalEliminarCitaMedica" tabindex="-1" aria-labelledby="modalEliminarCitaMedicaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header bg-danger-subtle text-danger border-0 p-3">
+        <h5 class="modal-title fw-bold fs-6" id="modalEliminarCitaMedicaLabel">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Eliminación de Cita Médica
+        </h5>
+        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body p-4 text-center">
+        <div class="display-6 text-danger mb-3">
+          <i class="bi bi-trash3-fill"></i>
+        </div>
+        <h6 class="fw-bold text-dark mb-2">¿Estás seguro de eliminar la cita de {{ cita.mascota.nombre }}?</h6>
+        <p class="text-secondary small mb-0">
+          Esta acción eliminará permanentemente el agendamiento de consulta (<strong>{{ cita.tipo_etiqueta }}</strong>). Esta operación no se puede deshacer.
+        </p>
+      </div>
+      <div class="modal-footer bg-light border-0 p-3 justify-content-center">
+        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        <form method="post" action="{{ url_for('agenda.eliminar', id=cita.id) }}" class="m-0">
+          {{ form_csrf.csrf_token }}
+          <input type="hidden" name="next" value="{{ url_for('agenda.lista', fecha=cita.fecha_hora.strftime('%Y-%m-%d')) }}">
+          <button type="submit" class="btn btn-danger rounded-pill px-4 shadow-sm fw-bold">
+            <i class="bi bi-trash-fill me-1"></i> Sí, Eliminar Cita
+          </button>
+        </form>
       </div>
     </div>
   </div>

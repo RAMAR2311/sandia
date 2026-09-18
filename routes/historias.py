@@ -2,7 +2,7 @@
 
 import json
 from datetime import datetime
-from flask import Blueprint, current_app, flash, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, Response, current_app, flash, redirect, render_template, request, send_file, url_for
 from decorators import clinico_required
 from pdf_generator import generar_pdf_consulta, generar_pdf_receta
 from flask_login import current_user, login_required
@@ -13,6 +13,7 @@ from forms import (
     AltaHospitalizacionForm,
     CirugiaForm,
     ConsultaMedicaForm,
+    ControlMedicoForm,
     DesparasitacionMascotaForm,
     EnmiendaConsultaForm,
     EvolucionHospitalariaForm,
@@ -22,11 +23,13 @@ from forms import (
     ResultadoExamenForm,
     VacunaMascotaForm,
     RemisionInternaForm,
+    SoloCsrfForm,
 )
 from models import (
     Cirugia,
     ConfiguracionSistema,
     ConsultaMedica,
+    ControlMedico,
     DesparasitacionMascota,
     EnmiendaConsulta,
     EvolucionHospitalaria,
@@ -42,6 +45,8 @@ from models import (
 from utils import (
     ZONA_BOGOTA,
     eliminar_documento,
+    generar_archivo_ics,
+    generar_enlace_google_calendar,
     guardar_documento,
     hoy_bogota,
     normalizar_texto,
@@ -106,6 +111,8 @@ def ficha_medica(mascota_id: int):
             selectinload(Mascota.tutor),
             selectinload(Mascota.raza),
             selectinload(Mascota.consultas).selectinload(ConsultaMedica.veterinario),
+            selectinload(Mascota.controles).selectinload(ControlMedico.veterinario),
+            selectinload(Mascota.controles).selectinload(ControlMedico.consulta_origen),
             selectinload(Mascota.vacunas),
             selectinload(Mascota.desparasitaciones),
             selectinload(Mascota.registros_peso),
@@ -183,6 +190,7 @@ def ficha_medica(mascota_id: int):
         form_remision=form_remision,
         datos_peso=datos_peso,
         tab_activa=tab_activa,
+        form_csrf=SoloCsrfForm(),
     )
 
 
@@ -199,7 +207,7 @@ SISTEMAS_MEDICOS_CATALOGO = [
             "Claudicación en extremidad",
             "Dolor articular leve",
             "Crepitación articular",
-            "Reflejo fonicular positivo",
+            "Reflejo panicular positivo",
         ],
     },
     {
@@ -386,6 +394,7 @@ def consulta_nueva(mascota_id: int):
                 creado_por_id=current_user.id,
             )
             db.session.add(consulta)
+            db.session.flush()
 
             # Actualizar peso de la mascota si se registró uno nuevo
             if form.peso_kg.data and (not mascota.peso_actual or form.peso_kg.data != mascota.peso_actual.peso_kg):
@@ -395,9 +404,35 @@ def consulta_nueva(mascota_id: int):
             if form.alimentacion.data and form.alimentacion.data.strip():
                 mascota.alimentacion = form.alimentacion.data.strip()
 
+            # Agendar próximo control si fue seleccionado
+            control_creado = None
+            if form.agendar_control.data and form.fecha_proximo_control.data:
+                motivo_ctl = form.motivo_control.data.strip() if form.motivo_control.data else f"Control de {consulta.diagnostico}"
+                control_creado = ControlMedico(
+                    mascota_id=mascota.id,
+                    tutor_id=mascota.tutor_id,
+                    veterinario_id=current_user.id,
+                    consulta_origen_id=consulta.id,
+                    motivo=motivo_ctl,
+                    fecha_hora=form.fecha_proximo_control.data,
+                    peso_kg=form.peso_kg.data,
+                    temperatura_c=form.temperatura_c.data,
+                    avances=f"Programado desde consulta médica SOAP del {consulta.fecha_hora.strftime('%d/%m/%Y')}",
+                    diagnostico=f"Seguimiento: {consulta.diagnostico}",
+                    plan_terapeutico=consulta.plan_tratamiento,
+                    medicamento=consulta.receta_medica,
+                    fecha_proximo_control=form.fecha_proximo_control.data,
+                    observaciones=f"Control agendado al finalizar consulta SOAP. Motivo: {motivo_ctl}",
+                    creado_por_id=current_user.id,
+                )
+                db.session.add(control_creado)
+
             db.session.commit()
-            flash("Consulta médica (SOAP) guardada correctamente.", "success")
-            return redirect(url_for("historias.ficha_medica", mascota_id=mascota.id))
+            if control_creado:
+                flash(f"Consulta médica guardada y Próximo Control agendado para el {control_creado.fecha_proximo_control.strftime('%d/%m/%Y %I:%M %p')}.", "success")
+            else:
+                flash("Consulta médica (SOAP) guardada correctamente.", "success")
+            return redirect(url_for("historias.consulta_detalle", id=consulta.id))
         except Exception:
             db.session.rollback()
             current_app.logger.exception("Error al guardar consulta médica")
@@ -411,6 +446,346 @@ def consulta_nueva(mascota_id: int):
     )
 
 
+@bp.route("/consulta/<int:id>/editar", methods=["GET", "POST"])
+@login_required
+@clinico_required
+def consulta_editar(id: int):
+    consulta = db.session.execute(
+        select(ConsultaMedica)
+        .filter_by(id=id)
+        .options(
+            selectinload(ConsultaMedica.mascota).selectinload(Mascota.tutor),
+            selectinload(ConsultaMedica.mascota).selectinload(Mascota.raza),
+            selectinload(ConsultaMedica.mascota).selectinload(Mascota.registros_peso),
+            selectinload(ConsultaMedica.tutor),
+            selectinload(ConsultaMedica.veterinario),
+            selectinload(ConsultaMedica.controles_asociados),
+        )
+    ).scalar_one_or_none()
+    if not consulta:
+        flash("La consulta médica no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    mascota = consulta.mascota
+    form = ConsultaMedicaForm(obj=consulta)
+
+    if not form.is_submitted():
+        if consulta.controles_asociados:
+            ultimo_control = consulta.controles_asociados[0]
+            form.agendar_control.data = True
+            form.motivo_control.data = ultimo_control.motivo
+            form.fecha_proximo_control.data = ultimo_control.fecha_proximo_control or ultimo_control.fecha_hora
+
+    if form.validate_on_submit():
+        examen_raw = form.examen_sistemas.data.strip() if form.examen_sistemas.data else ""
+        if examen_raw.startswith("{"):
+            try:
+                s_data = json.loads(examen_raw)
+                s_dict = s_data.get("sistemas", {}) if isinstance(s_data, dict) else {}
+                faltantes = []
+                for sist in SISTEMAS_MEDICOS_CATALOGO:
+                    item = s_dict.get(sist["id"])
+                    if not item or item.get("estado") not in ("normal", "anormal"):
+                        faltantes.append(sist["nombre"])
+                if faltantes:
+                    flash(
+                        f"Debes completar la evaluación de todos los sistemas. Faltan {len(faltantes)}: {', '.join(faltantes)}.",
+                        "danger",
+                    )
+                    return render_template(
+                        "historias/form_consulta.html",
+                        form=form,
+                        mascota=mascota,
+                        consulta=consulta,
+                        catalogo_sistemas=SISTEMAS_MEDICOS_CATALOGO,
+                    )
+            except json.JSONDecodeError:
+                pass
+
+        try:
+            consulta.motivo_consulta = form.motivo_consulta.data.strip()
+            consulta.anamnesis = form.anamnesis.data.strip() if form.anamnesis.data else None
+            consulta.alimentacion = (form.alimentacion.data or "").strip() or None
+            consulta.desparasitacion_producto = (form.desparasitacion_producto.data or "").strip() or None
+            consulta.desparasitacion_fecha = form.desparasitacion_fecha.data
+            consulta.vacunacion_producto = (form.vacunacion_producto.data or "").strip() or None
+            consulta.vacunacion_fecha = form.vacunacion_fecha.data
+            consulta.peso_kg = form.peso_kg.data
+            consulta.temperatura_c = form.temperatura_c.data
+            consulta.frecuencia_cardiaca = form.frecuencia_cardiaca.data
+            consulta.frecuencia_respiratoria = (form.frecuencia_respiratoria.data or "").strip() or None
+            consulta.tllc_segundos = form.tllc_segundos.data
+            consulta.mucosas = form.mucosas.data or None
+            consulta.condicion_corporal = form.condicion_corporal.data or None
+            consulta.examen_sistemas = form.examen_sistemas.data.strip() if form.examen_sistemas.data else None
+            consulta.diagnostico = form.diagnostico.data.strip()
+            consulta.plan_tratamiento = form.plan_tratamiento.data.strip()
+            consulta.receta_medica = form.receta_medica.data.strip() if form.receta_medica.data else None
+            consulta.observaciones = form.observaciones.data.strip() if form.observaciones.data else None
+
+            # Actualizar alimentación en el perfil si cambió
+            if form.alimentacion.data and form.alimentacion.data.strip():
+                mascota.alimentacion = form.alimentacion.data.strip()
+
+            # Actualizar o crear control médico si fue seleccionado
+            if form.agendar_control.data and form.fecha_proximo_control.data:
+                motivo_ctl = form.motivo_control.data.strip() if form.motivo_control.data else f"Control de {consulta.diagnostico}"
+                if consulta.controles_asociados:
+                    ctl = consulta.controles_asociados[0]
+                    ctl.motivo = motivo_ctl
+                    ctl.fecha_proximo_control = form.fecha_proximo_control.data
+                    ctl.fecha_hora = form.fecha_proximo_control.data
+                    ctl.diagnostico = f"Seguimiento: {consulta.diagnostico}"
+                    ctl.plan_terapeutico = consulta.plan_tratamiento
+                    ctl.medicamento = consulta.receta_medica
+                else:
+                    nuevo_ctl = ControlMedico(
+                        mascota_id=mascota.id,
+                        tutor_id=mascota.tutor_id,
+                        veterinario_id=current_user.id,
+                        consulta_origen_id=consulta.id,
+                        motivo=motivo_ctl,
+                        fecha_hora=form.fecha_proximo_control.data,
+                        peso_kg=form.peso_kg.data,
+                        temperatura_c=form.temperatura_c.data,
+                        avances=f"Programado desde consulta médica SOAP del {consulta.fecha_hora.strftime('%d/%m/%Y')}",
+                        diagnostico=f"Seguimiento: {consulta.diagnostico}",
+                        plan_terapeutico=consulta.plan_tratamiento,
+                        medicamento=consulta.receta_medica,
+                        fecha_proximo_control=form.fecha_proximo_control.data,
+                        observaciones=f"Control agendado al editar consulta SOAP. Motivo: {motivo_ctl}",
+                        creado_por_id=current_user.id,
+                    )
+                    db.session.add(nuevo_ctl)
+
+            db.session.commit()
+            flash("Consulta médica actualizada correctamente.", "success")
+            return redirect(url_for("historias.consulta_detalle", id=consulta.id))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Error al actualizar consulta médica")
+            flash("Ocurrió un error al actualizar la consulta.", "danger")
+
+    return render_template(
+        "historias/form_consulta.html",
+        form=form,
+        mascota=mascota,
+        consulta=consulta,
+        catalogo_sistemas=SISTEMAS_MEDICOS_CATALOGO,
+    )
+
+
+@bp.route("/mascota/<int:mascota_id>/control/nuevo", methods=["GET", "POST"])
+@login_required
+@clinico_required
+def control_nuevo(mascota_id: int):
+    mascota = db.session.execute(
+        select(Mascota)
+        .filter_by(id=mascota_id)
+        .options(
+            selectinload(Mascota.tutor),
+            selectinload(Mascota.raza),
+            selectinload(Mascota.consultas).selectinload(ConsultaMedica.veterinario),
+            selectinload(Mascota.registros_peso),
+        )
+    ).scalar_one_or_none()
+    if not mascota:
+        flash("La mascota no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    # Obtener última consulta SOAP si existe
+    consulta_previa = mascota.consultas[0] if mascota.consultas else None
+
+    form = ControlMedicoForm()
+    if not form.is_submitted():
+        # Pre-llenar fecha_hora actual
+        form.fecha_hora.data = obtener_hora_bogota()
+        # Prellenar peso actual si existe
+        if mascota.peso_actual:
+            form.peso_kg.data = mascota.peso_actual.peso_kg
+        if consulta_previa:
+            form.consulta_origen_id.data = str(consulta_previa.id)
+            if not form.motivo.data:
+                if consulta_previa.diagnostico:
+                    form.motivo.data = f"Control de {consulta_previa.diagnostico}"
+                elif consulta_previa.motivo_consulta:
+                    form.motivo.data = f"Control de {consulta_previa.motivo_consulta}"
+            if consulta_previa.diagnostico and not form.diagnostico.data:
+                form.diagnostico.data = f"Seguimiento: {consulta_previa.diagnostico}"
+            if consulta_previa.receta_medica and not form.medicamento.data:
+                form.medicamento.data = consulta_previa.receta_medica
+
+    if form.validate_on_submit():
+        try:
+            consulta_origen_id = None
+            if form.consulta_origen_id.data and str(form.consulta_origen_id.data).isdigit():
+                consulta_origen_id = int(form.consulta_origen_id.data)
+
+            control = ControlMedico(
+                mascota_id=mascota.id,
+                tutor_id=mascota.tutor_id,
+                veterinario_id=current_user.id,
+                consulta_origen_id=consulta_origen_id,
+                motivo=form.motivo.data.strip() if form.motivo.data else None,
+                fecha_hora=form.fecha_hora.data or obtener_hora_bogota(),
+                peso_kg=form.peso_kg.data,
+                temperatura_c=form.temperatura_c.data,
+                avances=form.avances.data.strip(),
+                diagnostico=form.diagnostico.data.strip() if form.diagnostico.data else None,
+                plan_terapeutico=form.plan_terapeutico.data.strip(),
+                medicamento=form.medicamento.data.strip() if form.medicamento.data else None,
+                fecha_proximo_control=form.fecha_proximo_control.data,
+                observaciones=form.observaciones.data.strip() if form.observaciones.data else None,
+                creado_por_id=current_user.id,
+            )
+            db.session.add(control)
+
+            # Actualizar peso de la mascota si se registró uno nuevo
+            if form.peso_kg.data and (not mascota.peso_actual or form.peso_kg.data != mascota.peso_actual.peso_kg):
+                mascota.peso_actual = form.peso_kg.data
+
+            db.session.commit()
+            flash("Control médico guardado correctamente.", "success")
+            return redirect(url_for("historias.ficha_medica", mascota_id=mascota.id, tab="controles"))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Error al guardar control médico")
+            flash("Ocurrió un error al guardar el control médico.", "danger")
+
+    return render_template(
+        "historias/form_control.html",
+        form=form,
+        mascota=mascota,
+        consulta_previa=consulta_previa,
+    )
+
+
+@bp.route("/control/<int:id>/editar", methods=["GET", "POST"])
+@login_required
+@clinico_required
+def control_editar(id: int):
+    control = db.session.execute(
+        select(ControlMedico)
+        .filter_by(id=id)
+        .options(
+            selectinload(ControlMedico.mascota).selectinload(Mascota.tutor),
+            selectinload(ControlMedico.mascota).selectinload(Mascota.raza),
+            selectinload(ControlMedico.mascota).selectinload(Mascota.registros_peso),
+            selectinload(ControlMedico.consulta_origen).selectinload(ConsultaMedica.veterinario),
+            selectinload(ControlMedico.veterinario),
+        )
+    ).scalar_one_or_none()
+    if not control:
+        flash("El control médico no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    mascota = control.mascota
+    consulta_previa = control.consulta_origen
+    form = ControlMedicoForm(obj=control)
+
+    if form.validate_on_submit():
+        try:
+            control.motivo = form.motivo.data.strip() if form.motivo.data else None
+            control.fecha_hora = form.fecha_hora.data or control.fecha_hora
+            control.peso_kg = form.peso_kg.data
+            control.temperatura_c = form.temperatura_c.data
+            control.avances = form.avances.data.strip()
+            control.diagnostico = form.diagnostico.data.strip() if form.diagnostico.data else None
+            control.plan_terapeutico = form.plan_terapeutico.data.strip()
+            control.medicamento = form.medicamento.data.strip() if form.medicamento.data else None
+            control.fecha_proximo_control = form.fecha_proximo_control.data
+            control.observaciones = form.observaciones.data.strip() if form.observaciones.data else None
+
+            # Actualizar peso de la mascota si se registró uno nuevo
+            if form.peso_kg.data and (not mascota.peso_actual or form.peso_kg.data != mascota.peso_actual.peso_kg):
+                mascota.peso_actual = form.peso_kg.data
+
+            db.session.commit()
+            flash("Control médico actualizado correctamente.", "success")
+            return redirect(url_for("historias.ficha_medica", mascota_id=mascota.id, tab="controles"))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Error al actualizar control médico")
+            flash("Ocurrió un error al actualizar el control médico.", "danger")
+
+    return render_template(
+        "historias/form_control.html",
+        form=form,
+        mascota=mascota,
+        control=control,
+        consulta_previa=consulta_previa,
+    )
+
+
+@bp.route("/control/<int:id>/calendario.ics", methods=["GET"])
+def control_ics(id: int):
+    control = db.session.execute(
+        select(ControlMedico)
+        .filter_by(id=id)
+        .options(
+            selectinload(ControlMedico.mascota),
+            selectinload(ControlMedico.tutor),
+        )
+    ).scalar_one_or_none()
+    if not control or not control.fecha_proximo_control:
+        flash("No hay fecha de próximo control programada.", "warning")
+        return redirect(url_for("historias.lista"))
+
+    clinica_nombre = ConfiguracionSistema.obtener("clinica_nombre", "Sandía · Medicina & Spa Veterinario")
+    clinica_dir = ConfiguracionSistema.obtener("clinica_direccion", "Clínica Veterinaria")
+    titulo = f"🐾 Control Veterinario: {control.mascota.nombre if control.mascota else 'Mascota'}"
+    desc = f"Control de seguimiento médico en {clinica_nombre}.\nPaciente: {control.mascota.nombre if control.mascota else ''}\nPlan / Recomendaciones: {control.plan_terapeutico}"
+
+    ics_data = generar_archivo_ics(
+        titulo=titulo,
+        fecha_inicio=control.fecha_proximo_control,
+        duracion_minutos=30,
+        descripcion=desc,
+        ubicacion=clinica_dir,
+        uid=f"control-{control.id}-{control.mascota_id}@sandiavet.com",
+    )
+
+    filename = f"Control_{control.mascota.nombre if control.mascota else 'Paciente'}_{control.id}.ics"
+    return Response(
+        ics_data,
+        mimetype="text/calendar; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Type": "text/calendar; charset=utf-8",
+        },
+    )
+
+
+@bp.route("/control/<int:id>/eliminar", methods=["POST"])
+@login_required
+@clinico_required
+def control_eliminar(id: int):
+    control = db.session.get(ControlMedico, id)
+    if not control:
+        flash("El control médico no existe o ya fue eliminado.", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("historias.lista"))
+
+    form = SoloCsrfForm()
+    if not form.validate_on_submit():
+        flash("Error de validación de seguridad (CSRF).", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("historias.ficha_medica", mascota_id=control.mascota_id, tab="controles"))
+
+    mascota_id = control.mascota_id
+    try:
+        db.session.delete(control)
+        db.session.commit()
+        flash("Control médico eliminado correctamente.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al eliminar control médico %d", id)
+        flash("Error interno al eliminar el control médico.", "danger")
+
+    next_url = request.form.get("next")
+    return redirect(next_url or url_for("historias.ficha_medica", mascota_id=mascota_id, tab="controles"))
+
+
 @bp.route("/consulta/<int:id>", methods=["GET"])
 @login_required
 @clinico_required
@@ -420,9 +795,11 @@ def consulta_detalle(id: int):
         .filter_by(id=id)
         .options(
             selectinload(ConsultaMedica.mascota).selectinload(Mascota.raza),
+            selectinload(ConsultaMedica.mascota).selectinload(Mascota.tutor),
             selectinload(ConsultaMedica.tutor),
             selectinload(ConsultaMedica.veterinario),
             selectinload(ConsultaMedica.enmiendas).selectinload(EnmiendaConsulta.autor),
+            selectinload(ConsultaMedica.controles_asociados).selectinload(ControlMedico.veterinario),
         )
     ).scalar_one_or_none()
 
@@ -546,6 +923,37 @@ def vacuna_nueva(mascota_id: int):
     return render_template("historias/form_vacuna.html", form=form, mascota=mascota)
 
 
+@bp.route("/vacuna/<int:id>/eliminar", methods=["POST"])
+@login_required
+@clinico_required
+def vacuna_eliminar(id: int):
+    vacuna = db.session.get(VacunaMascota, id)
+    if not vacuna:
+        flash("El registro de vacuna no existe o ya fue eliminado.", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("historias.lista"))
+
+    form = SoloCsrfForm()
+    if not form.validate_on_submit():
+        flash("Error de validación de seguridad (CSRF).", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("historias.ficha_medica", mascota_id=vacuna.mascota_id, tab="vacunas"))
+
+    mascota_id = vacuna.mascota_id
+    nombre_v = vacuna.nombre_vacuna
+    try:
+        db.session.delete(vacuna)
+        db.session.commit()
+        flash(f"Registro de vacuna '{nombre_v}' eliminado correctamente.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al eliminar vacuna %d", id)
+        flash("Error interno al eliminar la vacuna.", "danger")
+
+    next_url = request.form.get("next")
+    return redirect(next_url or url_for("historias.ficha_medica", mascota_id=mascota_id, tab="vacunas"))
+
+
 # ---------------------------------------------------------------------------
 # Desparasitación
 # ---------------------------------------------------------------------------
@@ -591,6 +999,38 @@ def desparasitacion_nueva(mascota_id: int):
             flash("Error al registrar desparasitación.", "danger")
 
     return render_template("historias/form_desparasitacion.html", form=form, mascota=mascota)
+
+
+@bp.route("/desparasitacion/<int:id>/eliminar", methods=["POST"])
+@login_required
+@clinico_required
+def desparasitacion_eliminar(id: int):
+    desparasitacion = db.session.get(DesparasitacionMascota, id)
+    if not desparasitacion:
+        flash("El registro de desparasitación no existe o ya fue eliminado.", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("historias.lista"))
+
+    form = SoloCsrfForm()
+    if not form.validate_on_submit():
+        flash("Error de validación de seguridad (CSRF).", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("historias.ficha_medica", mascota_id=desparasitacion.mascota_id, tab="desparasitaciones"))
+
+    mascota_id = desparasitacion.mascota_id
+    producto = desparasitacion.producto
+    try:
+        db.session.delete(desparasitacion)
+        db.session.commit()
+        flash(f"Registro de desparasitación '{producto}' eliminado correctamente.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al eliminar desparasitación %d", id)
+        flash("Error interno al eliminar la desparasitación.", "danger")
+
+    next_url = request.form.get("next")
+    return redirect(next_url or url_for("historias.ficha_medica", mascota_id=mascota_id, tab="desparasitaciones"))
+
 
 
 # ---------------------------------------------------------------------------
@@ -1021,6 +1461,8 @@ def remision_nueva(mascota_id: int):
             veterinario_id=current_user.id,
             creado_por_id=current_user.id,
             fecha_remision=obtener_hora_bogota(),
+            telefono_destino=(form.telefono_destino.data or "").strip() or None,
+            direccion_destino=(form.direccion_destino.data or "").strip() or None,
             dieta_marca_tipo=(form.dieta_marca_tipo.data or "").strip() or None,
             antecedentes_cirugias=(form.antecedentes_cirugias.data or "").strip() or None,
             antecedentes_enfermedades=(form.antecedentes_enfermedades.data or "").strip() or None,
@@ -1045,6 +1487,36 @@ def remision_nueva(mascota_id: int):
         for error in errores:
             flash(f"Error en {campo}: {error}", "danger")
     return redirect(url_for("historias.ficha_medica", mascota_id=mascota.id, tab="remisiones"))
+
+
+@bp.route("/remisiones/<int:id>/eliminar", methods=["POST"])
+@login_required
+@clinico_required
+def remision_eliminar(id: int):
+    remision = db.session.get(RemisionInterna, id)
+    if not remision:
+        flash("La remisión no existe o ya fue eliminada.", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("historias.lista"))
+
+    form = SoloCsrfForm()
+    if not form.validate_on_submit():
+        flash("Error de validación de seguridad (CSRF).", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("historias.ficha_medica", mascota_id=remision.mascota_id, tab="remisiones"))
+
+    mascota_id = remision.mascota_id
+    try:
+        db.session.delete(remision)
+        db.session.commit()
+        flash("Remisión clínica eliminada correctamente.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al eliminar remisión clínica %d", id)
+        flash("Error interno al eliminar la remisión clínica.", "danger")
+
+    next_url = request.form.get("next")
+    return redirect(next_url or url_for("historias.ficha_medica", mascota_id=mascota_id, tab="remisiones"))
 
 
 @bp.route("/remisiones/<int:id>/json", methods=["GET"])

@@ -81,9 +81,17 @@
             <div class="fw-bold text-success font-monospace fs-5">{{ s.precio_sugerido|cop }}</div>
           </div>
 
-          <a href="{{ url_for('spa.servicio_editar', id=s.id) }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 shadow-xs">
-            <i class="bi bi-pencil me-1"></i>Editar
-          </a>
+          <div class="d-flex align-items-center gap-1">
+            <a href="{{ url_for('spa.servicio_editar', id=s.id) }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 shadow-xs">
+              <i class="bi bi-pencil me-1"></i>Editar
+            </a>
+            <form method="post" action="{{ url_for('spa.servicio_eliminar', id=s.id) }}" class="m-0" onsubmit="return confirm('¿Deseas eliminar el servicio de spa \'{{ s.nombre }}\'? Si tiene citas pasadas en el historial, será desactivado automáticamente.')">
+              {{ form_csrf.csrf_token }}
+              <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 shadow-xs" title="Eliminar servicio">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>

@@ -2346,6 +2346,22 @@ body.pagina-login { background: var(--sandia-crema) radial-gradient(circle at 20
   color: #ffffff !important;
 }
 
+/* 1.1 Control Médico (Azul Cielo / Info) */
+.btn-accion-clinica--control {
+  background: #f0f9ff !important;
+  border-color: #bae6fd !important;
+  color: #0369a1 !important;
+}
+.btn-accion-clinica--control .btn-accion-clinica__icono {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+.btn-accion-clinica--control:hover {
+  background: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+  color: #075985 !important;
+}
+
 /* 2. Vacuna (Verde Esmeralda) */
 .btn-accion-clinica--vacuna {
   background: #f0fdf4 !important;

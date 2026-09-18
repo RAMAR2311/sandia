@@ -8,6 +8,7 @@ from wtforms import (
     BooleanField,
     DateField,
     DateTimeField,
+    DateTimeLocalField,
     TimeField,
     DecimalField,
     HiddenField,
@@ -544,6 +545,11 @@ class ConsultaMedicaForm(FlaskForm):
     receta_medica = TextAreaField("Fórmula Médica / Prescripción", validators=[Optional(), Length(max=2000)])
     observaciones = TextAreaField("Observaciones adicionales", validators=[Optional(), Length(max=1000)])
 
+    # Agendamiento de próximo control médico directamente desde la consulta
+    agendar_control = BooleanField("Agendar próximo control médico", default=False)
+    motivo_control = StringField("Motivo o Tipo de Control", validators=[Optional(), Length(max=255)])
+    fecha_proximo_control = DateTimeLocalField("Fecha y hora del próximo control", format="%Y-%m-%dT%H:%M", validators=[Optional()])
+
     enviar = SubmitField("Guardar Consulta Médica")
 
 
@@ -569,6 +575,32 @@ class DesparasitacionMascotaForm(FlaskForm):
     observaciones = TextAreaField("Observaciones (opcional)", validators=[Optional(), Length(max=1000)])
 
     enviar = SubmitField("Registrar Desparasitación")
+
+
+class ControlMedicoForm(FlaskForm):
+    """Formulario para registrar el control y evolución clínica de un paciente."""
+
+    motivo = StringField("Motivo o Tipo de Control", validators=[Optional(), Length(max=255)])
+    fecha_hora = DateTimeLocalField("Fecha y Hora del Control", format="%Y-%m-%dT%H:%M", validators=[Optional()])
+    peso_kg = DecimalField("Peso actual (kg)", places=2, validators=[Optional(), NumberRange(min=Decimal("0.01"), max=Decimal("300.00"))])
+    temperatura_c = DecimalField("Temperatura (°C)", places=1, validators=[Optional(), NumberRange(min=Decimal("30.0"), max=Decimal("45.0"))])
+
+    avances = TextAreaField(
+        "Avances y comentarios de evolución",
+        validators=[DataRequired("Describe los avances y la evolución del paciente."), Length(max=3000)],
+    )
+    diagnostico = TextAreaField("Diagnóstico / Re-evaluación médica", validators=[Optional(), Length(max=2000)])
+    plan_terapeutico = TextAreaField(
+        "Plan terapéutico y recomendaciones",
+        validators=[DataRequired("El plan terapéutico es obligatorio."), Length(max=3000)],
+    )
+    medicamento = TextAreaField("Medicamentos / Prescripción formulada", validators=[Optional(), Length(max=2000)])
+    fecha_proximo_control = DateTimeLocalField("Próximo Control / Cita de Seguimiento", format="%Y-%m-%dT%H:%M", validators=[Optional()])
+    observaciones = TextAreaField("Observaciones adicionales", validators=[Optional(), Length(max=1000)])
+    consulta_origen_id = HiddenField("Consulta SOAP de Referencia", validators=[Optional()])
+
+    enviar = SubmitField("Guardar Control Médico")
+
 
 
 # ---------------------------------------------------------------------------
@@ -807,9 +839,17 @@ class RemisionInternaForm(FlaskForm):
         validators=[Optional()],
     )
 
-    # 2. Alimentación y Nutrición
+    # 2. Contacto y Ubicación de Destino
+    telefono_destino = StringField(
+        "Teléfono / WhatsApp de Contacto (Opcional)",
+        validators=[Optional(), Length(max=50)],
+    )
+    direccion_destino = StringField(
+        "Dirección / Ubicación del Centro (Opcional)",
+        validators=[Optional(), Length(max=255)],
+    )
     dieta_marca_tipo = StringField(
-        "Alimentación y Dieta Actual",
+        "Alimentación y Dieta Actual (Opcional)",
         validators=[Optional(), Length(max=255)],
     )
 

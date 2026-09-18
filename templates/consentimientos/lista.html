@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import paginacion %}
 
 {% block titulo %}Consentimientos Informados Digitales · Sandía{% endblock %}
 
@@ -21,169 +22,196 @@
     </div>
   </div>
 
-  <!-- Barra de Búsqueda y Filtros -->
-  <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
-    <form method="get" action="{{ url_for('consentimientos.lista') }}" class="row g-2 align-items-center">
-      <div class="col-12 col-md-5">
-        <div class="input-group">
-          <span class="input-group-text bg-light border-end-0 rounded-start-pill text-muted"><i class="bi bi-search"></i></span>
-          <input type="text" name="q" class="form-control bg-light border-start-0 rounded-end-pill" placeholder="Buscar por paciente, tutor, documento o título..." value="{{ q }}">
+  <div class="row g-4 align-items-start">
+    
+    <!-- COSTADO IZQUIERDO: Plantillas Estándar del Sistema -->
+    <div class="col-12 col-xl-4 col-lg-5">
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white mb-4">
+        <div class="card-header bg-white border-bottom py-3 px-3 px-md-4 d-flex align-items-center justify-content-between">
+          <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-card-checklist text-success"></i> Plantillas Estándar
+            <span class="badge bg-success-subtle text-success rounded-pill">{{ plantillas|length }}</span>
+          </h6>
+          <small class="text-muted" style="font-size: 0.75rem;">Textos Oficiales</small>
         </div>
-      </div>
-      <div class="col-6 col-md-3">
-        <select name="tipo" class="form-select rounded-pill" onchange="this.form.submit()">
-          <option value="">Todos los tipos</option>
-          {% for k, v in tipos.items() %}
-          <option value="{{ k }}" {% if tipo_filtro == k %}selected{% endif %}>{{ v }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-6 col-md-2">
-        <select name="estado" class="form-select rounded-pill" onchange="this.form.submit()">
-          <option value="">Todos los estados</option>
-          {% for k, v in estados.items() %}
-          <option value="{{ k }}" {% if estado_filtro == k %}selected{% endif %}>{{ v }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-12 col-md-2 d-flex gap-1">
-        <button type="submit" class="btn btn-danger rounded-pill fw-bold w-100 shadow-xs">Filtrar</button>
-        {% if q or tipo_filtro or estado_filtro %}
-        <a href="{{ url_for('consentimientos.lista') }}" class="btn btn-outline-secondary rounded-pill" title="Limpiar filtros">
-          <i class="bi bi-x-lg"></i>
-        </a>
-        {% endif %}
-      </div>
-    </form>
-  </div>
-
-  <!-- Listado de Consentimientos Emitidos -->
-  <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 bg-white">
-    <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
-      <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-        <i class="bi bi-journal-text text-danger"></i> Documentos Emitidos 
-        <span class="badge bg-danger-subtle text-danger rounded-pill">{{ consentimientos|length }}</span>
-      </h6>
-    </div>
-
-    {% if consentimientos %}
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="bg-light text-muted small text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.05em;">
-          <tr>
-            <th class="ps-4">Folio / Fecha</th>
-            <th>Paciente & Tutor</th>
-            <th>Tipo & Título</th>
-            <th>Médico Veterinario</th>
-            <th>Estado</th>
-            <th class="text-end pe-4">Acciones</th>
-          </tr>
-        </thead>
-        <tbody class="border-top-0">
-          {% for c in consentimientos %}
-          <tr>
-            <td class="ps-4">
-              <span class="fw-bold text-dark d-block">#CONS-{{ "%04d"|format(c.id) }}</span>
-              <small class="text-muted">{{ c.creado_en.strftime('%d/%m/%Y %I:%M %p') }}</small>
-            </td>
-            <td>
-              <div class="d-flex align-items-center gap-2">
-                <span class="fs-5">{{ c.mascota.especie_emoji if hasattr(c.mascota, 'especie_emoji') else '🐾' }}</span>
-                <div>
-                  <a href="{{ url_for('historias.ficha_medica', mascota_id=c.mascota_id) }}" class="fw-bold text-danger text-decoration-none hover-link">
-                    {{ c.mascota.nombre }}
-                  </a>
-                  <div class="small text-muted text-truncate" style="max-width: 180px;">
-                    {{ c.tutor.nombre_completo }}
-                  </div>
-                </div>
-              </div>
-            </td>
-            <td>
-              <span class="fw-bold text-dark d-block text-truncate" style="max-width: 240px;" title="{{ c.titulo }}">{{ c.titulo }}</span>
-              <span class="badge bg-light text-secondary border small">{{ c.tipo_etiqueta }}</span>
-            </td>
-            <td>
-              <span class="small fw-semibold text-dark">Dr.(a) {{ c.veterinario.nombre }}</span>
-              <small class="text-muted d-block" style="font-size: 0.72rem;">T.P. {{ c.veterinario.tarjeta_profesional or 'En trámite' }}</small>
-            </td>
-            <td>
-              {% if c.estado == 'firmado' %}
-              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1">
-                <i class="bi bi-check-circle-fill me-1"></i> Firmado
-              </span>
-              {% elif c.estado == 'pendiente_firma' %}
-              <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 text-dark">
-                <i class="bi bi-clock-history me-1"></i> Pendiente
-              </span>
-              {% elif c.estado == 'anulado' %}
-              <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2.5 py-1">
-                <i class="bi bi-x-circle me-1"></i> Anulado
-              </span>
-              {% endif %}
-            </td>
-            <td class="text-end pe-4">
-              <div class="btn-group">
-                <a href="{{ c.url_documento() }}" class="btn btn-sm btn-light rounded-pill shadow-2xs me-1" title="Ver / Imprimir">
-                  <i class="bi bi-printer-fill text-dark"></i>
-                </a>
-                {% if not c.esta_firmado and c.estado != 'anulado' %}
-                <a href="{{ c.enlace_whatsapp() }}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill shadow-2xs me-1" title="Enviar WhatsApp al tutor">
-                  <i class="bi bi-whatsapp"></i>
-                </a>
-                <a href="{{ c.url_firma_publica() }}" class="btn btn-sm btn-outline-danger rounded-pill shadow-2xs" title="Firmar en pantalla">
-                  <i class="bi bi-pen-fill"></i>
-                </a>
-                {% endif %}
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <div class="text-center py-5">
-      <i class="bi bi-file-earmark-medical display-4 text-muted opacity-50 mb-3 d-block"></i>
-      <h6 class="fw-bold text-dark">No se encontraron consentimientos</h6>
-      <p class="text-muted small">Puede emitir nuevos consentimientos directamente desde la Ficha Médica de cualquier paciente.</p>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- Catálogo de Plantillas Base y Personalizadas -->
-  <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white mb-4">
-    <div class="card-header bg-white border-bottom py-3 px-4">
-      <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-        <i class="bi bi-card-checklist text-success"></i> Plantillas Estándar del Sistema 
-        <span class="badge bg-success-subtle text-success rounded-pill">{{ plantillas|length }}</span>
-      </h6>
-    </div>
-    <div class="p-4">
-      <div class="row g-3">
-        {% for p in plantillas %}
-        <div class="col-md-6 col-lg-4">
-          <div class="card h-100 border rounded-4 p-3 shadow-2xs hover-shadow transition">
+        <div class="p-3 d-flex flex-column gap-3">
+          {% for p in plantillas %}
+          <div class="card border rounded-4 p-3 shadow-2xs hover-shadow transition bg-light-subtle">
             <div class="d-flex align-items-center justify-content-between mb-2">
               <span class="badge bg-danger-subtle text-danger fw-bold rounded-pill" style="font-size: 0.72rem;">{{ p.tipo_etiqueta }}</span>
-              <span class="badge bg-light text-muted border small">{{ p.codigo }}</span>
+              <span class="badge bg-white text-muted border small">{{ p.codigo }}</span>
             </div>
-            <h6 class="fw-bold text-dark mb-1">{{ p.titulo }}</h6>
-            <p class="small text-muted mb-3 flex-grow-1" style="font-size: 0.8rem;">
-              {{ p.descripcion_corta or 'Plantilla médica con variables institucionales autocompletadas.' }}
+            <h6 class="fw-bold text-dark mb-1" style="font-size: 0.92rem;">{{ p.titulo }}</h6>
+            <p class="small text-muted mb-3" style="font-size: 0.8rem; line-height: 1.35;">
+              {{ p.descripcion_corta or 'Plantilla médico-legal oficial con variables institucionales autocompletadas.' }}
             </p>
             <div class="d-flex align-items-center justify-content-between border-top pt-2 mt-auto">
               <small class="text-muted" style="font-size: 0.75rem;">
-                <i class="bi bi-shield-check text-success"></i> Sistema v{{ p.version }}
+                <i class="bi bi-shield-check text-success"></i> v{{ p.version }}
               </small>
-              <span class="badge bg-success-subtle text-success rounded-pill small">Activa</span>
+              <button type="button" class="btn btn-sm btn-outline-danger rounded-pill fw-bold py-1 px-2.5 shadow-2xs" onclick="abrirEditorPlantilla({{ p.id }})">
+                <i class="bi bi-pencil-square me-1"></i>Editar Plantilla
+              </button>
             </div>
           </div>
+          {% endfor %}
         </div>
-        {% endfor %}
       </div>
     </div>
+
+    <!-- COSTADO DERECHO: Filtros, Documentos Emitidos y Paginación -->
+    <div class="col-12 col-xl-8 col-lg-7">
+      
+      <!-- Barra de Búsqueda y Filtros -->
+      <div class="card border-0 shadow-sm rounded-4 mb-3 p-3 bg-white">
+        <form method="get" action="{{ url_for('consentimientos.lista') }}" class="row g-2 align-items-center">
+          <div class="col-12 col-md-5">
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0 rounded-start-pill text-muted"><i class="bi bi-search"></i></span>
+              <input type="text" name="q" class="form-control bg-light border-start-0 rounded-end-pill" placeholder="Buscar paciente, tutor, documento..." value="{{ q }}">
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <select name="tipo" class="form-select rounded-pill text-truncate" onchange="this.form.submit()">
+              <option value="">Todos los tipos</option>
+              {% for k, v in tipos.items() %}
+              <option value="{{ k }}" {% if tipo_filtro == k %}selected{% endif %}>{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <select name="estado" class="form-select rounded-pill" onchange="this.form.submit()">
+              <option value="">Todos</option>
+              {% for k, v in estados.items() %}
+              <option value="{{ k }}" {% if estado_filtro == k %}selected{% endif %}>{{ v }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-2 d-flex gap-1">
+            <button type="submit" class="btn btn-danger rounded-pill fw-bold w-100 shadow-xs">Filtrar</button>
+            {% if q or tipo_filtro or estado_filtro %}
+            <a href="{{ url_for('consentimientos.lista') }}" class="btn btn-outline-secondary rounded-pill" title="Limpiar filtros">
+              <i class="bi bi-x-lg"></i>
+            </a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+
+      <!-- Listado de Consentimientos Emitidos -->
+      <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4 bg-white">
+        <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+          <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-journal-text text-danger"></i> Documentos Emitidos 
+            <span class="badge bg-danger-subtle text-danger rounded-pill">
+              {% if pagina and pagina.total is defined %}{{ pagina.total }}{% else %}{{ consentimientos|length }}{% endif %}
+            </span>
+          </h6>
+          {% if pagina and pagina.total > 0 %}
+          <small class="text-muted">
+            Mostrando {{ consentimientos|length }} de {{ pagina.total }}
+          </small>
+          {% endif %}
+        </div>
+
+        {% if consentimientos %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light text-muted small text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+              <tr>
+                <th class="ps-4">Folio / Fecha</th>
+                <th>Paciente & Tutor</th>
+                <th>Tipo & Título</th>
+                <th>Médico</th>
+                <th>Estado</th>
+                <th class="text-end pe-4">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="border-top-0">
+              {% for c in consentimientos %}
+              <tr>
+                <td class="ps-4">
+                  <span class="fw-bold text-dark d-block">#CONS-{{ "%04d"|format(c.id) }}</span>
+                  <small class="text-muted">{{ c.creado_en.strftime('%d/%m/%Y %I:%M %p') }}</small>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="fs-5">{{ c.mascota.especie_emoji or '🐾' }}</span>
+                    <div>
+                      <a href="{{ url_for('historias.ficha_medica', mascota_id=c.mascota_id) }}" class="fw-bold text-danger text-decoration-none hover-link">
+                        {{ c.mascota.nombre }}
+                      </a>
+                      <div class="small text-muted text-truncate" style="max-width: 160px;">
+                        {{ c.tutor.nombre_completo }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="fw-bold text-dark d-block text-truncate" style="max-width: 220px;" title="{{ c.titulo }}">{{ c.titulo }}</span>
+                  <span class="badge bg-light text-secondary border small">{{ c.tipo_etiqueta }}</span>
+                </td>
+                <td>
+                  <span class="small fw-semibold text-dark d-block">Dr.(a) {{ c.veterinario.nombre }}</span>
+                  <small class="text-muted d-block" style="font-size: 0.72rem;">T.P. {{ c.veterinario.tarjeta_profesional or 'En trámite' }}</small>
+                </td>
+                <td>
+                  {% if c.estado == 'firmado' %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1">
+                    <i class="bi bi-check-circle-fill me-1"></i> Firmado
+                  </span>
+                  {% elif c.estado == 'pendiente_firma' %}
+                  <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 text-dark">
+                    <i class="bi bi-clock-history me-1"></i> Pendiente
+                  </span>
+                  {% elif c.estado == 'anulado' %}
+                  <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-2.5 py-1">
+                    <i class="bi bi-x-circle me-1"></i> Anulado
+                  </span>
+                  {% endif %}
+                </td>
+                <td class="text-end pe-4">
+                  <div class="btn-group">
+                    <a href="{{ c.url_documento() }}" class="btn btn-sm btn-light rounded-pill shadow-2xs me-1" title="Ver / Imprimir">
+                      <i class="bi bi-printer-fill text-dark"></i>
+                    </a>
+                    {% if not c.esta_firmado and c.estado != 'anulado' %}
+                    <a href="{{ c.enlace_whatsapp() }}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill shadow-2xs me-1" title="Enviar WhatsApp al tutor">
+                      <i class="bi bi-whatsapp"></i>
+                    </a>
+                    <a href="{{ c.url_firma_publica() }}" class="btn btn-sm btn-outline-danger rounded-pill shadow-2xs" title="Firmar en pantalla">
+                      <i class="bi bi-pen-fill"></i>
+                    </a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación -->
+        {% if pagina and pagina.pages > 1 %}
+        <div class="card-footer bg-white border-top py-3 px-4">
+          {{ paginacion(pagina) }}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-file-earmark-medical display-4 text-muted opacity-50 mb-3 d-block"></i>
+          <h6 class="fw-bold text-dark">No se encontraron consentimientos</h6>
+          <p class="text-muted small">Puede emitir nuevos consentimientos directamente desde la Ficha Médica de cualquier paciente.</p>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+
   </div>
 
 </div>
+
+{% include "consentimientos/modal_editor_plantilla.html" %}
 {% endblock %}

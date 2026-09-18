@@ -13,6 +13,7 @@ from models import (
     ROLES_TODOS,
     Cita,
     CitaSpa,
+    ControlMedico,
     DesparasitacionMascota,
     Mascota,
     Producto,
@@ -278,6 +279,47 @@ def desparasitaciones_por_vencer(limite_dias: int = 15, tope: int = 20):
         return []
 
 
+def controles_por_vencer(limite_dias: int = 2, tope: int = 20):
+    """Controles médicos cuya próxima cita está vencida o programada para los próximos ``limite_dias`` días."""
+    try:
+        limite_superior = datetime.combine(hoy_bogota() + timedelta(days=limite_dias), time.max, tzinfo=ZONA_BOGOTA)
+        limite_inferior = datetime.combine(hoy_bogota() - timedelta(days=15), time.min, tzinfo=ZONA_BOGOTA)
+
+        # Último control registrado por mascota con fecha de próximo control
+        ultimo_control_sub = (
+            select(ControlMedico.mascota_id, func.max(ControlMedico.fecha_hora).label("ultima_fecha"))
+            .where(ControlMedico.fecha_proximo_control.is_not(None))
+            .group_by(ControlMedico.mascota_id)
+            .subquery()
+        )
+        consulta = (
+            select(ControlMedico)
+            .join(
+                ultimo_control_sub,
+                (ControlMedico.mascota_id == ultimo_control_sub.c.mascota_id)
+                & (ControlMedico.fecha_hora == ultimo_control_sub.c.ultima_fecha),
+            )
+            .join(Mascota, ControlMedico.mascota_id == Mascota.id)
+            .options(
+                selectinload(ControlMedico.mascota),
+                selectinload(ControlMedico.tutor),
+                selectinload(ControlMedico.veterinario),
+            )
+            .where(
+                Mascota.activo.is_(True),
+                Mascota.fallecido.is_(False),
+                ControlMedico.fecha_proximo_control >= limite_inferior,
+                ControlMedico.fecha_proximo_control <= limite_superior,
+            )
+            .order_by(ControlMedico.fecha_proximo_control.asc())
+            .limit(tope)
+        )
+        return db.session.execute(consulta).scalars().all()
+    except Exception:
+        db.session.rollback()
+        return []
+
+
 def obtener_mascotas_pendientes_recogida():
     """Obtiene citas de spa listas para entrega y calcula tiempo transcurrido y nivel de urgencia."""
     try:
@@ -346,9 +388,10 @@ def obtener_mascotas_pendientes_recogida():
 @bp.route("/")
 @login_required
 def index():
-    # Alertas de vacunaciones y desparasitaciones por vencer para todo el equipo operativo
+    # Alertas de vacunaciones, desparasitaciones y próximos controles médicos
     vacunas_pendientes = vacunas_por_vencer()
     desparasitaciones_pendientes = desparasitaciones_por_vencer()
+    controles_pendientes = controles_por_vencer(limite_dias=2)
 
     mascotas_recogida = obtener_mascotas_pendientes_recogida()
     form_csrf = SoloCsrfForm()
@@ -454,6 +497,7 @@ def index():
         modulos_secundarios=modulos_secundarios,
         vacunas_pendientes=vacunas_pendientes,
         desparasitaciones_pendientes=desparasitaciones_pendientes,
+        controles_pendientes=controles_pendientes,
         mascotas_recogida=mascotas_recogida,
         citas_spa_hoy=citas_spa_hoy,
         citas_medicas_hoy=citas_medicas_hoy,

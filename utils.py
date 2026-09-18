@@ -8,10 +8,10 @@ import calendar
 import re
 import unicodedata
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from zoneinfo import ZoneInfo
 
 from flask import current_app
@@ -117,6 +117,84 @@ def enlace_whatsapp(numero: str, mensaje: str = "") -> str:
     if mensaje:
         enlace += "?text=" + quote(mensaje, safe="")
     return enlace
+
+
+def generar_enlace_google_calendar(
+    titulo: str,
+    fecha_inicio: datetime | date,
+    duracion_minutos: int = 30,
+    descripcion: str = "",
+    ubicacion: str = "",
+) -> str:
+    """Genera un enlace para añadir un evento directamente a Google Calendar."""
+    if isinstance(fecha_inicio, date) and not isinstance(fecha_inicio, datetime):
+        fecha_inicio = datetime.combine(fecha_inicio, datetime.min.time().replace(hour=9))
+
+    fecha_inicio = a_bogota(fecha_inicio)
+    fecha_fin = fecha_inicio + timedelta(minutes=duracion_minutos)
+
+    fmt = "%Y%m%dT%H%M%S"
+    dates_param = f"{fecha_inicio.strftime(fmt)}/{fecha_fin.strftime(fmt)}"
+
+    params = {
+        "action": "TEMPLATE",
+        "text": titulo,
+        "dates": dates_param,
+        "details": descripcion,
+        "location": ubicacion,
+    }
+    return "https://calendar.google.com/calendar/render?" + urlencode(params)
+
+
+def generar_archivo_ics(
+    titulo: str,
+    fecha_inicio: datetime | date,
+    duracion_minutos: int = 30,
+    descripcion: str = "",
+    ubicacion: str = "",
+    uid: str | None = None,
+) -> str:
+    """Genera el contenido en formato iCalendar (.ics) compatible con iPhone / Apple Calendar, Outlook y Google."""
+    if isinstance(fecha_inicio, date) and not isinstance(fecha_inicio, datetime):
+        fecha_inicio = datetime.combine(fecha_inicio, datetime.min.time().replace(hour=9))
+
+    fecha_inicio = a_bogota(fecha_inicio)
+    fecha_fin = fecha_inicio + timedelta(minutes=duracion_minutos)
+
+    fmt = "%Y%m%dT%H%M%S"
+    uid = uid or f"control-{uuid.uuid4().hex[:12]}@sandiavet.local"
+    ahora_utc = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    # Limpiar saltos de línea para el estándar ICS
+    desc_escapada = descripcion.replace("\r\n", "\\n").replace("\n", "\\n").replace(",", "\\,").replace(";", "\\;")
+    tit_escapado = titulo.replace("\r\n", " ").replace("\n", " ").replace(",", "\\,").replace(";", "\\;")
+    loc_escapada = ubicacion.replace("\r\n", " ").replace("\n", " ").replace(",", "\\,").replace(";", "\\;")
+
+    ics_content = (
+        "BEGIN:VCALENDAR\r\n"
+        "VERSION:2.0\r\n"
+        "PRODID:-//Sandia Veterinaria//Control Medico//ES\r\n"
+        "CALSCALE:GREGORIAN\r\n"
+        "METHOD:PUBLISH\r\n"
+        "BEGIN:VEVENT\r\n"
+        f"UID:{uid}\r\n"
+        f"DTSTAMP:{ahora_utc}\r\n"
+        f"DTSTART;TZID=America/Bogota:{fecha_inicio.strftime(fmt)}\r\n"
+        f"DTEND;TZID=America/Bogota:{fecha_fin.strftime(fmt)}\r\n"
+        f"SUMMARY:{tit_escapado}\r\n"
+        f"DESCRIPTION:{desc_escapada}\r\n"
+        f"LOCATION:{loc_escapada}\r\n"
+        "STATUS:CONFIRMED\r\n"
+        "BEGIN:VALARM\r\n"
+        "TRIGGER:-PT2H\r\n"
+        "ACTION:DISPLAY\r\n"
+        f"DESCRIPTION:Recordatorio: {tit_escapado}\r\n"
+        "END:VALARM\r\n"
+        "END:VEVENT\r\n"
+        "END:VCALENDAR\r\n"
+    )
+    return ics_content
+
 
 
 # ---------------------------------------------------------------------------

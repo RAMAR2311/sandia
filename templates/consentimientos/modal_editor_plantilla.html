@@ -1,0 +1,188 @@
+<!-- MODAL: EDITOR DE PLANTILLA MAESTRA DE CONSENTIMIENTO -->
+<div class="modal fade" id="modalEditarPlantillaMaestra" tabindex="-1" aria-labelledby="modalEditarPlantillaMaestraLabel" aria-hidden="true" data-bs-backdrop="static" style="z-index: 1065;">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="modal-header py-3 px-4 bg-dark text-white">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-file-earmark-code-fill text-danger fs-5"></i>
+          <div>
+            <h5 class="modal-title fw-bold mb-0" id="modalEditarPlantillaMaestraLabel">Editar Plantilla Legal Maestra</h5>
+            <small class="text-white-50" style="font-size: 0.75rem;">Los cambios se aplicarán automáticamente a TODOS los consentimientos futuros del sistema</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body p-3 p-md-4 bg-light">
+        <input type="hidden" id="editPlantillaId">
+        
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-8">
+            <label class="form-label fw-bold small text-dark mb-1">Título Oficial del Consentimiento:</label>
+            <input type="text" class="form-control rounded-3" id="editPlantillaTitulo" placeholder="Ej: Consentimiento Informado para Acto Quirúrgico">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-bold small text-dark mb-1">Código de Sistema:</label>
+            <input type="text" class="form-control rounded-3 bg-white" id="editPlantillaCodigo" disabled readonly>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold small text-dark mb-1">Descripción Breve / Finalidad:</label>
+            <input type="text" class="form-control rounded-3" id="editPlantillaDescripcion" placeholder="Breve resumen de la indicación legal de este documento">
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-xs rounded-4 p-3 bg-white mb-3">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <label class="form-label fw-bold small text-dark mb-0">
+              <i class="bi bi-file-earmark-text text-danger me-1"></i>Texto Legal Base & Cláusulas:
+            </label>
+            <small class="text-muted">Haz clic en cualquier variable para insertarla en la posición del cursor:</small>
+          </div>
+
+          <!-- Variables Disponibles para Inserción con 1 Clic -->
+          <div class="p-2.5 bg-light rounded-3 border mb-2.5 d-flex flex-wrap gap-1 align-items-center">
+            <span class="small fw-bold text-muted me-1" style="font-size: 0.72rem;">Insertar Variable:</span>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{nombre_paciente}}'}}')">{{'{{nombre_paciente}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{especie}}'}}')">{{'{{especie}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{raza}}'}}')">{{'{{raza}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{sexo}}'}}')">{{'{{sexo}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{edad}}'}}')">{{'{{edad}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{peso}}'}}')">{{'{{peso}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{nombre_tutor}}'}}')">{{'{{nombre_tutor}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{documento_tutor}}'}}')">{{'{{documento_tutor}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{telefono_tutor}}'}}')">{{'{{telefono_tutor}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{direccion_tutor}}'}}')">{{'{{direccion_tutor}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{nombre_clinica}}'}}')">{{'{{nombre_clinica}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{nombre_veterinario}}'}}')">{{'{{nombre_veterinario}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{tarjeta_profesional}}'}}')">{{'{{tarjeta_profesional}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{fecha_hora}}'}}')">{{'{{fecha_hora}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{diagnostico_motivo}}'}}')">{{'{{diagnostico_motivo}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{clasificacion_asa}}'}}')">{{'{{clasificacion_asa}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{rcp_directiva}}'}}')">{{'{{rcp_directiva}}'}}</button>
+            <button type="button" class="btn btn-xs btn-white border shadow-2xs rounded-pill text-dark" onclick="insertarVariablePlantilla('{{'{{destino_cuerpo}}'}}')">{{'{{destino_cuerpo}}'}}</button>
+          </div>
+
+          <textarea class="form-control font-monospace bg-light p-3 rounded-3" id="editPlantillaContenido" rows="15" style="font-size: 0.85rem; line-height: 1.55;"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-white py-3 px-4 d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-xs" id="btnGuardarPlantilla" onclick="guardarPlantillaMaestra()">
+          <i class="bi bi-check-circle-fill me-1"></i>Guardar Cambios de la Plantilla
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let modalEditorPlantillaInstance = null;
+
+async function abrirEditorPlantilla(id) {
+  if (!id) {
+    alert("No se identificó la plantilla a editar.");
+    return;
+  }
+  try {
+    const res = await fetch(`/consentimientos/plantilla/${id}`);
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.error || "No se pudo cargar la plantilla.");
+      return;
+    }
+
+    document.getElementById('editPlantillaId').value = data.id;
+    document.getElementById('editPlantillaCodigo').value = data.codigo;
+    document.getElementById('editPlantillaTitulo').value = data.titulo;
+    document.getElementById('editPlantillaDescripcion').value = data.descripcion_corta || '';
+    document.getElementById('editPlantillaContenido').value = data.contenido_template || '';
+
+    const modalEl = document.getElementById('modalEditarPlantillaMaestra');
+    if (modalEl) {
+      if (!modalEditorPlantillaInstance) {
+        modalEditorPlantillaInstance = new bootstrap.Modal(modalEl);
+      }
+      modalEditorPlantillaInstance.show();
+    }
+  } catch (e) {
+    console.error(e);
+    alert("Error de conexión al cargar la plantilla maestra.");
+  }
+}
+
+function insertarVariablePlantilla(variable) {
+  const textarea = document.getElementById('editPlantillaContenido');
+  if (!textarea) return;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const texto = textarea.value;
+  textarea.value = texto.substring(0, start) + variable + texto.substring(end);
+  textarea.focus();
+  textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+}
+
+async function guardarPlantillaMaestra() {
+  const id = document.getElementById('editPlantillaId').value;
+  const titulo = document.getElementById('editPlantillaTitulo').value.trim();
+  const descripcion = document.getElementById('editPlantillaDescripcion').value.trim();
+  const contenido = document.getElementById('editPlantillaContenido').value.trim();
+
+  if (!titulo || !contenido) {
+    alert("El título y el texto legal de la plantilla son obligatorios.");
+    return;
+  }
+
+  const btn = document.getElementById('btnGuardarPlantilla');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando plantilla...';
+  }
+
+  try {
+    const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+    const csrfVal = metaCsrf ? metaCsrf.content : '';
+
+    const res = await fetch(`/consentimientos/plantilla/${id}/guardar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfVal
+      },
+      body: JSON.stringify({
+        titulo: titulo,
+        descripcion_corta: descripcion,
+        contenido_template: contenido
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      alert(data.mensaje || "Plantilla maestra guardada con éxito.");
+      
+      // Si estamos en modal_emision, cerrar el editor y recargar la plantilla en vivo
+      const modalEl = document.getElementById('modalEditarPlantillaMaestra');
+      if (modalEl) {
+        const bsModal = bootstrap.Modal.getInstance(modalEl);
+        if (bsModal) bsModal.hide();
+      }
+
+      if (typeof cargarPlantillaDinamica === 'function') {
+        cargarPlantillaDinamica(true);
+      } else {
+        window.location.reload();
+      }
+    } else {
+      alert(data.error || "Ocurrió un error al guardar la plantilla.");
+    }
+  } catch (e) {
+    console.error(e);
+    alert("Error de conexión al guardar la plantilla maestra.");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i>Guardar Cambios de la Plantilla';
+    }
+  }
+}
+</script>

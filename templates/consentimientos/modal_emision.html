@@ -120,17 +120,30 @@
           <div class="col-lg-8">
             <div class="card border-0 shadow-xs rounded-4 p-3 bg-white h-100 d-flex flex-column">
               <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom">
-                <span class="badge bg-danger-subtle text-danger fw-bold px-3 py-1.5 rounded-pill">
-                  <i class="bi bi-file-earmark-text me-1"></i> Texto Legal Adaptado & Editable
-                </span>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <span class="badge bg-danger-subtle text-danger fw-bold px-3 py-1.5 rounded-pill">
+                    <i class="bi bi-file-earmark-text me-1"></i> Texto Legal para este Paciente
+                  </span>
+                  <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill" onclick="cargarPlantillaDinamica(true)" title="Recargar texto original de la plantilla">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Restablecer
+                  </button>
+                  <button type="button" class="btn btn-xs btn-danger rounded-pill fw-bold shadow-2xs" onclick="abrirEditorPlantilla(idPlantillaActual)" title="Modificar la plantilla legal maestra para que aplique a todos los consentimientos de este tipo">
+                    <i class="bi bi-gear-fill me-1"></i>Editar Plantilla Maestra (Para Todos)
+                  </button>
+                </div>
                 <small class="text-muted">
-                  <i class="bi bi-check-circle-fill text-success me-1"></i>Datos de {{ mascota.nombre }} y {{ mascota.tutor.nombre_completo }} autocompletados
+                  <i class="bi bi-check-circle-fill text-success me-1"></i>Datos de {{ mascota.nombre }} autocompletados
                 </small>
               </div>
 
-              <div class="alert alert-warning py-1.5 px-2.5 mb-2 small rounded-3 d-flex align-items-center gap-2" style="font-size: 0.78rem;">
-                <i class="bi bi-info-circle-fill fs-6 text-warning"></i>
-                <span>Puede modificar o agregar cláusulas médicas específicas antes de emitir y solicitar la firma del tutor.</span>
+              <div class="alert alert-warning py-1.5 px-2.5 mb-2 small rounded-3 d-flex align-items-center justify-content-between gap-2" style="font-size: 0.78rem;">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-info-circle-fill fs-6 text-warning"></i>
+                  <span>Los cambios escritos aquí aplican <strong>solo para {{ mascota.nombre }}</strong>.</span>
+                </div>
+                <a href="javascript:void(0)" onclick="abrirEditorPlantilla(idPlantillaActual)" class="fw-bold text-danger text-decoration-underline ms-auto flex-shrink-0">
+                  ¿Deseas cambiar el texto para todos? Haz clic aquí
+                </a>
               </div>
 
               <textarea class="form-control font-monospace border bg-light p-3 rounded-3 flex-grow-1" 
@@ -200,30 +213,45 @@ let idPlantillaActual = null;
 let tipoActual = 'quirurgico';
 
 // Cargar plantilla al abrir o cambiar selector
-async function cargarPlantillaDinamica() {
+async function cargarPlantillaDinamica(forzarRecarga = false) {
   const select = document.getElementById('selectTipoConsentimiento');
+  if (!select) return;
   const codigo = select.value;
 
   // Toggle bloques condicionales
-  document.getElementById('bloqueExtraRCP').style.display = (codigo === 'HOSPITALIZACION_V1') ? 'block' : 'none';
-  document.getElementById('bloqueExtraASA').style.display = (codigo === 'QUIRURGICO_V1' || codigo === 'ANESTESIA_V1') ? 'block' : 'none';
-  document.getElementById('bloqueExtraDestino').style.display = (codigo === 'EUTANASIA_V1') ? 'block' : 'none';
+  if (document.getElementById('bloqueExtraRCP')) {
+    document.getElementById('bloqueExtraRCP').style.display = (codigo === 'HOSPITALIZACION_V1') ? 'block' : 'none';
+  }
+  if (document.getElementById('bloqueExtraASA')) {
+    document.getElementById('bloqueExtraASA').style.display = (codigo === 'QUIRURGICO_V1' || codigo === 'ANESTESIA_V1') ? 'block' : 'none';
+  }
+  if (document.getElementById('bloqueExtraDestino')) {
+    document.getElementById('bloqueExtraDestino').style.display = (codigo === 'EUTANASIA_V1') ? 'block' : 'none';
+  }
 
   const rcpVal = document.getElementById('rcpChoiceSi') ? document.getElementById('rcpChoiceSi').checked : null;
   const asaVal = document.getElementById('selectASA') ? document.getElementById('selectASA').value : '';
   const destinoVal = document.getElementById('selectDestinoCuerpo') ? document.getElementById('selectDestinoCuerpo').value : '';
+  const editor = document.getElementById('editorTextoConsentimiento');
+
+  if (forzarRecarga && editor) {
+    editor.value = "Cargando plantilla legal...";
+  }
 
   try {
+    const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+    const csrfVal = metaCsrf ? metaCsrf.content : '';
+
     const res = await fetch('/consentimientos/preparar', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        'X-CSRFToken': csrfVal
       },
       body: JSON.stringify({
         mascota_id: ID_MASCOTA_ACTUAL,
         codigo_plantilla: codigo,
-        diagnostico_motivo: document.getElementById('inputMotivoConsentimiento').value,
+        diagnostico_motivo: document.getElementById('inputMotivoConsentimiento') ? document.getElementById('inputMotivoConsentimiento').value : '',
         autoriza_rcp: rcpVal,
         clasificacion_asa: asaVal,
         destino_cuerpo: destinoVal
@@ -234,11 +262,18 @@ async function cargarPlantillaDinamica() {
     if (data.success) {
       idPlantillaActual = data.plantilla_id;
       tipoActual = data.tipo;
-      document.getElementById('inputTituloConsentimiento').value = data.titulo;
-      document.getElementById('editorTextoConsentimiento').value = data.contenido;
+      if (document.getElementById('inputTituloConsentimiento')) {
+        document.getElementById('inputTituloConsentimiento').value = data.titulo;
+      }
+      if (editor) {
+        editor.value = data.contenido;
+      }
+    } else {
+      if (editor) editor.value = "Error al cargar plantilla: " + (data.error || "Desconocido");
     }
   } catch (e) {
     console.error("Error al cargar plantilla:", e);
+    if (editor) editor.value = "Error de conexión al cargar la plantilla legal.";
   }
 }
 
@@ -247,8 +282,14 @@ function actualizarPlaceholderDiagnostico() {
 }
 
 // Inicializar al abrir modal
-document.getElementById('modalEmitirConsentimiento')?.addEventListener('shown.bs.modal', function () {
+document.getElementById('modalEmitirConsentimiento')?.addEventListener('show.bs.modal', function () {
   cargarPlantillaDinamica();
+});
+document.getElementById('modalEmitirConsentimiento')?.addEventListener('shown.bs.modal', function () {
+  const editor = document.getElementById('editorTextoConsentimiento');
+  if (!editor || !editor.value || editor.value.startsWith('Cargando')) {
+    cargarPlantillaDinamica();
+  }
 });
 
 // Emisión genérica
@@ -428,3 +469,5 @@ async function guardarFirmaPresencial() {
   }
 }
 </script>
+
+{% include "consentimientos/modal_editor_plantilla.html" %}

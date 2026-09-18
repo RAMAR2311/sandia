@@ -20,7 +20,15 @@ from sqlalchemy import MetaData, func, select, text
 from sqlalchemy.orm import validates
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from utils import edad_texto, enlace_whatsapp, hoy_bogota, normalizar_texto, normalizar_whatsapp, obtener_hora_bogota
+from utils import (
+    edad_texto,
+    enlace_whatsapp,
+    generar_enlace_google_calendar,
+    hoy_bogota,
+    normalizar_texto,
+    normalizar_whatsapp,
+    obtener_hora_bogota,
+)
 
 def _generar_url_segura(endpoint: str, **values) -> str:
     """Genera URL absoluta o relativa sin fallar si está fuera de contexto web."""
@@ -47,6 +55,8 @@ def _generar_url_segura(endpoint: str, **values) -> str:
         return f"/consentimientos/firmar/{values.get('token')}"
     elif endpoint == "consentimientos.documento_publico":
         return f"/consentimientos/{values.get('id')}/documento"
+    elif endpoint == "historias.control_ics":
+        return f"/historias/control/{values.get('id')}/calendario.ics"
     elif endpoint == "certificados.vista_verificacion_publica":
         return f"/certificados/verificar/{values.get('token')}"
     elif endpoint == "certificados.certificado_pdf":
@@ -1369,7 +1379,21 @@ class ConsultaMedica(BaseModel):
         msg += f"📋 *INFORME MÉDICO OFICIAL & RECETA (SOAP)*\n\n"
         msg += f"Hola *{nombre_tutor}*, te compartimos el documento oficial correspondiente a la consulta de *{nombre_mascota}* ({fecha_str}).\n\n"
         msg += f"• *Diagnóstico:* {self.diagnostico}\n"
-        msg += f"\n📄 *Ver / Descargar Documento Oficial en PDF:*\n"
+        if self.controles_asociados:
+            ultimo_control = self.controles_asociados[0]
+            if ultimo_control.fecha_proximo_control:
+                f_prox_str = ultimo_control.fecha_proximo_control.strftime("%d/%m/%Y %I:%M %p")
+                msg += f"\n🗓️ *PRÓXIMO CONTROL PROGRAMADO:*\n📅 *{f_prox_str}*"
+                if ultimo_control.motivo:
+                    msg += f" ({ultimo_control.motivo})"
+                msg += "\n\n"
+                link_gcal = ultimo_control.enlace_google_calendar
+                link_ical = ultimo_control.enlace_apple_calendar
+                if link_gcal:
+                    msg += f"👉 *Agendar en Google Calendar:*\n{link_gcal}\n\n"
+                if link_ical:
+                    msg += f"👉 *Agendar en Apple Calendar (.ics):*\n{link_ical}\n\n"
+        msg += f"📄 *Ver / Descargar Documento Oficial en PDF:*\n"
         msg += f"👉 {url_doc}\n\n"
         msg += f"¡Muchas gracias por confiar en nosotros! 🐾❤️\n"
         msg += f"_Sandía Medicina & Spa Veterinario_"
@@ -1434,6 +1458,181 @@ class EnmiendaConsulta(BaseModel):
 
     def __repr__(self):
         return f"<EnmiendaConsulta {self.id} consulta={self.consulta_id}>"
+
+
+class ControlMedico(BaseModel):
+    """Registro de control clínico y evolución médica de un paciente."""
+
+    __tablename__ = "controles_medicos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    mascota_id = db.Column(db.Integer, db.ForeignKey("mascotas.id"), nullable=False, index=True)
+    tutor_id = db.Column(db.Integer, db.ForeignKey("tutores.id"), nullable=False, index=True)
+    veterinario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
+    consulta_origen_id = db.Column(db.Integer, db.ForeignKey("consultas_medicas.id"), nullable=True, index=True)
+
+    fecha_hora = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    motivo = db.Column(db.String(255), nullable=True)  # Motivo, tipo o nombre del control (ej. Control postquirúrgico)
+    peso_kg = db.Column(db.Numeric(6, 2), nullable=True)
+    temperatura_c = db.Column(db.Numeric(4, 1), nullable=True)
+
+    avances = db.Column(db.Text, nullable=False)  # Comentarios de evolución y avances del paciente
+    diagnostico = db.Column(db.Text, nullable=True)  # Diagnóstico / Re-evaluación médica
+    plan_terapeutico = db.Column(db.Text, nullable=False)  # Plan terapéutico y recomendaciones
+    medicamento = db.Column(db.Text, nullable=True)  # Medicamento / Prescripción formulada
+    observaciones = db.Column(db.Text, nullable=True)
+
+    fecha_proximo_control = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    mascota = db.relationship("Mascota", backref=db.backref("controles", order_by="desc(ControlMedico.fecha_hora)"))
+    tutor = db.relationship("Tutor")
+    veterinario = db.relationship("Usuario", foreign_keys=[veterinario_id])
+    creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
+    consulta_origen = db.relationship(
+        "ConsultaMedica", foreign_keys=[consulta_origen_id], backref=db.backref("controles_asociados", order_by="desc(ControlMedico.fecha_hora)")
+    )
+
+    @property
+    def enlace_google_calendar(self) -> str | None:
+        if not self.fecha_proximo_control:
+            return None
+        clinica_nombre = ConfiguracionSistema.obtener("clinica_nombre", "Sandía Medicina & Spa Veterinario")
+        clinica_dir = ConfiguracionSistema.obtener("clinica_direccion", "")
+        motivo_txt = f" ({self.motivo})" if self.motivo else ""
+        titulo = f"🐾 Próximo Control{motivo_txt} - {self.mascota.nombre if self.mascota else 'Mascota'}"
+        desc = f"Cita de seguimiento médico en {clinica_nombre}.\nPaciente: {self.mascota.nombre if self.mascota else ''}\nMotivo: {self.motivo or 'Control médico'}\nIndicaciones: {self.plan_terapeutico}"
+        return generar_enlace_google_calendar(
+            titulo=titulo,
+            fecha_inicio=self.fecha_proximo_control,
+            duracion_minutos=30,
+            descripcion=desc,
+            ubicacion=clinica_dir,
+        )
+
+    @property
+    def enlace_apple_calendar(self) -> str | None:
+        if not self.fecha_proximo_control:
+            return None
+        return _generar_url_segura("historias.control_ics", id=self.id)
+
+    @property
+    def mensaje_whatsapp(self) -> str:
+        nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a tutor(a)"
+        nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
+        fecha_str = self.fecha_hora.strftime("%d/%m/%Y") if hasattr(self.fecha_hora, "strftime") else str(self.fecha_hora)
+        clinica_nombre = ConfiguracionSistema.obtener("clinica_nombre", "Sandía · Medicina & Spa Veterinario")
+
+        msg = f"🐾 *{clinica_nombre}* 🍉\n"
+        if self.motivo:
+            msg += f"📋 *INFORME DE CONTROL: {self.motivo.upper()}*\n\n"
+        else:
+            msg += f"📋 *INFORME DE CONTROL MÉDICO & EVOLUCIÓN*\n\n"
+
+        msg += f"Hola *{nombre_tutor}*, te compartimos el reporte del control médico de *{nombre_mascota}* ({fecha_str}):\n\n"
+        if self.motivo:
+            msg += f"• *Tipo/Motivo:* {self.motivo}\n"
+        msg += f"• *Evolución / Avances:* {self.avances}\n"
+        if self.diagnostico:
+            msg += f"• *Diagnóstico:* {self.diagnostico}\n"
+        msg += f"• *Plan Terapéutico:* {self.plan_terapeutico}\n"
+        if self.medicamento:
+            msg += f"\n💊 *FÓRMULA / MEDICAMENTOS:*\n{self.medicamento}\n"
+
+        if self.fecha_proximo_control:
+            f_prox_str = self.fecha_proximo_control.strftime("%d/%m/%Y %I:%M %p") if hasattr(self.fecha_proximo_control, "strftime") else str(self.fecha_proximo_control)
+            msg += f"\n🗓️ *PRÓXIMO CONTROL PROGRAMADO:*\n📅 *{f_prox_str}*\n\n"
+
+            link_gcal = self.enlace_google_calendar
+            link_ical = self.enlace_apple_calendar
+            if link_gcal:
+                msg += f"👉 *Agendar en Google Calendar:*\n{link_gcal}\n\n"
+            if link_ical:
+                msg += f"👉 *Agendar en iPhone / Apple Calendar (.ics):*\n{link_ical}\n\n"
+
+        msg += f"¡Muchas gracias por confiar en nosotros! 🐾❤️\n"
+        msg += f"_{clinica_nombre}_"
+        return msg
+
+    @property
+    def estado_proximo_control(self) -> str:
+        """Devuelve 'vencido', 'hoy', 'manana' o 'proximo'."""
+        if not self.fecha_proximo_control:
+            return "sin_fecha"
+        hoy = hoy_bogota()
+        fecha_d = self.fecha_proximo_control.date() if hasattr(self.fecha_proximo_control, "date") else self.fecha_proximo_control
+        if fecha_d < hoy:
+            return "vencido"
+        elif fecha_d == hoy:
+            return "hoy"
+        elif fecha_d == hoy + timedelta(days=1):
+            return "manana"
+        else:
+            return "proximo"
+
+    @property
+    def etiqueta_proximo_control(self) -> str:
+        if not self.fecha_proximo_control:
+            return ""
+        est = self.estado_proximo_control
+        f_str = self.fecha_proximo_control.strftime("%d/%m/%Y") if hasattr(self.fecha_proximo_control, "strftime") else str(self.fecha_proximo_control)
+        hora_str = self.fecha_proximo_control.strftime("%I:%M %p") if hasattr(self.fecha_proximo_control, "strftime") else ""
+        if est == "vencido":
+            return f"Vencido {f_str}"
+        elif est == "hoy":
+            return f"Hoy {hora_str}"
+        elif est == "manana":
+            return f"Mañana {hora_str}"
+        else:
+            dias_dif = (self.fecha_proximo_control.date() - hoy_bogota()).days
+            return f"En {dias_dif}d ({f_str})"
+
+    @property
+    def mensaje_whatsapp_recordatorio(self) -> str:
+        nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a tutor(a)"
+        nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
+        clinica_nombre = ConfiguracionSistema.obtener("clinica_nombre", "Sandía · Medicina & Spa Veterinario")
+        clinica_dir = ConfiguracionSistema.obtener("clinica_direccion", "")
+        f_prox_str = self.fecha_proximo_control.strftime("%d/%m/%Y %I:%M %p") if hasattr(self.fecha_proximo_control, "strftime") else str(self.fecha_proximo_control)
+
+        msg = f"🐾 *{clinica_nombre}* 🍉\n"
+        msg += f"🗓️ *RECORDATORIO DE CONTROL MÉDICO*\n\n"
+        msg += f"Hola *{nombre_tutor}*, te recordamos que *{nombre_mascota}* tiene programada su cita de seguimiento médico:\n\n"
+        msg += f"📅 *Fecha y Hora:* {f_prox_str}\n"
+        if self.motivo:
+            msg += f"🩺 *Motivo:* {self.motivo}\n"
+        if clinica_dir:
+            msg += f"📍 *Sede:* {clinica_dir}\n"
+        msg += "\n"
+
+        link_gcal = self.enlace_google_calendar
+        link_ical = self.enlace_apple_calendar
+        if link_gcal:
+            msg += f"👉 *Agendar en Google Calendar:*\n{link_gcal}\n\n"
+        if link_ical:
+            msg += f"👉 *Agendar en iPhone / Apple Calendar (.ics):*\n{link_ical}\n\n"
+
+        msg += f"¡Te esperamos con mucho gusto! 🐾❤️\n"
+        msg += f"_{clinica_nombre}_"
+        return msg
+
+    @property
+    def enlace_whatsapp(self) -> str | None:
+        if not self.tutor or not self.tutor.whatsapp_efectivo:
+            return None
+        return enlace_whatsapp(self.tutor.whatsapp_efectivo, self.mensaje_whatsapp)
+
+    @property
+    def enlace_whatsapp_recordatorio(self) -> str | None:
+        if not self.tutor or not self.tutor.whatsapp_efectivo or not self.fecha_proximo_control:
+            return None
+        return enlace_whatsapp(self.tutor.whatsapp_efectivo, self.mensaje_whatsapp_recordatorio)
+
+    def __repr__(self):
+        return f"<ControlMedico {self.id} mascota={self.mascota_id} fecha={self.fecha_hora}>"
+
 
 
 class VacunaMascota(BaseModel):
@@ -2379,7 +2578,9 @@ class RemisionInterna(BaseModel):
 
     fecha_remision = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
 
-    # 1. Alimentación y Nutrición
+    # 1. Destino y Contacto
+    telefono_destino = db.Column(db.String(50))
+    direccion_destino = db.Column(db.String(255))
     dieta_marca_tipo = db.Column(db.String(255))
 
     # 2. Antecedentes Clínicos
@@ -2408,6 +2609,43 @@ class RemisionInterna(BaseModel):
     veterinario = db.relationship("Usuario", foreign_keys=[veterinario_id])
     creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
 
+    @property
+    def mensaje_whatsapp(self) -> str:
+        nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a tutor(a)"
+        nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
+        fecha_str = self.fecha_remision.strftime("%d/%m/%Y") if hasattr(self.fecha_remision, "strftime") else str(self.fecha_remision)
+        clinica_nombre = ConfiguracionSistema.obtener("clinica_nombre", "Sandía · Medicina & Spa Veterinario")
+
+        msg = f"🐾 *{clinica_nombre}* 🍉\n"
+        msg += f"📋 *ORDEN DE REMISIÓN MÉDICA / DERIVACIÓN*\n\n"
+        msg += f"Hola *{nombre_tutor}*, te compartimos los detalles de la orden de remisión clínica para *{nombre_mascota}* ({fecha_str}):\n\n"
+        msg += f"🏥 *Especialidad / Servicio:* {self.especialidad_destino}\n"
+        if self.centro_medico_destino:
+            msg += f"👨‍⚕️ *Centro / Especialista:* {self.centro_medico_destino}\n"
+        if self.telefono_destino:
+            msg += f"📞 *Teléfono / Contacto:* {self.telefono_destino}\n"
+        if self.direccion_destino:
+            msg += f"📍 *Dirección:* {self.direccion_destino}\n"
+        msg += f"\n📝 *Motivo de la Remisión:*\n{self.motivo_remision}\n"
+        if self.observaciones_clinicas:
+            msg += f"\n🔬 *Hallazgos / Observaciones:*\n{self.observaciones_clinicas}\n"
+        if self.antecedentes_enfermedades:
+            msg += f"\n⚠️ *Antecedentes / Alergias:* {self.antecedentes_enfermedades}\n"
+
+        if self.veterinario:
+            tp_str = f" (T.P. {self.veterinario.tarjeta_profesional})" if self.veterinario.tarjeta_profesional else ""
+            msg += f"\n👨‍⚕️ *Remitido por:* Dr/a. {self.veterinario.nombre}{tp_str}\n"
+
+        msg += f"\n¡Cualquier duda estamos para servirte! 🐾❤️\n"
+        msg += f"_{clinica_nombre}_"
+        return msg
+
+    @property
+    def enlace_whatsapp(self) -> str | None:
+        if not self.tutor or not self.tutor.whatsapp_efectivo:
+            return None
+        return enlace_whatsapp(self.tutor.whatsapp_efectivo, self.mensaje_whatsapp)
+
     def to_dict(self) -> dict:
         """Serializa los datos de la remisión para consultas AJAX/modales."""
         return {
@@ -2416,9 +2654,11 @@ class RemisionInterna(BaseModel):
             "fecha_corta": self.fecha_remision.strftime("%d/%m/%Y") if self.fecha_remision else "",
             "especialidad_destino": self.especialidad_destino or "",
             "centro_medico_destino": self.centro_medico_destino or "",
+            "telefono_destino": self.telefono_destino or "",
+            "direccion_destino": self.direccion_destino or "",
             "motivo_remision": self.motivo_remision or "",
             "observaciones_clinicas": self.observaciones_clinicas or "",
-            "dieta_marca_tipo": self.dieta_marca_tipo or "No especificada",
+            "dieta_marca_tipo": self.dieta_marca_tipo or "",
             "antecedentes_cirugias": self.antecedentes_cirugias or "Ninguna registrada",
             "antecedentes_enfermedades": self.antecedentes_enfermedades or "Ninguna registrada",
             "desparasitacion_interna": f"{self.desparasitacion_interna_producto or 'N/A'} ({self.desparasitacion_interna_fecha.strftime('%d/%m/%Y') if self.desparasitacion_interna_fecha else 'Sin fecha'})" if (self.desparasitacion_interna_producto or self.desparasitacion_interna_fecha) else "Sin registro",
@@ -2427,6 +2667,7 @@ class RemisionInterna(BaseModel):
             "vacunacion_ultima_fecha": self.vacunacion_ultima_fecha.strftime("%d/%m/%Y") if self.vacunacion_ultima_fecha else "No registrada",
             "veterinario_nombre": self.veterinario.nombre if self.veterinario else "Médico Veterinario",
             "veterinario_tp": (self.veterinario.tarjeta_profesional or "") if self.veterinario else "",
+            "enlace_whatsapp": self.enlace_whatsapp or "",
         }
 
     def __repr__(self):

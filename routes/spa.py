@@ -125,6 +125,43 @@ def servicio_editar(id: int):
     return render_template("spa/form_servicio.html", form=form, titulo=f"Editar Servicio: {servicio.nombre}")
 
 
+@bp.route("/servicio/<int:id>/eliminar", methods=["POST"])
+@login_required
+@admin_required
+def servicio_eliminar(id: int):
+    servicio = db.session.get(ServicioSpa, id)
+    if not servicio:
+        flash("El servicio de spa no existe o ya fue eliminado.", "danger")
+        return redirect(url_for("spa.servicios_lista"))
+
+    form = SoloCsrfForm()
+    if not form.validate_on_submit():
+        flash("Error de validación de seguridad (CSRF).", "danger")
+        return redirect(url_for("spa.servicios_lista"))
+
+    tiene_citas = db.session.execute(select(CitaSpa.id).filter_by(servicio_spa_id=servicio.id).limit(1)).scalar_one_or_none()
+
+    try:
+        if tiene_citas:
+            servicio.activo = False
+            db.session.commit()
+            flash(
+                f"El servicio '{servicio.nombre}' tiene citas previas registradas en el historial. Para conservar la integridad histórica, ha sido desactivado del catálogo.",
+                "warning",
+            )
+        else:
+            nombre = servicio.nombre
+            db.session.delete(servicio)
+            db.session.commit()
+            flash(f"Servicio de Spa '{nombre}' eliminado definitivamente.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al eliminar servicio de spa %d", id)
+        flash("Error interno al eliminar el servicio de spa.", "danger")
+
+    return redirect(url_for("spa.servicios_lista"))
+
+
 # ---------------------------------------------------------------------------
 # Agenda y Citas de Grooming
 # ---------------------------------------------------------------------------
@@ -540,3 +577,52 @@ def cita_marcar_wa(id: int):
         current_app.logger.exception("Error al marcar como notificada la cita %d", id)
         return jsonify(error="No se pudo registrar la notificación."), 500
     return jsonify(ok=True)
+
+
+@bp.route("/cita/<int:id>/eliminar", methods=["POST"])
+@login_required
+@spa_required
+def cita_eliminar(id: int):
+    cita = db.session.get(CitaSpa, id)
+    if not cita:
+        flash("La cita de spa no existe o ya fue eliminada.", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("spa.agenda"))
+
+    form = SoloCsrfForm()
+    if not form.validate_on_submit():
+        flash("Error de validación de seguridad (CSRF).", "danger")
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("spa.agenda"))
+
+    # Si tiene venta facturada en POS y no está anulada, prevenir borrado accidental
+    if cita.venta_id and cita.venta and cita.venta.estado != "anulada":
+        flash(
+            f"No se puede eliminar la cita #{cita.id} porque tiene vinculada la factura {cita.venta.numero_factura} en POS. Si deseas eliminarla, primero anula o desvincula la factura.",
+            "warning",
+        )
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("spa.cita_detalle", id=id))
+
+    try:
+        mascota_nombre = cita.mascota.nombre if cita.mascota else "Paciente"
+        foto_ingreso = cita.foto_ingreso
+        foto_salida = cita.foto_salida
+
+        db.session.delete(cita)
+        db.session.commit()
+
+        if foto_ingreso:
+            eliminar_imagen("spa", foto_ingreso)
+        if foto_salida:
+            eliminar_imagen("spa", foto_salida)
+
+        flash(f"La cita de spa de {mascota_nombre} ha sido eliminada correctamente.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al eliminar cita de spa %d", id)
+        flash("Error interno al intentar eliminar la cita de spa.", "danger")
+
+    next_url = request.form.get("next")
+    return redirect(next_url or url_for("spa.agenda"))
+

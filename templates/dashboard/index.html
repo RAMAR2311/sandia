@@ -586,6 +586,16 @@
                 <a href="{{ url_for('spa.cita_detalle', id=cita.id) }}" class="btn btn-xs btn-light border rounded-pill py-1 px-2.5 text-secondary" style="font-size: 0.75rem;" title="Ver ficha del turno">
                   <span>Ver Turno</span> <i class="bi bi-chevron-right small"></i>
                 </a>
+
+                {% if current_user.rol in ('admin', 'recepcion', 'auxiliar') and not cita.venta_id %}
+                <form method="post" action="{{ url_for('spa.cita_eliminar', id=cita.id) }}" class="m-0" onsubmit="return confirm('¿Deseas eliminar la cita de spa de {{ cita.mascota.nombre }}?')">
+                  {{ form_csrf.csrf_token }}
+                  <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+                  <button type="submit" class="btn btn-xs btn-outline-danger rounded-pill py-1 px-2" style="font-size: 0.75rem;" title="Eliminar cita de spa">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+                {% endif %}
               </div>
 
             </div>
@@ -686,6 +696,16 @@
                 <a href="{{ url_for('spa.cita_detalle', id=item.cita.id) }}" class="btn btn-sm btn-light border py-1 px-2 text-secondary rounded-pill" style="font-size: 0.75rem;" title="Ver detalle de la cita">
                   <i class="bi bi-chevron-right"></i>
                 </a>
+
+                {% if current_user.rol in ('admin', 'recepcion', 'auxiliar') and not item.cita.venta_id %}
+                <form method="post" action="{{ url_for('spa.cita_eliminar', id=item.cita.id) }}" class="m-0" onsubmit="return confirm('¿Deseas eliminar este turno de spa de {{ item.cita.mascota.nombre }}?')">
+                  {{ form_csrf.csrf_token }}
+                  <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill py-1 px-2" style="font-size: 0.75rem;" title="Eliminar turno de spa">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+                {% endif %}
               </div>
 
             </div>
@@ -737,6 +757,15 @@
                 <a href="{{ url_for('agenda.detalle', id=c_med.id) }}" class="btn btn-xs btn-sandia-rosa rounded-pill px-3 py-1 shadow-xs" style="font-size: 0.75rem;">
                   <i class="bi bi-eye me-1"></i>Ver Cita
                 </a>
+                {% if current_user.rol in ('admin', 'recepcion', 'auxiliar', 'veterinario') %}
+                <form method="post" action="{{ url_for('agenda.eliminar', id=c_med.id) }}" class="m-0" onsubmit="return confirm('¿Deseas eliminar la cita médica de {{ c_med.mascota.nombre }}?')">
+                  {{ form_csrf.csrf_token }}
+                  <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+                  <button type="submit" class="btn btn-xs btn-outline-danger rounded-pill py-1 px-2" style="font-size: 0.75rem;" title="Eliminar cita médica">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+                {% endif %}
               </div>
             </div>
             {% endfor %}
@@ -758,11 +787,70 @@
   </div>
 </section>
 
-<!-- 4. Recordatorios de Vacunación y Desparasitación Prioritarios -->
-{% if vacunas_pendientes or desparasitaciones_pendientes %}
-<div class="row g-3 mb-3">
+<!-- 4. ALERTAS CLÍNICAS Y PREVENTIVAS: Próximos Controles, Vacunación y Desparasitación -->
+{% if controles_pendientes or vacunas_pendientes or desparasitaciones_pendientes %}
+{% set total_secciones_alertas = (1 if controles_pendientes else 0) + (1 if vacunas_pendientes else 0) + (1 if desparasitaciones_pendientes else 0) %}
+{% set col_clase_alerta = 'col-12 col-lg-4' if total_secciones_alertas >= 3 else ('col-12 col-md-6' if total_secciones_alertas == 2 else 'col-12') %}
+
+<div class="row g-3 mb-4">
+  
+  <!-- Próximos Controles Médicos -->
+  {% if controles_pendientes %}
+  <div class="{{ col_clase_alerta }}">
+    <section class="card border-0 shadow-sm rounded-3 overflow-hidden h-100" style="border: 1.5px solid #bae6fd !important; border-top: 3.5px solid #0284c7 !important;">
+      <div class="card-header bg-primary-subtle d-flex align-items-center justify-content-between py-1 px-3">
+        <span class="fw-bold text-primary-emphasis d-flex align-items-center gap-2" style="font-size: 0.82rem;">
+          <i class="bi bi-clipboard2-pulse text-primary"></i>Próximos Controles Médicos
+        </span>
+        <span class="badge bg-primary text-white rounded-pill px-2" style="font-size: 0.7rem;">{{ controles_pendientes|length }}</span>
+      </div>
+      <div class="list-group list-group-flush" style="max-height: 160px; overflow-y: auto;">
+        {% for ctrl in controles_pendientes %}
+        <div class="list-group-item d-flex align-items-center justify-content-between gap-2 flex-wrap py-1 px-3 border-bottom">
+          <div class="small">
+            <a href="{{ url_for('historias.ficha_medica', mascota_id=ctrl.mascota_id, tab='controles') }}" class="text-decoration-none fw-bold text-dark" title="Ver ficha médica">
+              {{ ctrl.mascota.especie_emoji or '🐾' }} {{ ctrl.mascota.nombre }}
+            </a>
+            <span class="text-muted">· {{ ctrl.tutor.nombre_completo }}</span>
+            {% if ctrl.motivo %}
+              <span class="badge bg-light text-dark border ms-1" style="font-size: 0.68rem;">{{ ctrl.motivo }}</span>
+            {% endif %}
+            {% if ctrl.estado_proximo_control == 'vencido' %}
+              <span class="badge bg-danger text-white rounded-pill px-2" style="font-size: 0.65rem;">Vencido {{ ctrl.fecha_proximo_control|fecha }}</span>
+            {% elif ctrl.estado_proximo_control == 'hoy' %}
+              <span class="badge bg-warning text-dark rounded-pill px-2" style="font-size: 0.65rem;">Hoy {{ ctrl.fecha_proximo_control|hora }}</span>
+            {% elif ctrl.estado_proximo_control == 'manana' %}
+              <span class="badge bg-primary text-white rounded-pill px-2" style="font-size: 0.65rem;">Mañana {{ ctrl.fecha_proximo_control|hora }}</span>
+            {% else %}
+              <span class="badge bg-info text-dark rounded-pill px-2" style="font-size: 0.65rem;">{{ ctrl.etiqueta_proximo_control }}</span>
+            {% endif %}
+          </div>
+          <div class="d-flex align-items-center gap-1">
+            {% if ctrl.enlace_whatsapp_recordatorio %}
+            <a href="{{ ctrl.enlace_whatsapp_recordatorio }}" target="_blank" rel="noopener" class="btn btn-xs btn-success py-1 px-2 fw-bold" style="background-color: #25D366; border-color: #25D366; font-size: 0.72rem;" title="Enviar recordatorio de control por WhatsApp">
+              <i class="bi bi-whatsapp me-1"></i>Avisar
+            </a>
+            {% endif %}
+            {% if current_user.rol in ('admin', 'veterinario') %}
+            <form method="post" action="{{ url_for('historias.control_eliminar', id=ctrl.id) }}" class="m-0" onsubmit="return confirm('¿Deseas eliminar este control médico de {{ ctrl.mascota.nombre }}?')">
+              {{ form_csrf.csrf_token }}
+              <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+              <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-1.5" title="Eliminar control médico">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+  {% endif %}
+
+  <!-- Vacunaciones por Vencer -->
   {% if vacunas_pendientes %}
-  <div class="{% if desparasitaciones_pendientes %}col-12 col-lg-6{% else %}col-12{% endif %}">
+  <div class="{{ col_clase_alerta }}">
     <section class="card border-0 shadow-sm rounded-3 overflow-hidden h-100" style="border: 1.5px solid #fecaca !important; border-top: 3.5px solid #e11d48 !important;">
       <div class="card-header bg-danger-subtle d-flex align-items-center justify-content-between py-1 px-3">
         <span class="fw-bold text-danger-emphasis d-flex align-items-center gap-2" style="font-size: 0.82rem;">
@@ -783,11 +871,22 @@
               <span class="badge bg-warning text-dark rounded-pill px-2" style="font-size: 0.65rem;">Vence {{ v.fecha_proxima|fecha }}</span>
             {% endif %}
           </div>
-          {% if v.enlace_whatsapp %}
-          <a href="{{ v.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-xs btn-success py-1 px-2 fw-bold" style="background-color: #25D366; border-color: #25D366; font-size: 0.72rem;" title="Enviar recordatorio WhatsApp">
-            <i class="bi bi-whatsapp me-1"></i>Avisar
-          </a>
-          {% endif %}
+          <div class="d-flex align-items-center gap-1">
+            {% if v.enlace_whatsapp %}
+            <a href="{{ v.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-xs btn-success py-1 px-2 fw-bold" style="background-color: #25D366; border-color: #25D366; font-size: 0.72rem;" title="Enviar recordatorio WhatsApp">
+              <i class="bi bi-whatsapp me-1"></i>Avisar
+            </a>
+            {% endif %}
+            {% if current_user.rol in ('admin', 'veterinario') %}
+            <form method="post" action="{{ url_for('historias.vacuna_eliminar', id=v.id) }}" class="m-0" onsubmit="return confirm('¿Deseas eliminar este registro de vacuna {{ v.nombre_vacuna }} de {{ v.mascota.nombre }}?')">
+              {{ form_csrf.csrf_token }}
+              <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+              <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-1.5" title="Eliminar registro de vacuna">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+            {% endif %}
+          </div>
         </div>
         {% endfor %}
       </div>
@@ -795,8 +894,9 @@
   </div>
   {% endif %}
 
+  <!-- Desparasitaciones por Vencer -->
   {% if desparasitaciones_pendientes %}
-  <div class="{% if vacunas_pendientes %}col-12 col-lg-6{% else %}col-12{% endif %}">
+  <div class="{{ col_clase_alerta }}">
     <section class="card border-0 shadow-sm rounded-3 overflow-hidden h-100" style="border: 1.5px solid #cffafe !important; border-top: 3.5px solid #0891b2 !important;">
       <div class="card-header bg-info-subtle d-flex align-items-center justify-content-between py-1 px-3">
         <span class="fw-bold text-info-emphasis d-flex align-items-center gap-2" style="font-size: 0.82rem;">
@@ -817,11 +917,22 @@
               <span class="badge bg-warning text-dark rounded-pill px-2" style="font-size: 0.65rem;">Vence {{ d.fecha_proxima|fecha }}</span>
             {% endif %}
           </div>
-          {% if d.enlace_whatsapp %}
-          <a href="{{ d.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-xs btn-success py-1 px-2 fw-bold" style="background-color: #25D366; border-color: #25D366; font-size: 0.72rem;" title="Enviar recordatorio WhatsApp">
-            <i class="bi bi-whatsapp me-1"></i>Avisar
-          </a>
-          {% endif %}
+          <div class="d-flex align-items-center gap-1">
+            {% if d.enlace_whatsapp %}
+            <a href="{{ d.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-xs btn-success py-1 px-2 fw-bold" style="background-color: #25D366; border-color: #25D366; font-size: 0.72rem;" title="Enviar recordatorio WhatsApp">
+              <i class="bi bi-whatsapp me-1"></i>Avisar
+            </a>
+            {% endif %}
+            {% if current_user.rol in ('admin', 'veterinario') %}
+            <form method="post" action="{{ url_for('historias.desparasitacion_eliminar', id=d.id) }}" class="m-0" onsubmit="return confirm('¿Deseas eliminar este registro de desparasitación {{ d.producto }} de {{ d.mascota.nombre }}?')">
+              {{ form_csrf.csrf_token }}
+              <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+              <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-1.5" title="Eliminar registro de desparasitación">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+            {% endif %}
+          </div>
         </div>
         {% endfor %}
       </div>

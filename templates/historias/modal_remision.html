@@ -76,15 +76,25 @@
             </div>
           </div>
 
-          {# BLOQUE 2: Alimentación y Dieta Actual #}
+          {# BLOQUE 2: Teléfono y Dirección de Destino #}
           <div class="card border-0 bg-light rounded-3 p-3 mb-3">
             <h6 class="fw-bold text-dark small text-uppercase mb-2" style="letter-spacing: 0.05em;">
-              <i class="bi bi-egg-fried text-warning me-1"></i> 2. Nutrición y Alimentación Actual
+              <i class="bi bi-telephone-outbound text-primary me-1"></i> 2. Contacto y Ubicación del Destino
             </h6>
-            <div class="row g-2">
-              <div class="col-12">
-                <label class="form-label small fw-semibold text-dark mb-1">Marca, Tipo de Alimento o Dieta</label>
-                {{ form_remision.dieta_marca_tipo(class_="form-control bg-white", placeholder="Ej: Royal Canin Hypoallergenic, Taste of the Wild, Dieta BARF casera, etc.") }}
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold text-dark mb-1">Teléfono / WhatsApp de Contacto</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-muted"><i class="bi bi-telephone-fill text-success"></i></span>
+                  {{ form_remision.telefono_destino(class_="form-control bg-white", placeholder="Ej: +57 300 123 4567 / (601) 789 0123") }}
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold text-dark mb-1">Dirección / Sede del Centro</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-muted"><i class="bi bi-geo-alt-fill text-danger"></i></span>
+                  {{ form_remision.direccion_destino(class_="form-control bg-white", placeholder="Ej: Cra. 15 # 104-32, Consultorio 201") }}
+                </div>
               </div>
             </div>
           </div>
@@ -187,7 +197,8 @@
         </div>
       </div>
 
-      <div class="modal-footer bg-light border-top px-4 py-3">
+      <div class="modal-footer bg-light border-top px-4 py-3 d-flex justify-content-between align-items-center">
+        <div id="det-btn-whatsapp-container"></div>
         <button type="button" class="btn btn-sm btn-secondary rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">
           Cerrar
         </button>
