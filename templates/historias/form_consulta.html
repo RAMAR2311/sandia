@@ -490,6 +490,23 @@ document.addEventListener('DOMContentLoaded', function() {
       inspectorSugerencias.appendChild(chip);
     });
 
+    // Botón para escribir observación personalizada o libre
+    const btnCustom = document.createElement('button');
+    btnCustom.type = 'button';
+    btnCustom.className = 'chip-sugerencia chip-sugerencia--escribir';
+    btnCustom.innerHTML = '<i class="bi bi-pencil-square me-1"></i>+ Escribir otro / Agregar más...';
+    btnCustom.title = 'Hacer foco en el campo para escribir una observación libre';
+    btnCustom.addEventListener('click', function() {
+      if (inspectorObs.value.trim() !== '' && !inspectorObs.value.endsWith('. ') && !inspectorObs.value.endsWith('.')) {
+        inspectorObs.value += '. ';
+      }
+      inspectorObs.focus();
+      const valLen = inspectorObs.value.length;
+      inspectorObs.setSelectionRange(valLen, valLen);
+      inspectorObs.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    inspectorSugerencias.appendChild(btnCustom);
+
     // Resaltar tarjeta activa en la grilla
     catalogoSistemas.forEach(s => {
       const card = document.getElementById(`card-sistema-${s.id}`);

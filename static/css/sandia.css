@@ -1928,6 +1928,19 @@ body.pagina-login { background: var(--sandia-crema) radial-gradient(circle at 20
   transform: translateY(-1px);
 }
 
+.chip-sugerencia--escribir {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border-color: #93C5FD;
+  font-weight: 600;
+}
+
+.chip-sugerencia--escribir:hover {
+  background: #2563EB;
+  color: #FFFFFF;
+  border-color: #2563EB;
+}
+
 @keyframes shakeAnimation {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-6px); }
