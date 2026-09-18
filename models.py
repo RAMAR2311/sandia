@@ -2344,6 +2344,156 @@ class PlantillaConsentimiento(BaseModel):
     def tipo_etiqueta(self) -> str:
         return TIPOS_CONSENTIMIENTO.get(self.tipo, self.tipo)
 
+    @classmethod
+    def asegurar_plantillas_base(cls):
+        """Garantiza que las 5 plantillas médico-legales predeterminadas existan en la base de datos."""
+        plantillas_predeterminadas = [
+            {
+                "codigo": "EUTANASIA_V1",
+                "tipo": "eutanasia",
+                "titulo": "Consentimiento Informado para Eutanasia Humanitaria",
+                "descripcion_corta": "Autorización para cese indoloro de funciones vitales y disposición de restos",
+                "contenido_template": """CONSENTIMIENTO INFORMADO PARA EUTANASIA HUMANITARIA Y DESTINO DE RESTOS
+
+En la ciudad de {{nombre_clinica}}, a las {{fecha_hora}}, yo, {{nombre_tutor}}, identificado(a) con documento de identidad No. {{documento_tutor}}, domiciliado(a) en {{direccion_tutor}}, teléfono {{telefono_tutor}} y correo electrónico {{email_tutor}}, en mi calidad de tutor(a) legal y responsable directo(a) del paciente que responde al nombre de {{nombre_paciente}}:
+
+DATOS DEL PACIENTE:
+• Especie: {{especie}} | Raza: {{raza}} | Sexo: {{sexo}} | Edad: {{edad}} | Peso: {{peso}} kg | Microchip: {{id_microchip}}
+
+DECLARO LIBRE, CONSCIENTE Y VOLUNTARIAMENTE:
+1. DIAGNÓSTICO Y CONDICIÓN MÉDICA: Que el Médico Veterinario tratante, Dr.(a) {{nombre_veterinario}}, con Tarjeta Profesional No. {{tarjeta_profesional}}, me ha explicado de manera clara, detallada y comprensible el diagnóstico/motivo: "{{diagnostico_motivo}}", evidenciando que mi mascota presenta un cuadro clínico incompatible con una calidad de vida digna, cursando con dolor o sufrimiento no mitigable.
+
+2. AUTORIZACIÓN DEL ACTO MÉDICO: Otorgo mi autorización expresa e irrevocable al equipo médico de {{nombre_clinica}} para realizar el procedimiento de EUTANASIA HUMANITARIA bajo protocolos éticos, mediante sedación profunda previa seguida de sobredosis anestésica para garantizar el cese indoloro de sus funciones vitales.
+
+3. EXONERACIÓN DE RESPONSABILIDAD: Certifico que el paciente no ha mordido a ninguna persona o animal en los últimos 15 días calendario. Exonero plenamente a {{nombre_clinica}} y al equipo veterinario de cualquier responsabilidad legal o patrimonial derivada de este procedimiento.
+
+4. DISPOSICIÓN DEL RESTO DEL CUERPO:
+Autorizo la disposición de los restos mortales conforme a la normativa sanitaria y la opción pactada con el centro veterinario.""",
+                "es_sistema": True,
+                "activo": True,
+                "version": 1,
+            },
+            {
+                "codigo": "ANESTESIA_V1",
+                "tipo": "anestesia",
+                "titulo": "Consentimiento Informado para Anestesia y Sedación",
+                "descripcion_corta": "Autorización de sedación, evaluación prequirúrgica y manejo de emergencias",
+                "contenido_template": """CONSENTIMIENTO INFORMADO PARA PROCEDIMIENTOS ANESTÉSICOS Y SEDACIÓN
+
+DATOS GENERALES:
+• Clínica: {{nombre_clinica}} | Fecha y Hora: {{fecha_hora}}
+• Médico Veterinario: Dr.(a) {{nombre_veterinario}} (T.P. {{tarjeta_profesional}})
+• Tutor: {{nombre_tutor}} (Doc: {{documento_tutor}}, Tel: {{telefono_tutor}})
+• Paciente: {{nombre_paciente}} | Especie: {{especie}} | Raza: {{raza}} | Edad: {{edad}} | Peso: {{peso}} kg
+
+Por medio del presente documento, autorizo la administración de sedación, anestesia regional o anestesia general a mi mascota para la realización de: "{{diagnostico_motivo}}".
+
+CLÁUSULAS INFORMATIVAS Y DE CONSENTIMIENTO:
+1. RIESGO INHERENTE: Se me ha informado que todo procedimiento que requiera anestesia o sedación conlleva un riesgo inherente de complicaciones impredecibles (hipotensión, bradicardia, arritmias, shock, reacciones farmacológicas adversas, paro cardiorrespiratorio e incluso la muerte), aun cuando se utilicen los fármacos más seguros y monitorización continua.
+
+2. EXÁMENES PREANESTÉSICOS: Reconozco la importancia crítica de los análisis de laboratorio y cardiológicos previos para mitigar riesgos, los cuales he aportado o autorizado según indicación médica.
+
+3. AYUNO PREVIO: Certifico haber cumplido rigurosamente con el tiempo de ayuno sólido y líquido indicado por el médico veterinario.
+
+4. AUTORIZACIÓN DE EMERGENCIAS: En caso de presentarse una contingencia durante el acto anestésico, autorizo al equipo médico a administrar fármacos de soporte vital y maniobras de estabilización pertinentes.""",
+                "es_sistema": True,
+                "activo": True,
+                "version": 1,
+            },
+            {
+                "codigo": "QUIRURGICO_V1",
+                "tipo": "quirurgico",
+                "titulo": "Consentimiento Informado para Procedimiento Quirúrgico",
+                "descripcion_corta": "Autorización de cirugía, riesgos inherentes y cuidados postoperatorios",
+                "contenido_template": """CONSENTIMIENTO INFORMADO PARA ACTO QUIRÚRGICO
+
+En las instalaciones de {{nombre_clinica}}, a las {{fecha_hora}}:
+Yo, {{nombre_tutor}}, con documento de identidad {{documento_tutor}}, AUTORIZO la intervención quirúrgica de mi mascota {{nombre_paciente}} (Especie: {{especie}}, Raza: {{raza}}, Sexo: {{sexo}}, Edad: {{edad}}, Peso: {{peso}} kg).
+
+PROCEDIMIENTO QUIRÚRGICO PROGRAMADO:
+• Procedimiento: {{diagnostico_motivo}}
+• Cirujano Responsable: Dr.(a) {{nombre_veterinario}} | T.P. {{tarjeta_profesional}}
+
+MANIFIESTO Y ACEPTO QUE:
+1. INFORMACIÓN RECIBIDA: El cirujano veterinario me ha explicado con claridad la técnica quirúrgica, los objetivos terapéuticos y los pronósticos esperados.
+
+2. RIESGOS Y COMPLICACIONES: Comprendo que toda cirugía conlleva riesgos potenciales tales como hemorragias, infección del sitio quirúrgico, dehiscencia de suturas, seromas o intolerancia a implantes.
+
+3. HALLAZGOS INTRAOPERATORIOS: Autorizo al cirujano a modificar la técnica o extender la intervención si durante el acto quirúrgico se presentan hallazgos o emergencias imprevistas que comprometan la salud del paciente.
+
+4. CUIDADOS POSTOPERATORIOS: Me comprometo a cumplir estrictamente el tratamiento analgésico y antibiótico prescrito, mantener el collar isabelino o body de protección, guardar reposo y acudir a las revisiones y retiro de puntos.""",
+                "es_sistema": True,
+                "activo": True,
+                "version": 1,
+            },
+            {
+                "codigo": "HOSPITALIZACION_V1",
+                "tipo": "hospitalizacion",
+                "titulo": "Consentimiento para Hospitalización y Directiva de RCP",
+                "descripcion_corta": "Admisión hospitalaria, medicación supervisada y directiva de Reanimación Cardiopulmonar",
+                "contenido_template": """CONTRATO DE ADMISIÓN Y CONSENTIMIENTO PARA HOSPITALIZACIÓN / CUIDADOS CRÍTICOS
+
+• Centro Veterinario: {{nombre_clinica}} | Fecha de Ingreso: {{fecha_hora}}
+• Tutor Responsable: {{nombre_tutor}} | Identificación: {{documento_tutor}} | Tel: {{telefono_tutor}}
+• Paciente: {{nombre_paciente}} | Especie: {{especie}} | Raza: {{raza}} | Peso: {{peso}} kg
+• Diagnóstico / Motivo de Admisión: {{diagnostico_motivo}}
+• Veterinario Tratante: Dr.(a) {{nombre_veterinario}} | T.P. {{tarjeta_profesional}}
+
+TÉRMINOS Y CONDICIONES:
+1. PLAN TERAPÉUTICO Y MONITOREO: Autorizo la hospitalización de mi mascota para fluidoterapia intravenosa, fármacos inyectables, toma de muestras diagnósticas, curaciones y monitorización médica continua.
+
+2. EVOLUCIÓN DINÁMICA: Entiendo que los pacientes pueden descompensarse súbitamente a pesar de los cuidados instaurados y que los costos pueden variar de acuerdo a la respuesta médica y requerimiento de insumos o exámenes complementarios.
+
+3. DIRECTIVA ANTICIPADA DE REANIMACIÓN CARDIOPULMONAR (RCP):
+En caso de que el paciente presente un Paro Cardiorrespiratorio, manifiesto mi voluntad conforme a lo registrado en este documento (Autoriza RCP / Orden de No Reanimar - DNR).
+
+4. COMUNICACIÓN: Me comprometo a mantener mi línea telefónica {{telefono_tutor}} disponible para decisiones médicas de urgencia.""",
+                "es_sistema": True,
+                "activo": True,
+                "version": 1,
+            },
+            {
+                "codigo": "ALTA_VOLUNTARIA_V1",
+                "tipo": "alta_voluntaria",
+                "titulo": "Acta de Declinación Médica y Alta Voluntaria",
+                "descripcion_corta": "Constancia de rechazo de tratamiento o retiro contra criterio médico profesional",
+                "contenido_template": """ACTA DE DECLINACIÓN DE SERVICIOS MÉDICOS / ALTA CONTRA CONSEJO VETERINARIO
+
+• Lugar y Fecha: {{nombre_clinica}}, a las {{fecha_hora}}
+• Médico Veterinario: Dr.(a) {{nombre_veterinario}} (T.P. {{tarjeta_profesional}})
+• Tutor Responsable: {{nombre_tutor}} | Documento: {{documento_tutor}} | Teléfono: {{telefono_tutor}}
+• Paciente: {{nombre_paciente}} | Especie: {{especie}} | Raza: {{raza}} | Edad: {{edad}} | Peso: {{peso}} kg
+
+CONSTANCIA DE DECLINACIÓN EXPRESA:
+Por medio de la presente acta, hago constar que he decidido voluntariamente:
+• Rechazar la realización de pruebas diagnósticas, hospitalización, cirugía o tratamiento médico recomendado: "{{diagnostico_motivo}}".
+• O solicitar el retiro inmediato (Alta Voluntaria) de mi mascota del centro veterinario contra el consejo médico.
+
+ASUNCIÓN TOTAL DE RIESGOS:
+1. El Médico Veterinario me ha advertido con claridad los riesgos inminentes de interrumpir la atención médica, incluyendo el agravamiento severo, sufrimiento, secuelas irreversibles o la muerte del paciente {{nombre_paciente}}.
+
+2. Asumo total y plena responsabilidad por las consecuencias médicas o fatales derivadas de mi decisión.
+
+3. Exonero de manera absoluta a {{nombre_clinica}} y a su equipo profesional de cualquier reclamo legal o patrimonial por el desenlace del paciente a partir de la firma de este documento.""",
+                "es_sistema": True,
+                "activo": True,
+                "version": 1,
+            },
+        ]
+        creados = 0
+        for p in plantillas_predeterminadas:
+            existente = db.session.execute(
+                select(PlantillaConsentimiento).where(PlantillaConsentimiento.codigo == p["codigo"])
+            ).scalar_one_or_none()
+            if not existente:
+                nueva = PlantillaConsentimiento(**p)
+                db.session.add(nueva)
+                creados += 1
+            elif not existente.activo:
+                existente.activo = True
+        if creados > 0 or db.session.dirty:
+            db.session.commit()
+
     def __repr__(self):
         return f"<PlantillaConsentimiento {self.codigo} ({self.tipo})>"
 

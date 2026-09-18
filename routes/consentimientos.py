@@ -136,9 +136,16 @@ def lista():
 
     paginacion = db.paginate(stmt, page=pagina_num, per_page=10, error_out=False)
     consentimientos = paginacion.items
+    
     plantillas = db.session.execute(
         select(PlantillaConsentimiento).where(PlantillaConsentimiento.activo.is_(True)).order_by(PlantillaConsentimiento.tipo)
     ).scalars().all()
+
+    if not plantillas:
+        PlantillaConsentimiento.asegurar_plantillas_base()
+        plantillas = db.session.execute(
+            select(PlantillaConsentimiento).where(PlantillaConsentimiento.activo.is_(True)).order_by(PlantillaConsentimiento.tipo)
+        ).scalars().all()
 
     return render_template(
         "consentimientos/lista.html",
@@ -187,9 +194,15 @@ def preparar():
         ).scalar_one_or_none()
 
     if not plantilla:
-        plantilla = db.session.execute(
-            select(PlantillaConsentimiento).where(PlantillaConsentimiento.activo.is_(True)).order_by(PlantillaConsentimiento.id)
-        ).scalar_one_or_none()
+        PlantillaConsentimiento.asegurar_plantillas_base()
+        if codigo_plantilla:
+            plantilla = db.session.execute(
+                select(PlantillaConsentimiento).where(PlantillaConsentimiento.codigo == codigo_plantilla, PlantillaConsentimiento.activo.is_(True))
+            ).scalar_one_or_none()
+        if not plantilla:
+            plantilla = db.session.execute(
+                select(PlantillaConsentimiento).where(PlantillaConsentimiento.activo.is_(True)).order_by(PlantillaConsentimiento.id)
+            ).scalar_one_or_none()
 
     if not plantilla:
         return jsonify({"success": False, "error": "No hay plantillas disponibles en el sistema"}), 404
