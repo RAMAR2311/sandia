@@ -199,9 +199,16 @@
             <!-- FR -->
             <div class="col-6 col-md-3">
               <div class="vital-metric-card">
-                <div class="vital-metric-label"><i class="bi bi-lungs text-info"></i> Frec. Respirat.</div>
-                {{ form.frecuencia_respiratoria(class="vital-metric-input", placeholder="28") }}
-                <span class="vital-metric-unit">rpm</span>
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                  <div class="vital-metric-label mb-0"><i class="bi bi-lungs text-info"></i> Frec. Respirat.</div>
+                  <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-1.5 py-0 fw-bold text-decoration-none" style="font-size: 0.65rem;" onclick="document.getElementById('frecuencia_respiratoria').value='Jadeo'" title="Marcar como Jadeo">
+                    Jadeo
+                  </button>
+                </div>
+                <div class="d-flex align-items-baseline">
+                  {{ form.frecuencia_respiratoria(class="vital-metric-input", placeholder="28 o Jadeo", id="frecuencia_respiratoria") }}
+                  <span class="vital-metric-unit">rpm</span>
+                </div>
               </div>
             </div>
 

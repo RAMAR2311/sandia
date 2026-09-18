@@ -335,7 +335,11 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
     v_peso = f"{consulta.peso_kg} kg" if consulta.peso_kg else "—"
     v_temp = f"{consulta.temperatura_c} °C" if consulta.temperatura_c else "—"
     v_fc = f"{consulta.frecuencia_cardiaca} lpm" if consulta.frecuencia_cardiaca else "—"
-    v_fr = f"{consulta.frecuencia_respiratoria} rpm" if consulta.frecuencia_respiratoria else "—"
+    if consulta.frecuencia_respiratoria:
+        fr_str = str(consulta.frecuencia_respiratoria).strip()
+        v_fr = f"{fr_str} rpm" if fr_str.isdigit() else fr_str
+    else:
+        v_fr = "—"
     v_tllc = f"{consulta.tllc_segundos} seg" if consulta.tllc_segundos else "—"
     v_muc = f"{consulta.mucosas.capitalize()}" if consulta.mucosas else "—"
     v_cc = f"{consulta.condicion_corporal}" if consulta.condicion_corporal else "—"

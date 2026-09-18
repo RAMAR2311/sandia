@@ -533,7 +533,7 @@ class ConsultaMedicaForm(FlaskForm):
     peso_kg = DecimalField("Peso actual (kg)", places=2, validators=[Optional(), NumberRange(min=Decimal("0.01"), max=Decimal("300.00"))])
     temperatura_c = DecimalField("Temperatura (°C)", places=1, validators=[Optional(), NumberRange(min=Decimal("30.0"), max=Decimal("45.0"))])
     frecuencia_cardiaca = IntegerField("FC (lpm)", validators=[Optional(), NumberRange(min=20, max=300)])
-    frecuencia_respiratoria = IntegerField("FR (rpm)", validators=[Optional(), NumberRange(min=5, max=150)])
+    frecuencia_respiratoria = StringField("FR (rpm / Jadeo)", validators=[Optional(), Length(max=50)])
     tllc_segundos = IntegerField("TLLC (segundos)", validators=[Optional(), NumberRange(min=1, max=10)])
     mucosas = SelectField("Mucosas", choices=[("", "-- Seleccionar --"), ("rosadas", "Rosadas (Normal)"), ("palidas", "Pálidas"), ("ictericas", "Ictéricas"), ("cianoticas", "Cianóticas"), ("congestivas", "Congestivas")], validators=[Optional()])
     condicion_corporal = SelectField("Condición Corporal", choices=[("", "-- Seleccionar --"), ("1/5", "1/5 - Muy delgado"), ("2/5", "2/5 - Delgado"), ("3/5", "3/5 - Ideal"), ("4/5", "4/5 - Sobrepeso"), ("5/5", "5/5 - Obeso")], validators=[Optional()])

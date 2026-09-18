@@ -194,7 +194,7 @@
           </div>
           <div class="col-4 col-md-2 p-2 bg-light rounded border">
             <div class="small text-muted">FR</div>
-            <div class="fw-bold text-dark">{{ consulta.frecuencia_respiratoria or '—' }} rpm</div>
+            <div class="fw-bold text-dark">{{ consulta.frecuencia_respiratoria or '—' }}{% if consulta.frecuencia_respiratoria and consulta.frecuencia_respiratoria|string|int(0) > 0 %} rpm{% endif %}</div>
           </div>
           <div class="col-4 col-md-2 p-2 bg-light rounded border">
             <div class="small text-muted">Mucosas</div>
