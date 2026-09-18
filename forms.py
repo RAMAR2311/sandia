@@ -523,6 +523,9 @@ class VincularVentaSpaForm(FlaskForm):
 class ConsultaMedicaForm(FlaskForm):
     motivo_consulta = StringField("Motivo de consulta", validators=[DataRequired("El motivo de consulta es obligatorio."), Length(max=255)])
     anamnesis = TextAreaField("Anamnesis / Historia previa (Subjetivo - S)", validators=[Optional(), Length(max=2000)])
+    alimentacion = StringField("Alimentación / Dieta actual", validators=[Optional(), Length(max=255)])
+    desparasitacion_ultima = StringField("Última desparasitación", validators=[Optional(), Length(max=255)])
+    vacunacion_ultima = StringField("Última vacunación", validators=[Optional(), Length(max=255)])
 
     # Constantes vitales / Examen físico
     peso_kg = DecimalField("Peso actual (kg)", places=2, validators=[Optional(), NumberRange(min=Decimal("0.01"), max=Decimal("300.00"))])

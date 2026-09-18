@@ -29,82 +29,11 @@
           {% if mascota.raza %}<span class="badge bg-secondary rounded-pill">{{ mascota.raza.nombre }}</span>{% endif %}
           <span class="badge bg-dark border border-secondary rounded-pill text-capitalize">{{ mascota.sexo or 'Sexo N/R' }}</span>
         </div>
-        <div class="small text-white-50 d-flex flex-wrap gap-3 mb-2">
+        <div class="small text-white-50 d-flex flex-wrap gap-3">
           <span><i class="bi bi-person me-1"></i>Tutor: <strong>{{ mascota.tutor.nombre_completo if mascota.tutor else 'N/A' }}</strong></span>
           {% if mascota.tutor and mascota.tutor.telefono %}<span><i class="bi bi-telephone me-1"></i>{{ mascota.tutor.telefono }}</span>{% endif %}
           <span><i class="bi bi-calendar-event me-1"></i>Edad: <strong>{{ mascota.edad_formateada if mascota.edad_formateada else (mascota.edad or 'N/R') }}</strong></span>
           <span><i class="bi bi-speedometer2 me-1"></i>Último peso: <strong>{{ (mascota.peso_actual.peso_kg ~ ' kg') if mascota.peso_actual else 'Sin registro previo' }}</strong></span>
-        </div>
-
-        <!-- 3 Indicadores Clínicos Clave: Alimentación, Última Desparasitación, Última Vacunación -->
-        <div class="row g-2 pt-2 border-top border-white border-opacity-10 mt-1">
-          <!-- 1. Alimentación -->
-          <div class="col-12 col-md-4">
-            <div class="p-2 rounded-3" style="background: rgba(255,255,255,0.08);">
-              <div class="text-warning small fw-bold mb-0.5" style="font-size: 0.72rem;">
-                <i class="bi bi-egg-fried me-1"></i>Alimentación / Dieta:
-              </div>
-              <div class="text-white small fw-semibold text-truncate" title="{{ mascota.alimentacion or 'Sin registrar' }}">
-                {{ mascota.alimentacion or 'Sin registrar' }}
-              </div>
-            </div>
-          </div>
-
-          <!-- 2. Última Desparasitación -->
-          <div class="col-12 col-md-4">
-            <div class="p-2 rounded-3" style="background: rgba(255,255,255,0.08);">
-              <div class="d-flex align-items-center justify-content-between mb-0.5">
-                <span class="text-info small fw-bold" style="font-size: 0.72rem;">
-                  <i class="bi bi-capsule me-1"></i>Última Desparasitación:
-                </span>
-                {% if mascota.desparasitaciones %}
-                  {% set ult_d = mascota.desparasitaciones[0] %}
-                  {% if ult_d.estado_vencimiento == 'al_dia' %}
-                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-1.5 py-0" style="font-size: 0.65rem;">Al día</span>
-                  {% elif ult_d.estado_vencimiento == 'proxima_vencer' %}
-                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-1.5 py-0" style="font-size: 0.65rem;">Próxima</span>
-                  {% else %}
-                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-1.5 py-0" style="font-size: 0.65rem;">Vencida</span>
-                  {% endif %}
-                {% endif %}
-              </div>
-              <div class="text-white small fw-semibold text-truncate" title="{% if mascota.desparasitaciones %}{{ mascota.desparasitaciones[0].producto }} ({{ mascota.desparasitaciones[0].fecha_aplicacion|fecha }}){% else %}Sin registrar{% endif %}">
-                {% if mascota.desparasitaciones %}
-                  {{ mascota.desparasitaciones[0].producto }} <span class="text-white-50">({{ mascota.desparasitaciones[0].fecha_aplicacion|fecha }})</span>
-                {% else %}
-                  <span class="text-white-50">Sin registros</span>
-                {% endif %}
-              </div>
-            </div>
-          </div>
-
-          <!-- 3. Última Vacuna -->
-          <div class="col-12 col-md-4">
-            <div class="p-2 rounded-3" style="background: rgba(255,255,255,0.08);">
-              <div class="d-flex align-items-center justify-content-between mb-0.5">
-                <span class="text-success small fw-bold" style="font-size: 0.72rem;">
-                  <i class="bi bi-shield-check me-1"></i>Última Vacuna:
-                </span>
-                {% if mascota.vacunas %}
-                  {% set ult_v = mascota.vacunas[0] %}
-                  {% if ult_v.estado_vencimiento == 'al_dia' %}
-                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-1.5 py-0" style="font-size: 0.65rem;">Al día</span>
-                  {% elif ult_v.estado_vencimiento == 'proxima_vencer' %}
-                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-1.5 py-0" style="font-size: 0.65rem;">Próxima</span>
-                  {% else %}
-                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-1.5 py-0" style="font-size: 0.65rem;">Vencida</span>
-                  {% endif %}
-                {% endif %}
-              </div>
-              <div class="text-white small fw-semibold text-truncate" title="{% if mascota.vacunas %}{{ mascota.vacunas[0].nombre_vacuna }} ({{ mascota.vacunas[0].fecha_aplicacion|fecha }}){% else %}Sin registrar{% endif %}">
-                {% if mascota.vacunas %}
-                  {{ mascota.vacunas[0].nombre_vacuna }} <span class="text-white-50">({{ mascota.vacunas[0].fecha_aplicacion|fecha }})</span>
-                {% else %}
-                  <span class="text-white-50">Sin registros</span>
-                {% endif %}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
       <div class="col-auto text-end d-none d-md-block">
@@ -159,9 +88,49 @@
           </div>
 
           <!-- Anamnesis -->
-          <div>
+          <div class="mb-4">
             <label for="anamnesis" class="form-label fw-bold">{{ form.anamnesis.label.text }}</label>
-            {{ form.anamnesis(class="form-control", rows="3", placeholder="Tiempo de evolución de los síntomas, dieta actual, ambiente, tratamientos previos administrados por el tutor, etc.") }}
+            {{ form.anamnesis(class="form-control", rows="3", placeholder="Tiempo de evolución de los síntomas, ambiente, tratamientos previos administrados por el tutor, etc.") }}
+          </div>
+
+          <!-- Nutrición y Estado Preventivo Reportado en esta Consulta -->
+          <div class="p-3 p-md-4 rounded-3 border bg-light">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-shield-check text-primary"></i>
+                <span>Nutrición y Estado Preventivo en esta Consulta</span>
+              </h6>
+              <span class="badge bg-secondary-subtle text-secondary border px-2.5 py-1 rounded-pill small">Editable para este paciente</span>
+            </div>
+            
+            <div class="row g-3">
+              <!-- Alimentación -->
+              <div class="col-12 col-md-4">
+                <label for="alimentacion" class="form-label fw-bold small text-dark mb-1">
+                  <i class="bi bi-egg-fried text-warning me-1"></i>Alimentación / Dieta Actual
+                </label>
+                {{ form.alimentacion(class="form-control bg-white shadow-xs", placeholder="Ej: Royal Canin Mini 150g/día, BARF...") }}
+              </div>
+              
+              <!-- Última Desparasitación -->
+              <div class="col-12 col-md-4">
+                <label for="desparasitacion_ultima" class="form-label fw-bold small text-dark mb-1">
+                  <i class="bi bi-capsule text-info me-1"></i>Última Desparasitación
+                </label>
+                {{ form.desparasitacion_ultima(class="form-control bg-white shadow-xs", placeholder="Ej: Nexgard Spectra - 15/08/2026...") }}
+              </div>
+              
+              <!-- Última Vacunación -->
+              <div class="col-12 col-md-4">
+                <label for="vacunacion_ultima" class="form-label fw-bold small text-dark mb-1">
+                  <i class="bi bi-shield-plus text-success me-1"></i>Última Vacunación
+                </label>
+                {{ form.vacunacion_ultima(class="form-control bg-white shadow-xs", placeholder="Ej: Séxtuple + Rabia - 10/05/2026...") }}
+              </div>
+            </div>
+            <div class="form-text small text-muted mt-2">
+              <i class="bi bi-info-circle me-1"></i>Puedes actualizar estos datos si cambiaron durante esta visita. Al guardar, quedarán registrados en el informe oficial de esta consulta.
+            </div>
           </div>
         </div>
       </div>

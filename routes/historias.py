@@ -318,6 +318,17 @@ def consulta_nueva(mascota_id: int):
         # Prellenar peso actual si existe
         if mascota.peso_actual:
             form.peso_kg.data = mascota.peso_actual.peso_kg
+        # Prellenar alimentación actual si existe
+        if mascota.alimentacion:
+            form.alimentacion.data = mascota.alimentacion
+        # Prellenar última desparasitación
+        if mascota.desparasitaciones:
+            d = mascota.desparasitaciones[0]
+            form.desparasitacion_ultima.data = f"{d.producto} ({d.tipo.capitalize()}) - {d.fecha_aplicacion.strftime('%d/%m/%Y')}"
+        # Prellenar última vacuna
+        if mascota.vacunas:
+            v = mascota.vacunas[0]
+            form.vacunacion_ultima.data = f"{v.nombre_vacuna} - {v.fecha_aplicacion.strftime('%d/%m/%Y')}"
 
     if form.validate_on_submit():
         # Validar si el examen de sistemas viene en formato JSON estructurado
@@ -353,6 +364,9 @@ def consulta_nueva(mascota_id: int):
                 fecha_hora=obtener_hora_bogota(),
                 motivo_consulta=form.motivo_consulta.data.strip(),
                 anamnesis=form.anamnesis.data.strip() if form.anamnesis.data else None,
+                alimentacion=(form.alimentacion.data or "").strip() or None,
+                desparasitacion_ultima=(form.desparasitacion_ultima.data or "").strip() or None,
+                vacunacion_ultima=(form.vacunacion_ultima.data or "").strip() or None,
                 peso_kg=form.peso_kg.data,
                 temperatura_c=form.temperatura_c.data,
                 frecuencia_cardiaca=form.frecuencia_cardiaca.data,
@@ -372,6 +386,10 @@ def consulta_nueva(mascota_id: int):
             # Actualizar peso de la mascota si se registró uno nuevo
             if form.peso_kg.data and (not mascota.peso_actual or form.peso_kg.data != mascota.peso_actual.peso_kg):
                 mascota.peso_actual = form.peso_kg.data
+
+            # Actualizar alimentación en el perfil si se modificó en la consulta
+            if form.alimentacion.data and form.alimentacion.data.strip():
+                mascota.alimentacion = form.alimentacion.data.strip()
 
             db.session.commit()
             flash("Consulta médica (SOAP) guardada correctamente.", "success")

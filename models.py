@@ -1324,6 +1324,9 @@ class ConsultaMedica(BaseModel):
     # SOAP
     motivo_consulta = db.Column(db.String(255), nullable=False)
     anamnesis = db.Column(db.Text)  # Subjetivo (S)
+    alimentacion = db.Column(db.String(255))  # Dieta reportada en esta consulta
+    desparasitacion_ultima = db.Column(db.String(255))  # Estatus / fecha desparasitación
+    vacunacion_ultima = db.Column(db.String(255))  # Estatus / fecha vacunación
 
     # Examen físico / Constantes vitales (Objetivo - O)
     peso_kg = db.Column(db.Numeric(6, 2))
