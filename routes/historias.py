@@ -298,7 +298,17 @@ SISTEMAS_MEDICOS_CATALOGO = [
 @login_required
 @clinico_required
 def consulta_nueva(mascota_id: int):
-    mascota = db.session.get(Mascota, mascota_id)
+    mascota = db.session.execute(
+        select(Mascota)
+        .filter_by(id=mascota_id)
+        .options(
+            selectinload(Mascota.tutor),
+            selectinload(Mascota.raza),
+            selectinload(Mascota.vacunas),
+            selectinload(Mascota.desparasitaciones),
+            selectinload(Mascota.registros_peso),
+        )
+    ).scalar_one_or_none()
     if not mascota:
         flash("La mascota no existe.", "danger")
         return redirect(url_for("historias.lista"))
