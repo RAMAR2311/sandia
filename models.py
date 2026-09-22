@@ -47,6 +47,10 @@ def _generar_url_segura(endpoint: str, **values) -> str:
         return f"/static/{filename}" if filename else "/"
     elif endpoint == "historias.consulta_documento_publico":
         return f"/historias/consulta/{values.get('id')}/documento"
+    elif endpoint == "historias.receta_documento_publico":
+        return f"/historias/consulta/{values.get('id')}/receta/documento"
+    elif endpoint == "historias.receta_pdf":
+        return f"/historias/consulta/{values.get('id')}/receta/pdf"
     elif endpoint == "pos.venta_pdf":
         return f"/pos/venta/{values.get('id')}/pdf"
     elif endpoint in ("spa.cita_spa_pdf", "spa.cita_pdf"):
@@ -1289,11 +1293,16 @@ class CitaSpa(BaseModel):
         nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
         nombre_servicio = self.servicio_spa.nombre if self.servicio_spa else "Spa"
         url_doc = _generar_url_segura("spa.cita_spa_pdf", id=self.id)
+        clinica_nombre = ConfiguracionSistema.obtener("clinica_nombre", "Sandía · Medicina & Spa Veterinario")
 
-        observaciones = f"✏️ *Observaciones del estilista:*\n_{self.notas_salida}_\n\n" if self.notas_salida else ""
+        observaciones = ""
+        if self.notas_salida:
+            observaciones += f"✂️ *Observaciones de Entrega / Recomendaciones:*\n_{self.notas_salida.strip()}_\n\n"
+        elif self.notas_ingreso:
+            observaciones += f"📝 *Observaciones de Ingreso:*\n_{self.notas_ingreso.strip()}_\n\n"
 
         return (
-            f"🐾 *Sandía · Medicina & Spa Veterinario* ✂️🧼\n"
+            f"🐾 *{clinica_nombre}* ✂️🧼\n"
             f"✨ *¡{nombre_mascota} ESTÁ LISTO/A PARA RECOGIDA!*\n\n"
             f"Hola *{nombre_tutor}*,\n"
             f"Te informamos que *{nombre_mascota}* ha terminado su servicio de *{nombre_servicio}* y ya está listo/a y hermoso/a para su recogida.\n\n"
@@ -1301,14 +1310,15 @@ class CitaSpa(BaseModel):
             f"📄 *Descargar Certificado de Spa en PDF:*\n"
             f"👉 {url_doc}\n\n"
             f"¡Te esperamos pronto! 🐾❤️\n"
-            f"_Sandía Spa & Grooming_"
+            f"_{clinica_nombre}_"
         )
 
     @property
     def enlace_whatsapp(self) -> str | None:
-        if not self.tutor or not self.tutor.telefono:
+        if not self.tutor or not self.tutor.whatsapp_efectivo:
             return None
-        return enlace_whatsapp(self.tutor.telefono, self.mensaje_whatsapp)
+        return enlace_whatsapp(self.tutor.whatsapp_efectivo, self.mensaje_whatsapp)
+
 
     def __repr__(self):
         return f"<CitaSpa {self.id} mascota={self.mascota_id} estado={self.estado}>"
@@ -1404,6 +1414,41 @@ class ConsultaMedica(BaseModel):
         if not self.tutor or not self.tutor.whatsapp_efectivo:
             return None
         return enlace_whatsapp(self.tutor.whatsapp_efectivo, self.mensaje_whatsapp)
+
+    @property
+    def mensaje_whatsapp_receta(self) -> str:
+        nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a tutor(a)"
+        nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
+        fecha_str = self.fecha_hora.strftime("%d/%m/%Y") if hasattr(self.fecha_hora, "strftime") else str(self.fecha_hora)
+        url_receta = _generar_url_segura("historias.receta_documento_publico", id=self.id)
+        clinica_nombre = ConfiguracionSistema.obtener("clinica_nombre", "Sandía · Medicina & Spa Veterinario")
+
+        msg = f"🐾 *{clinica_nombre}* 🍉\n"
+        msg += f"💊 *FÓRMULA MÉDICA VETERINARIA (Rx) #{self.id:04d}*\n\n"
+        msg += f"Hola *{nombre_tutor}*, te compartimos la fórmula médica oficial de *{nombre_mascota}* ({fecha_str}):\n\n"
+        if self.receta_medica:
+            msg += f"📋 *Tratamiento Prescrito:*\n{self.receta_medica.strip()}\n\n"
+        elif self.plan_tratamiento:
+            msg += f"📋 *Plan de Tratamiento:*\n{self.plan_tratamiento.strip()}\n\n"
+
+        if self.controles_asociados:
+            ultimo_control = self.controles_asociados[0]
+            if ultimo_control.fecha_proximo_control:
+                f_prox_str = ultimo_control.fecha_proximo_control.strftime("%d/%m/%Y %I:%M %p")
+                msg += f"🗓️ *PRÓXIMO CONTROL:* {f_prox_str}\n\n"
+
+        msg += f"📄 *Ver y Descargar Fórmula Oficial en PDF:*\n"
+        msg += f"👉 {url_receta}\n\n"
+        msg += f"¡Deseamos una pronta recuperación para {nombre_mascota}! 🐾❤️\n"
+        msg += f"_{clinica_nombre}_"
+        return msg
+
+    @property
+    def enlace_whatsapp_receta(self) -> str | None:
+        if not self.tutor or not self.tutor.whatsapp_efectivo:
+            return None
+        return enlace_whatsapp(self.tutor.whatsapp_efectivo, self.mensaje_whatsapp_receta)
+
 
     @property
     def sistemas_evaluados(self) -> dict | None:

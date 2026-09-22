@@ -518,8 +518,8 @@ def cita_cambiar_estado(id: int):
             cita.estado = nuevo_estado
             if nuevo_estado == "listo_recogida" and not cita.fecha_listo:
                 cita.fecha_listo = obtener_hora_bogota()
-            if notas_salida:
-                cita.notas_salida = notas_salida
+            if "notas_salida" in request.form:
+                cita.notas_salida = notas_salida if notas_salida else None
 
             if foto_ingreso_subida:
                 ant_ingreso = cita.foto_ingreso

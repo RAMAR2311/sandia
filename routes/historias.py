@@ -833,6 +833,10 @@ def consulta_pdf(id: int):
 
 @bp.route("/consulta/<int:id>/receta/pdf", methods=["GET"])
 def receta_pdf(id: int):
+    """Visor interactivo de Fórmula Médica en PDF con botón directo para enviar a WhatsApp del tutor."""
+    if request.args.get("raw") or request.args.get("descargar"):
+        return receta_pdf_raw(id)
+
     consulta = db.session.execute(
         select(ConsultaMedica)
         .filter_by(id=id)
@@ -846,14 +850,36 @@ def receta_pdf(id: int):
         flash("La consulta médica no existe.", "danger")
         return redirect(url_for("historias.lista"))
 
+    clinica_datos = ConfiguracionSistema.datos_clinica()
+    return render_template("historias/visor_receta_pdf.html", consulta=consulta, clinica=clinica_datos)
+
+
+@bp.route("/consulta/<int:id>/receta/pdf/raw", methods=["GET"])
+def receta_pdf_raw(id: int):
+    """Genera y sirve el archivo binario PDF de la fórmula médica."""
+    consulta = db.session.execute(
+        select(ConsultaMedica)
+        .filter_by(id=id)
+        .options(
+            selectinload(ConsultaMedica.mascota).selectinload(Mascota.raza),
+            selectinload(ConsultaMedica.tutor),
+            selectinload(ConsultaMedica.veterinario),
+        )
+    ).scalar_one_or_none()
+    if not consulta:
+        flash("La consulta médica no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    descargar = bool(request.args.get("descargar"))
     pdf_buffer = generar_pdf_receta(consulta, db.session)
     nombre_archivo = f"Formula_Medica_{consulta.mascota.nombre if consulta.mascota else 'Paciente'}_{consulta.id:04d}.pdf"
     return send_file(
         pdf_buffer,
         mimetype="application/pdf",
-        as_attachment=False,
+        as_attachment=descargar,
         download_name=nombre_archivo,
     )
+
 
 
 @bp.route("/consulta/<int:id>/documento", methods=["GET"])
@@ -874,6 +900,29 @@ def consulta_documento_publico(id: int):
 
     clinica_datos = ConfiguracionSistema.datos_clinica()
     return render_template("historias/documento_consulta.html", consulta=consulta, clinica=clinica_datos)
+
+
+@bp.route("/consulta/<int:id>/receta/documento", methods=["GET"])
+@bp.route("/receta/<int:id>", methods=["GET"])
+def receta_documento_publico(id: int):
+    """Vista web oficial e interactiva de la fórmula médica / recetario para compartir con el tutor por WhatsApp o imprimir."""
+    consulta = db.session.execute(
+        select(ConsultaMedica)
+        .filter_by(id=id)
+        .options(
+            selectinload(ConsultaMedica.mascota).selectinload(Mascota.raza),
+            selectinload(ConsultaMedica.tutor),
+            selectinload(ConsultaMedica.veterinario),
+            selectinload(ConsultaMedica.controles_asociados),
+        )
+    ).scalar_one_or_none()
+    if not consulta:
+        flash("La fórmula médica solicitada no está disponible o no existe.", "danger")
+        return redirect(url_for("auth.login"))
+
+    clinica_datos = ConfiguracionSistema.datos_clinica()
+    return render_template("historias/documento_receta.html", consulta=consulta, clinica=clinica_datos)
+
 
 
 # ---------------------------------------------------------------------------

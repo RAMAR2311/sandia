@@ -4,21 +4,21 @@
 
 {% block contenido %}
 {% call encabezado("Consulta Médica #" ~ consulta.id, "Paciente: " ~ consulta.mascota.nombre ~ " | Fecha: " ~ consulta.fecha_hora|fecha_hora) %}
-  <div class="d-flex flex-wrap gap-2">
+  <div class="d-flex flex-wrap gap-2 align-items-center">
     <a href="{{ url_for('historias.consulta_editar', id=consulta.id) }}" class="btn btn-warning rounded-pill fw-bold shadow-xs">
       <i class="bi bi-pencil-square me-1"></i>Editar Consulta
     </a>
-    <a href="{{ url_for('historias.consulta_pdf', id=consulta.id) }}" class="btn btn-danger rounded-pill fw-bold shadow-xs">
-      <i class="bi bi-file-earmark-pdf-fill me-1"></i>Descargar PDF
+    <a href="{{ url_for('historias.consulta_pdf', id=consulta.id) }}" target="_blank" class="btn btn-danger rounded-pill fw-bold shadow-xs">
+      <i class="bi bi-file-earmark-pdf-fill me-1"></i>Historia PDF
     </a>
     {% if consulta.receta_medica %}
-    <a href="{{ url_for('historias.receta_pdf', id=consulta.id) }}" class="btn btn-outline-danger rounded-pill fw-bold">
+    <a href="{{ url_for('historias.receta_pdf', id=consulta.id) }}" target="_blank" class="btn btn-outline-danger rounded-pill fw-bold shadow-xs">
       <i class="bi bi-prescription2 me-1"></i>Fórmula PDF
     </a>
     {% endif %}
     {% if consulta.enlace_whatsapp %}
-    <a href="{{ consulta.enlace_whatsapp }}" target="_blank" class="btn btn-success rounded-pill fw-bold">
-      <i class="bi bi-whatsapp me-1"></i>Enviar WhatsApp
+    <a href="{{ consulta.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-outline-success rounded-pill fw-bold shadow-xs">
+      <i class="bi bi-whatsapp me-1"></i>WhatsApp Consulta
     </a>
     {% endif %}
     <a href="{{ url_for('historias.ficha_medica', mascota_id=consulta.mascota_id) }}" class="btn btn-outline-secondary rounded-pill">
@@ -295,12 +295,14 @@
         <!-- Receta Médica -->
         {% if consulta.receta_medica %}
         <div class="prescription-paper mb-4 shadow-sm">
-          <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 pb-2 border-bottom">
             <div class="d-flex align-items-center gap-2">
-              <span class="fs-4 fw-bold text-primary font-monospace">Rx</span>
-              <span class="fw-bold text-dark">Fórmula Médica / Prescripción</span>
+              <span class="fs-4 fw-bold text-danger font-monospace">Rx</span>
+              <span class="fw-bold text-dark">Fórmula Médica / Prescripción Oficial</span>
             </div>
-            <span class="badge bg-primary text-white rounded-pill">{{ clinica.nombre if clinica and clinica.nombre else 'Sandía' }}</span>
+            <a href="{{ url_for('historias.receta_pdf', id=consulta.id) }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill fw-bold shadow-2xs">
+              <i class="bi bi-prescription2 me-1"></i>Fórmula PDF
+            </a>
           </div>
           <pre class="bg-white p-3 border rounded text-dark font-monospace mb-0" style="white-space: pre-wrap; font-size: 0.95rem;">{{ consulta.receta_medica }}</pre>
         </div>

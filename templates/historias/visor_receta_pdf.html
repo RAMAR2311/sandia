@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Fórmula Médica #{{ "%04d"|format(consulta.id) }} - {{ consulta.mascota.nombre }} | {{ clinica.nombre if clinica and clinica.nombre else 'Sandía' }}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #334155;
+    }
+    .visor-toolbar {
+      height: 60px;
+      background: #0F172A;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      border-bottom: 1.5px solid #1E293B;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      z-index: 1000;
+      position: relative;
+    }
+    .btn-wa {
+      background-color: #25D366 !important;
+      color: #FFFFFF !important;
+      border: none !important;
+      font-weight: 700 !important;
+      font-size: 0.9rem !important;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px rgba(37, 211, 102, 0.4);
+    }
+    .btn-wa:hover {
+      background-color: #1EBE5D !important;
+      transform: translateY(-1.5px);
+      box-shadow: 0 6px 18px rgba(37, 211, 102, 0.5);
+    }
+    .visor-contenido {
+      width: 100%;
+      height: calc(100% - 60px);
+      background-color: #475569;
+      position: relative;
+    }
+    .iframe-pdf {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+    @media (max-width: 576px) {
+      .visor-toolbar {
+        height: auto;
+        padding: 0.6rem 0.75rem;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .visor-contenido {
+        height: calc(100% - 100px);
+      }
+      .btn-wa {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de Herramientas del Visor PDF -->
+  <header class="visor-toolbar">
+    <div class="d-flex align-items-center gap-2 overflow-hidden">
+      <img src="{{ static_url('img/dog_icon.png') }}" alt="Logo" style="height: 36px; width: auto;" class="d-none d-sm-inline-block">
+      <div class="text-truncate">
+        <span class="badge bg-danger rounded-pill px-2.5 py-1 fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Fórmula Rx</span>
+        <strong class="text-white ms-1" style="font-size: 0.95rem;">#{{ "%04d"|format(consulta.id) }}</strong>
+        <span class="text-light-subtle d-none d-md-inline">· {{ consulta.mascota.nombre }} (Tutor: {{ consulta.mascota.tutor.nombre_completo if consulta.mascota.tutor else 'N/A' }})</span>
+      </div>
+    </div>
+
+    <!-- Botones de Acción: WhatsApp Prominente, Descarga e Impresión -->
+    <div class="d-flex align-items-center gap-2">
+      {% if consulta.enlace_whatsapp_receta %}
+      <a href="{{ consulta.enlace_whatsapp_receta }}" target="_blank" rel="noopener" class="btn btn-wa rounded-pill px-3.5 py-1.5 d-flex align-items-center gap-1.5 shadow-sm">
+        <i class="bi bi-whatsapp fs-5"></i>
+        <span>Enviar al WhatsApp del Tutor</span>
+      </a>
+      {% endif %}
+
+      <a href="{{ url_for('historias.receta_pdf_raw', id=consulta.id, descargar=1) }}" class="btn btn-danger rounded-pill fw-bold px-3 py-1.5 shadow-sm d-flex align-items-center gap-1" style="font-size: 0.85rem;" title="Descargar archivo PDF">
+        <i class="bi bi-file-earmark-arrow-down-fill"></i>
+        <span class="d-none d-sm-inline">Descargar PDF</span>
+      </a>
+
+      <button type="button" onclick="imprimirPdf()" class="btn btn-outline-light rounded-pill fw-semibold px-2.5 py-1.5 d-none d-sm-flex align-items-center gap-1" style="font-size: 0.85rem;" title="Imprimir fórmula">
+        <i class="bi bi-printer"></i>
+      </button>
+
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('historias.consulta_detalle', id=consulta.id) }}" class="btn btn-outline-secondary text-light rounded-pill border-secondary-subtle px-2.5 py-1.5" style="font-size: 0.85rem;" title="Cerrar visor y volver a consulta">
+        <i class="bi bi-x-lg"></i>
+      </a>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Visor de PDF Integrado -->
+  <main class="visor-contenido">
+    <iframe id="frame-pdf" class="iframe-pdf" src="{{ url_for('historias.receta_pdf_raw', id=consulta.id) }}#toolbar=1&navpanes=0"></iframe>
+  </main>
+
+  <script>
+    function imprimirPdf() {
+      const frame = document.getElementById('frame-pdf');
+      if (frame && frame.contentWindow) {
+        try {
+          frame.contentWindow.focus();
+          frame.contentWindow.print();
+        } catch (e) {
+          window.open("{{ url_for('historias.receta_pdf_raw', id=consulta.id) }}", "_blank");
+        }
+      } else {
+        window.open("{{ url_for('historias.receta_pdf_raw', id=consulta.id) }}", "_blank");
+      }
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fórmula Médica #{{ "%04d"|format(consulta.id) }} - {{ consulta.mascota.nombre }} | {{ clinica.nombre if clinica and clinica.nombre else 'Sandía' }}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sandia-primario: #E53935;
+      --sandia-oscuro: #0F172A;
+      --sandia-gris-bg: #F8FAFC;
+      --sandia-borde: #E2E8F0;
+      --sandia-verde-wa: #25D366;
+    }
+    body {
+      background-color: #F1F5F9;
+      color: #334155;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      padding-bottom: 3.5rem;
+    }
+    .documento-toolbar {
+      max-width: 860px;
+      margin: 1.25rem auto 0;
+    }
+    .documento-hoja {
+      max-width: 860px;
+      margin: 1.25rem auto;
+      background: #FFFFFF;
+      border-radius: 20px;
+      box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.08), 0 0 0 1px var(--sandia-borde);
+      overflow: hidden;
+    }
+    .header-recetario {
+      padding: 1.75rem 2.25rem;
+      border-bottom: 2.5px solid var(--sandia-primario);
+      background: #FFFFFF;
+    }
+    .cuerpo-receta {
+      padding: 2.25rem;
+    }
+    .rx-card {
+      background: #FFF5F5;
+      border: 2px solid #FECDD3;
+      border-radius: 16px;
+      padding: 1.75rem;
+      margin-bottom: 1.75rem;
+      position: relative;
+    }
+    .rx-badge-pill {
+      position: absolute;
+      top: -14px;
+      left: 20px;
+      background: var(--sandia-primario);
+      color: white;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1rem;
+      padding: 0.25rem 1rem;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 10px rgba(229, 57, 53, 0.3);
+    }
+    .receta-texto {
+      font-family: 'JetBrains Mono', monospace, sans-serif;
+      font-size: 0.95rem;
+      line-height: 1.75;
+      color: #1E293B;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .card-info-paciente {
+      background: #F8FAFC;
+      border: 1px solid var(--sandia-borde);
+      border-radius: 14px;
+      padding: 1.25rem;
+      margin-bottom: 1.75rem;
+    }
+    .btn-wa {
+      background-color: var(--sandia-verde-wa);
+      color: white !important;
+      border: none;
+      font-weight: 700;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+    }
+    .btn-wa:hover {
+      background-color: #1EBE5D;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(37, 211, 102, 0.4);
+    }
+    @media print {
+      body {
+        background: #FFFFFF;
+        padding: 0;
+      }
+      .documento-toolbar, .no-print {
+        display: none !important;
+      }
+      .documento-hoja {
+        box-shadow: none;
+        border: none;
+        margin: 0;
+        max-width: 100%;
+        border-radius: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de Acciones Superior -->
+  <div class="documento-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3 px-3 no-print">
+    <div class="d-flex align-items-center gap-2.5">
+      <img src="{{ static_url('img/dog_icon.png') }}" alt="Sandía Spa" style="height: 40px; width: auto;" class="d-inline-block">
+      <div>
+        <h6 class="fw-bold mb-0 text-dark" style="font-family: 'Fredoka', sans-serif; letter-spacing: -0.2px;">{{ clinica.nombre if clinica and clinica.nombre else 'SANDÍA' }}</h6>
+        <small class="text-muted fw-semibold">Fórmula Médica Veterinaria Oficial (Rx)</small>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      {% if consulta.enlace_whatsapp_receta %}
+      <a href="{{ consulta.enlace_whatsapp_receta }}" target="_blank" rel="noopener" class="btn btn-wa rounded-pill px-3.5 py-2 d-flex align-items-center gap-2">
+        <i class="bi bi-whatsapp fs-5"></i>
+        <span>Enviar al WhatsApp del Tutor</span>
+      </a>
+      {% endif %}
+
+      <a href="{{ url_for('historias.receta_pdf', id=consulta.id) }}" target="_blank" class="btn btn-danger rounded-pill fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-1.5">
+        <i class="bi bi-file-earmark-pdf-fill"></i>
+        <span>Descargar PDF</span>
+      </a>
+
+      <button type="button" onclick="window.print()" class="btn btn-outline-secondary rounded-pill fw-semibold px-3 py-2 bg-white d-flex align-items-center gap-1.5">
+        <i class="bi bi-printer"></i>
+        <span>Imprimir</span>
+      </button>
+
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('historias.consulta_detalle', id=consulta.id) }}" class="btn btn-light rounded-pill border fw-semibold px-3 py-2">
+        <i class="bi bi-arrow-left"></i> Consulta
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Hoja Oficial de la Fórmula Médica -->
+  <div class="documento-hoja">
+    <!-- Encabezado con Membrete Oficial -->
+    <div class="header-recetario d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <img src="{{ static_url('img/dog_icon.png') }}" alt="Logo Sandía" style="height: 64px; width: auto;" class="d-inline-block">
+        <div>
+          <h3 class="fw-bold mb-0" style="color: #E53935; font-family: 'Fredoka', sans-serif; letter-spacing: -0.5px;">{{ clinica.nombre if clinica and clinica.nombre else 'SANDÍA' }}</h3>
+          <div class="fw-bold text-dark small">{{ clinica.subtitulo if clinica and clinica.subtitulo else 'Medicina y Spa Veterinario' }}</div>
+          <div class="text-muted" style="font-size: 0.76rem; line-height: 1.4;">
+            NIT: {{ clinica.nit if clinica and clinica.nit else '901.554.892-1' }} · Tel / WhatsApp: {{ clinica.telefono if clinica and clinica.telefono else '+57 312 456 7890' }}<br>
+            {{ clinica.direccion if clinica and clinica.direccion else 'Cra. 15 # 104-32, Usaquén' }} · {{ clinica.ciudad if clinica and clinica.ciudad else 'Bogotá D.C.' }}
+          </div>
+        </div>
+      </div>
+      <div class="text-md-end">
+        <span class="badge rounded-pill px-3 py-1.5 fs-6 mb-1 text-white" style="background: linear-gradient(135deg, #E53935 0%, #D32F2F 100%);">
+          RECETARIO MÉDICO
+        </span>
+        <div class="fw-bold text-dark font-monospace fs-5">FÓRMULA #{{ "%04d"|format(consulta.id) }}</div>
+        <div class="small text-muted"><i class="bi bi-calendar3 me-1 text-danger"></i>Fecha: <strong>{{ consulta.fecha_hora.strftime('%d/%m/%Y') }}</strong></div>
+      </div>
+    </div>
+
+    <div class="cuerpo-receta">
+      <!-- Datos del Paciente y Tutor -->
+      <div class="card-info-paciente">
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <small class="text-muted fw-semibold text-uppercase d-block mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Paciente</small>
+            <div class="d-flex align-items-center gap-2">
+              <span class="fs-4">{{ '🐶' if consulta.mascota.especie == 'canino' else ('🐱' if consulta.mascota.especie == 'felino' else '🐾') }}</span>
+              <div>
+                <strong class="fs-5 text-dark" style="color: #E53935 !important;">{{ consulta.mascota.nombre }}</strong>
+                <div class="small text-secondary fw-semibold">
+                  {{ consulta.mascota.especie|capitalize }} · {{ consulta.mascota.raza.nombre if consulta.mascota.raza else 'Mestizo' }}
+                  {% if consulta.peso_kg %} · <span class="badge bg-white text-dark border">Peso: {{ consulta.peso_kg }} kg</span>{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <small class="text-muted fw-semibold text-uppercase d-block mb-1" style="font-size: 0.72rem; letter-spacing: 0.5px;">Tutor / Propietario</small>
+            <div>
+              <strong class="text-dark fs-6">{{ consulta.mascota.tutor.nombre_completo if consulta.mascota.tutor else 'Cliente General' }}</strong>
+              <div class="small text-muted">
+                {% if consulta.mascota.tutor and consulta.mascota.tutor.telefono %}
+                <i class="bi bi-telephone me-1"></i>{{ consulta.mascota.tutor.telefono }}
+                {% endif %}
+                {% if consulta.mascota.tutor and consulta.mascota.tutor.documento_texto %}
+                 · Doc: {{ consulta.mascota.tutor.documento_texto }}
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          {% if consulta.diagnostico %}
+          <div class="col-12 pt-2 border-top">
+            <small class="text-muted fw-semibold text-uppercase d-block" style="font-size: 0.72rem; letter-spacing: 0.5px;">Diagnóstico / Motivo</small>
+            <div class="text-dark fw-bold small mt-0.5">{{ consulta.diagnostico }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Prescripción Médica Rx -->
+      <div class="rx-card">
+        <span class="rx-badge-pill">
+          <i class="bi bi-prescription2 me-1"></i> Rx Prescripción
+        </span>
+
+        <h6 class="fw-bold text-dark mt-2 mb-3 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.85rem; color: #E53935 !important;">
+          Medicamentos, Dosis & Instrucciones de Uso
+        </h6>
+
+        <div class="receta-texto">{{ consulta.receta_medica or consulta.plan_tratamiento or 'Sin prescripción médica registrada.' }}</div>
+      </div>
+
+      {% if consulta.observaciones %}
+      <!-- Recomendaciones Adicionales -->
+      <div class="p-3 bg-light rounded-3 border mb-4">
+        <h6 class="fw-bold text-dark small text-uppercase mb-1" style="letter-spacing: 0.5px;">
+          <i class="bi bi-info-circle text-danger me-1"></i> Recomendaciones / Cuidados Especiales
+        </h6>
+        <p class="small text-secondary mb-0" style="white-space: pre-wrap;">{{ consulta.observaciones }}</p>
+      </div>
+      {% endif %}
+
+      {% if consulta.controles_asociados and consulta.controles_asociados[0].fecha_proximo_control %}
+      {% set prox_ctrl = consulta.controles_asociados[0] %}
+      <!-- Próximo Control / Cita de Seguimiento -->
+      <div class="p-3 bg-success-subtle text-success-emphasis rounded-3 border border-success-subtle mb-4 d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+        <div>
+          <div class="fw-bold small text-uppercase mb-1">
+            <i class="bi bi-calendar-check-fill me-1"></i> Próximo Control Médico
+          </div>
+          <div class="fs-6 fw-bold">
+            {{ prox_ctrl.fecha_proximo_control.strftime('%d/%m/%Y %I:%M %p') }}
+            {% if prox_ctrl.motivo %}<span class="fw-normal">({{ prox_ctrl.motivo }})</span>{% endif %}
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          {% if prox_ctrl.enlace_google_calendar %}
+          <a href="{{ prox_ctrl.enlace_google_calendar }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success fw-bold rounded-pill bg-white">
+            <i class="bi bi-google me-1"></i>Google Calendar
+          </a>
+          {% endif %}
+          {% if prox_ctrl.enlace_apple_calendar %}
+          <a href="{{ prox_ctrl.enlace_apple_calendar }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success fw-bold rounded-pill bg-white">
+            <i class="bi bi-apple me-1"></i>Apple Calendar
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Firma del Médico Veterinario -->
+      <div class="pt-3 border-top mt-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+        <div>
+          <div class="small text-muted">Médico Veterinario Tratante:</div>
+          <strong class="text-dark fs-6">{{ consulta.veterinario.nombre if consulta.veterinario else (clinica.doctora_nombre if clinica else 'Dra. Daniela Pulido') }}</strong>
+          <div class="small text-secondary">
+            {{ consulta.veterinario.titulo_profesional if consulta.veterinario and consulta.veterinario.titulo_profesional else (clinica.doctora_titulo if clinica else 'Médica veterinaria') }} · 
+            TP: <b>{{ consulta.veterinario.tarjeta_profesional if consulta.veterinario and consulta.veterinario.tarjeta_profesional else (clinica.doctora_tp if clinica else '53214') }}</b>
+          </div>
+          <div class="small text-muted" style="font-size: 0.75rem;">
+            {{ consulta.veterinario.especialidad if consulta.veterinario and consulta.veterinario.especialidad else (clinica.doctora_especialidad if clinica else 'Dpl. Dermatología de pequeñas especies') }}
+          </div>
+        </div>
+
+        <div class="text-center">
+          {% set firma_url = consulta.veterinario.url_firma if consulta.veterinario and consulta.veterinario.url_firma else (clinica.doctora_firma if clinica and clinica.doctora_firma else None) %}
+          {% if firma_url %}
+          <img src="{{ firma_url }}" alt="Firma Digital" style="max-height: 65px; max-width: 170px; object-fit: contain;">
+          <div class="border-top border-dark-subtle pt-1 mt-1 small text-muted font-monospace" style="font-size: 0.72rem;">Firma Digital Registrada</div>
+          {% else %}
+          <div style="width: 160px; border-bottom: 1.5px solid #64748B; margin-bottom: 4px; height: 45px;"></div>
+          <div class="small text-muted" style="font-size: 0.75rem;">Firma & Sello Profesional</div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Pie de Documento -->
+    <div class="p-3 bg-light border-top text-center text-muted small" style="font-size: 0.75rem;">
+      <p class="mb-0">Este documento constituye la fórmula médica oficial emitida por {{ clinica.nombre if clinica and clinica.nombre else 'Sandía Medicina & Spa Veterinario' }}. Para dudas o consultas, contáctanos por WhatsApp al {{ clinica.telefono if clinica and clinica.telefono else '+57 312 456 7890' }}.</p>
+    </div>
+  </div>
+
+</body>
+</html>

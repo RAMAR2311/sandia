@@ -392,8 +392,14 @@
                       </div>
 
                       {% if c.receta_medica %}
-                      <div class="bg-white p-2 rounded border border-warning-subtle small mt-2">
-                        <strong class="text-dark"><i class="bi bi-prescription me-1"></i>Receta Médica:</strong> {{ c.receta_medica }}
+                      <div class="bg-white p-2.5 rounded-3 border border-danger-subtle small mt-2">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1.5">
+                          <strong class="text-danger"><i class="bi bi-prescription2 me-1"></i>Fórmula Médica (Rx):</strong>
+                          <a href="{{ url_for('historias.receta_pdf', id=c.id) }}" target="_blank" class="btn btn-xs btn-outline-danger rounded-pill fw-bold px-2 py-0.5" style="font-size: 0.75rem;">
+                            <i class="bi bi-file-earmark-pdf me-1"></i>Fórmula PDF
+                          </a>
+                        </div>
+                        <div class="text-dark font-monospace" style="font-size: 0.82rem; white-space: pre-wrap;">{{ c.receta_medica }}</div>
                       </div>
                       {% endif %}
                     </div>
@@ -401,8 +407,8 @@
                     <div class="mt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                       <div class="d-flex flex-wrap align-items-center gap-2">
                         {% if c.enlace_whatsapp %}
-                        <a href="{{ c.enlace_whatsapp }}" target="_blank" class="btn btn-sm btn-success fw-bold rounded-pill">
-                          <i class="bi bi-whatsapp me-1"></i> Enviar consulta vía WhatsApp
+                        <a href="{{ c.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success fw-bold rounded-pill">
+                          <i class="bi bi-whatsapp me-1"></i> WhatsApp Consulta
                         </a>
                         {% endif %}
                         <a href="{{ url_for('historias.consulta_editar', id=c.id) }}" class="btn btn-sm btn-outline-secondary fw-bold rounded-pill" title="Editar consulta SOAP">

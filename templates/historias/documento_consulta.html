@@ -95,12 +95,21 @@
       </div>
     </div>
     <div class="d-flex flex-wrap gap-2">
-      <a href="{{ url_for('historias.consulta_pdf', id=consulta.id) }}" class="btn btn-danger rounded-pill fw-bold shadow-sm px-3">
+      {% if consulta.enlace_whatsapp_receta %}
+      <a href="{{ consulta.enlace_whatsapp_receta }}" target="_blank" rel="noopener" class="btn btn-success rounded-pill fw-bold shadow-sm px-3" style="background-color: #25D366; border-color: #25D366;">
+        <i class="bi bi-whatsapp me-1"></i>Enviar WhatsApp
+      </a>
+      {% elif consulta.enlace_whatsapp %}
+      <a href="{{ consulta.enlace_whatsapp }}" target="_blank" rel="noopener" class="btn btn-success rounded-pill fw-bold shadow-sm px-3" style="background-color: #25D366; border-color: #25D366;">
+        <i class="bi bi-whatsapp me-1"></i>Enviar WhatsApp
+      </a>
+      {% endif %}
+      <a href="{{ url_for('historias.consulta_pdf', id=consulta.id) }}" target="_blank" class="btn btn-danger rounded-pill fw-bold shadow-sm px-3">
         <i class="bi bi-file-earmark-pdf-fill me-1"></i>Descargar PDF
       </a>
       {% if consulta.receta_medica %}
-      <a href="{{ url_for('historias.receta_pdf', id=consulta.id) }}" class="btn btn-outline-danger rounded-pill fw-bold px-3">
-        <i class="bi bi-prescription2 me-1"></i>Fórmula (Rx) PDF
+      <a href="{{ url_for('historias.receta_documento_publico', id=consulta.id) }}" class="btn btn-outline-danger rounded-pill fw-bold px-3">
+        <i class="bi bi-prescription2 me-1"></i>Fórmula (Rx)
       </a>
       {% endif %}
       <button type="button" onclick="window.print()" class="btn btn-light rounded-pill border px-3">

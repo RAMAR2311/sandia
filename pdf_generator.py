@@ -106,6 +106,25 @@ def _obtener_firma_flowable(nombre_o_base64: str, width=42*mm, height=18*mm):
     return None
 
 
+def _obtener_foto_spa_flowable(nombre: str, width=50 * mm, height=45 * mm):
+    """Retorna un elemento Image de ReportLab para fotos de spa (ingreso/salida) si existe."""
+    if not nombre:
+        return None
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        rutas = [
+            os.path.join(base_dir, "static", "uploads", "spa", str(nombre)),
+            os.path.join(base_dir, "static", "uploads", str(nombre)),
+        ]
+        for r in rutas:
+            if os.path.exists(r):
+                return RLImage(r, width=width, height=height)
+    except Exception:
+        pass
+    return None
+
+
+
 
 def _crear_estilos():
     estilos = getSampleStyleSheet()
@@ -877,16 +896,81 @@ def generar_pdf_spa(cita_spa, db_session=None) -> io.BytesIO:
     historia.append(t_info)
     historia.append(Spacer(1, 10))
 
-    # 3. Observaciones y Notas
+    # 3. Observaciones de Ingreso y Entrega
     if cita_spa.notas_ingreso:
-        historia.append(Paragraph(f"<b>Observaciones de Ingreso:</b> {cita_spa.notas_ingreso}", estilos['TextoNormal']))
-        historia.append(Spacer(1, 6))
+        t_ingreso = Table(
+            [
+                [Paragraph("<b>OBSERVACIONES DE INGRESO / PEDIDO DEL TUTOR:</b>", estilos['TextoNegrita'])],
+                [Paragraph(cita_spa.notas_ingreso.replace("\n", "<br/>"), estilos['TextoNormal'])]
+            ],
+            colWidths=[184 * mm]
+        )
+        t_ingreso.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), COLOR_GRIS_FONDO),
+            ('BACKGROUND', (0,1), (-1,1), colors.white),
+            ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+            ('PADDING', (0,0), (-1,-1), 5),
+        ]))
+        historia.append(t_ingreso)
+        historia.append(Spacer(1, 8))
 
     if cita_spa.notas_salida:
-        historia.append(Paragraph(f"<b>Recomendaciones del Estilista:</b> {cita_spa.notas_salida}", estilos['TextoNormal']))
-        historia.append(Spacer(1, 6))
+        t_salida = Table(
+            [
+                [Paragraph("<b>OBSERVACIONES DE ENTREGA / RECOMENDACIONES DEL ESTILISTA:</b>", estilos['TextoNegrita'])],
+                [Paragraph(cita_spa.notas_salida.replace("\n", "<br/>"), estilos['TextoNormal'])]
+            ],
+            colWidths=[184 * mm]
+        )
+        t_salida.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#ECFDF5")),
+            ('BACKGROUND', (0,1), (-1,1), colors.white),
+            ('BOX', (0,0), (-1,-1), 1.2, colors.HexColor("#10B981")),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#A7F3D0")),
+            ('PADDING', (0,0), (-1,-1), 5),
+        ]))
+        historia.append(t_salida)
+        historia.append(Spacer(1, 8))
 
-    historia.append(Spacer(1, 15))
+    # 4. Fotos de la sesión (Antes / Después) si existen
+    foto_in = _obtener_foto_spa_flowable(cita_spa.foto_ingreso, width=65 * mm, height=55 * mm)
+    foto_out = _obtener_foto_spa_flowable(cita_spa.foto_salida, width=65 * mm, height=55 * mm)
+    if foto_in or foto_out:
+        if foto_in and foto_out:
+            fotos_data = [
+                [
+                    Paragraph("<b>FOTO DE INGRESO (ANTES)</b>", estilos['TextoCentrado']),
+                    Paragraph("<b>FOTO DE SALIDA (DESPUÉS)</b>", estilos['TextoCentrado'])
+                ],
+                [foto_in, foto_out]
+            ]
+            t_fotos = Table(fotos_data, colWidths=[92 * mm, 92 * mm])
+        elif foto_in:
+            fotos_data = [
+                [Paragraph("<b>FOTO DE INGRESO (ANTES)</b>", estilos['TextoCentrado'])],
+                [foto_in]
+            ]
+            t_fotos = Table(fotos_data, colWidths=[184 * mm])
+        else:
+            fotos_data = [
+                [Paragraph("<b>FOTO DE SALIDA (DESPUÉS)</b>", estilos['TextoCentrado'])],
+                [foto_out]
+            ]
+            t_fotos = Table(fotos_data, colWidths=[184 * mm])
+
+        t_fotos.setStyle(TableStyle([
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BACKGROUND', (0,0), (-1,0), COLOR_GRIS_FONDO),
+            ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+            ('PADDING', (0,0), (-1,-1), 5),
+        ]))
+        historia.append(t_fotos)
+        historia.append(Spacer(1, 10))
+
+    historia.append(Spacer(1, 12))
     historia.append(Paragraph("¡Tu consentido quedó listo y hermoso para volver a casa! 🐾✂️🧼", estilos['PiePagina']))
 
     doc.build(historia)
