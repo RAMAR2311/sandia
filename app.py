@@ -173,7 +173,7 @@ def _registrar_blueprints(app: Flask) -> None:
     from routes.reportes import bp as reportes_bp
     from routes.spa import bp as spa_bp
     from routes.tutores import bp as tutores_bp
-    from routes.consentimientos import bp_consentimientos
+    from routes.consentimientos import bp_consentimientos, guardar_firma_publica
     from routes.certificados import bp_certificados
     from routes.servidor import bp as servidor_bp
 
@@ -194,6 +194,7 @@ def _registrar_blueprints(app: Flask) -> None:
     app.register_blueprint(api_bp)
     app.register_blueprint(servidor_bp)
     csrf.exempt(servidor_bp)
+    csrf.exempt(guardar_firma_publica)
 
 
 

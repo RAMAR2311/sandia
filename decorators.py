@@ -34,8 +34,8 @@ def rol_requerido(*roles):
 
 admin_required = rol_requerido("admin")
 veterinario_required = rol_requerido("admin", "veterinario")
-clinico_required = rol_requerido("admin", "veterinario", "auxiliar", "recepcion")
+clinico_required = rol_requerido("admin", "veterinario", "auxiliar")
 spa_required = rol_requerido("admin", "groomer", "auxiliar", "recepcion")
-caja_required = rol_requerido("admin", "cajero", "auxiliar", "recepcion")
+caja_required = rol_requerido("admin", "cajero")
 recepcion_required = rol_requerido("admin", "recepcion", "auxiliar", "veterinario")
 agenda_spa_required = rol_requerido("admin", "recepcion", "groomer", "auxiliar", "veterinario")

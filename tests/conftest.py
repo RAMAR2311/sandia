@@ -55,7 +55,7 @@ def limpiar_tablas(app):
         res = db.session.execute(text(
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
-            "AND table_name NOT IN ('configuracion_sistema', 'alembic_version', 'razas')"
+            "AND table_name NOT IN ('configuracion_sistema', 'alembic_version', 'razas', 'plantillas_consentimientos')"
         )).scalars().all()
         if res:
             tablas = ", ".join(f'"{t}"' for t in res)
@@ -100,9 +100,11 @@ def groomer(app):
 
 
 def token_csrf(client, ruta="/auth/login"):
-    """Obtiene el token CSRF de un formulario renderizado."""
+    """Obtiene el token CSRF de un formulario renderizado o meta tag."""
     respuesta = client.get(ruta)
     coincidencia = re.search(rb'name="csrf_token"[^>]*value="([^"]+)"', respuesta.data)
+    if not coincidencia:
+        coincidencia = re.search(rb'name="csrf-token"[^>]*content="([^"]+)"', respuesta.data)
     assert coincidencia, f"No se encontró token CSRF en {ruta}"
     return coincidencia.group(1).decode()
 

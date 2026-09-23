@@ -463,6 +463,36 @@ def procesar_venta():
             variante = db.session.get(VarianteProducto, variante_id) if variante_id else None
             descripcion = f"{producto.nombre} ({variante.nombre_variante})" if variante else producto.nombre
 
+            # Regla de negocio: un cajero no puede vender bajo el precio mínimo
+            # sin aprobación del admin. El admin no tiene esta restricción.
+            precio_minimo_aplicable = variante.precio_minimo if variante else producto.precio_minimo
+            if not current_user.es_admin and precio_unitario < precio_minimo_aplicable:
+                aprobacion_activa = _buscar_aprobacion_activa(
+                    current_user.id, producto.id, variante.id if variante else None, precio_unitario
+                )
+                if aprobacion_activa is None:
+                    db.session.rollback()
+                    solicitud = _resolver_solicitud_precio(
+                        current_user, producto, variante, descripcion, precio_minimo_aplicable, precio_unitario
+                    )
+                    return jsonify(
+                        ok=False,
+                        requiere_aprobacion=True,
+                        aprobacion_id=solicitud.id,
+                        estado_aprobacion=solicitud.estado,
+                        motivo_rechazo=solicitud.motivo_rechazo,
+                        precio_minimo=float(precio_minimo_aplicable),
+                        producto_id=producto.id,
+                        variante_id=variante.id if variante else None,
+                        mensaje=(
+                            f"'{descripcion}' está por debajo del precio mínimo "
+                            f"(${precio_minimo_aplicable:,.2f}). Se envió la solicitud al administrador."
+                            if solicitud.estado == "pendiente"
+                            else f"La solicitud anterior para '{descripcion}' fue rechazada: {solicitud.motivo_rechazo or 'sin motivo indicado'}."
+                        ),
+                    ), 409
+                aprobaciones_a_consumir.append(aprobacion_activa)
+
             if not descuenta_stock:
                 # El ajuste "Descontar inventario automáticamente" está apagado:
                 # se registra la venta sin tocar cantidades de stock ni kardex.
@@ -640,6 +670,12 @@ def procesar_venta():
                     cita.venta_id = venta.id
             except Exception as e:
                 current_app.logger.warning(f"No se pudo vincular cita spa {cita_spa_id}: {e}")
+
+        # Marcar como usadas las aprobaciones de precio consumidas en esta venta:
+        # no pueden reutilizarse en otra factura.
+        for aprobacion in aprobaciones_a_consumir:
+            aprobacion.estado = "utilizada"
+            aprobacion.venta_id = venta.id
 
         db.session.commit()
 

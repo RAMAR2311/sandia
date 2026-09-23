@@ -199,3 +199,112 @@ def test_api_vacunas_pendientes(client, admin, app):
     assert len(data["vacunas"]) == 1
     assert data["vacunas"][0]["nombre_vacuna"] == "Rabia"
     assert data["vacunas"][0]["estado_vencimiento"] == "proxima_vencer"
+
+
+def test_ficha_medica_cronologia_general_completa(client, admin, app):
+    from models import (
+        CertificadoSaludAnimal,
+        ConsentimientoEmitido,
+        ConsultaMedica,
+        ControlMedico,
+        DesparasitacionMascota,
+        PlantillaConsentimiento,
+        RemisionInterna,
+    )
+
+    tutor_id, mascota_id = crear_tutor_y_mascota(app)
+    iniciar_sesion(client)
+
+    hoy = hoy_bogota()
+    ahora = obtener_hora_bogota()
+
+    with app.app_context():
+        PlantillaConsentimiento.asegurar_plantillas_base()
+        plantilla = db.session.execute(select(PlantillaConsentimiento).limit(1)).scalar_one()
+
+        consulta = ConsultaMedica(
+            mascota_id=mascota_id,
+            tutor_id=tutor_id,
+            veterinario_id=admin,
+            motivo_consulta="Chequeo general",
+            diagnostico="Paciente sano",
+            plan_tratamiento="Seguimiento",
+            fecha_hora=ahora,
+        )
+        control = ControlMedico(
+            mascota_id=mascota_id,
+            tutor_id=tutor_id,
+            veterinario_id=admin,
+            motivo="Control post-consulta",
+            avances="Evolución favorable",
+            plan_terapeutico="Continuar medicación preventiva",
+            fecha_hora=ahora,
+        )
+        vacuna = VacunaMascota(
+            mascota_id=mascota_id,
+            tutor_id=tutor_id,
+            veterinario_id=admin,
+            nombre_vacuna="Puppy DP",
+            fecha_aplicacion=hoy,
+            fecha_proxima=hoy + timedelta(days=365),
+        )
+        desp = DesparasitacionMascota(
+            mascota_id=mascota_id,
+            tutor_id=tutor_id,
+            veterinario_id=admin,
+            producto="NexGard Spectra",
+            tipo="mixta",
+            fecha_aplicacion=hoy,
+            fecha_proxima=hoy + timedelta(days=30),
+        )
+        consent = ConsentimientoEmitido(
+            plantilla_id=plantilla.id,
+            mascota_id=mascota_id,
+            tutor_id=tutor_id,
+            veterinario_id=admin,
+            tipo="anestesia_general",
+            titulo="Consentimiento de Anestesia",
+            contenido_final="Texto de consentimiento para paciente",
+            estado="pendiente_firma",
+        )
+        cert = CertificadoSaludAnimal(
+            consecutivo="CS-2026-9999",
+            mascota_id=mascota_id,
+            tutor_id=tutor_id,
+            veterinario_id=admin,
+            finalidad="viaje_nacional",
+            peso_kg="10.5",
+            dictamen_texto="Apto para viaje",
+            datos_vacunacion=[{"nombre": "Rabia", "fecha": "2026-01-01"}],
+            datos_desparasitacion=[{"producto": "Nexgard", "fecha": "2026-01-01"}],
+            dias_vigencia=8,
+            fecha_emision=ahora,
+            fecha_vencimiento=hoy + timedelta(days=8),
+            hash_integridad_sha256="abc123hash",
+            estado="vigente",
+        )
+        remision = RemisionInterna(
+            mascota_id=mascota_id,
+            tutor_id=tutor_id,
+            veterinario_id=admin,
+            especialidad_destino="Cardiología Veterinaria",
+            centro_medico_destino="CardioVET Especialistas",
+            motivo_remision="Soplo cardiaco grado III detectado en auscultación",
+            fecha_remision=ahora,
+        )
+
+        db.session.add_all([consulta, control, vacuna, desp, consent, cert, remision])
+        db.session.commit()
+
+    res = client.get(f"/historias/mascota/{mascota_id}")
+    assert res.status_code == 200
+    html = res.get_data(as_text=True)
+    assert "Historial y Cronología General" in html
+    assert "Chequeo general" in html
+    assert "Puppy DP" in html
+    assert "NexGard Spectra" in html
+    assert "Consentimiento de Anestesia" in html
+    assert "CS-2026-9999" in html
+    assert "Cardiología Veterinaria" in html
+    assert "CardioVET Especialistas" in html
+

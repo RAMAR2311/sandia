@@ -14,19 +14,7 @@ from models import (
     Usuario,
     db,
 )
-from tests.conftest import PASSWORD_PRUEBA
-
-
-def iniciar_sesion(client, email="admin@prueba.local", password=PASSWORD_PRUEBA):
-    res = client.get("/auth/login")
-    import re
-    m = re.search(r'name="csrf_token"\s+value="([^"]+)"', res.get_data(as_text=True))
-    token = m.group(1) if m else ""
-    return client.post(
-        "/auth/login",
-        data={"email": email, "password": password, "csrf_token": token},
-        follow_redirects=True,
-    )
+from tests.conftest import PASSWORD_PRUEBA, iniciar_sesion, token_csrf
 
 
 def test_plantillas_base_existen(app):
@@ -73,6 +61,8 @@ def test_flujo_completo_consentimiento_y_firma(client, admin, app):
         db.session.commit()
         mascota_id = mascota.id
 
+    csrf_tok = token_csrf(client, "/consentimientos/")
+
     # 1. Preparar borrador vía AJAX
     res_prep = client.post(
         "/consentimientos/preparar",
@@ -82,6 +72,7 @@ def test_flujo_completo_consentimiento_y_firma(client, admin, app):
             "diagnostico_motivo": "Castración profiláctica y limpieza dental",
         }),
         content_type="application/json",
+        headers={"X-CSRFToken": csrf_tok},
     )
     assert res_prep.status_code == 200
     data_prep = res_prep.get_json()
@@ -102,6 +93,7 @@ def test_flujo_completo_consentimiento_y_firma(client, admin, app):
             "diagnostico_motivo": "Castración profiláctica",
         }),
         content_type="application/json",
+        headers={"X-CSRFToken": csrf_tok},
     )
     assert res_emitir.status_code == 200
     data_emitir = res_emitir.get_json()

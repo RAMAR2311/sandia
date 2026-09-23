@@ -1,7 +1,7 @@
 """Rutas y controladores para Historias Clínicas, Consultas SOAP, Vacunas y Desparasitaciones."""
 
 import json
-from datetime import datetime
+from datetime import date, datetime
 from flask import Blueprint, Response, current_app, flash, redirect, render_template, request, send_file, url_for
 from decorators import clinico_required
 from pdf_generator import generar_pdf_consulta, generar_pdf_receta
@@ -26,8 +26,10 @@ from forms import (
     SoloCsrfForm,
 )
 from models import (
+    CertificadoSaludAnimal,
     Cirugia,
     ConfiguracionSistema,
+    ConsentimientoEmitido,
     ConsultaMedica,
     ControlMedico,
     DesparasitacionMascota,
@@ -100,6 +102,215 @@ def lista():
     return render_template("historias/lista.html", mascotas=mascotas, pagina=paginacion, q=q)
 
 
+def _normalizar_para_orden(dt):
+    if dt is None:
+        return datetime.min.replace(tzinfo=ZONA_BOGOTA)
+    if isinstance(dt, datetime):
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=ZONA_BOGOTA)
+        return dt
+    if isinstance(dt, date):
+        return datetime.combine(dt, datetime.min.time()).replace(tzinfo=ZONA_BOGOTA)
+    return datetime.min.replace(tzinfo=ZONA_BOGOTA)
+
+
+def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes, remisiones):
+    eventos = []
+
+    # 1. Consultas SOAP
+    for c in getattr(mascota, "consultas", []):
+        eventos.append({
+            "tipo": "soap",
+            "categoria": "Consulta SOAP",
+            "badge_color": "danger",
+            "icono": "bi-journal-medical",
+            "fecha": c.fecha_hora,
+            "titulo": f"Consulta Médica: {c.motivo_consulta}",
+            "descripcion": c.diagnostico or c.plan_tratamiento or "",
+            "profesional": f"Dr/a. {c.veterinario.nombre}" if getattr(c, "veterinario", None) else "",
+            "objeto": c,
+            "url_detalle": url_for("historias.consulta_detalle", id=c.id),
+            "url_editar": url_for("historias.consulta_editar", id=c.id),
+            "url_whatsapp": getattr(c, "enlace_whatsapp", None),
+            "url_pdf": url_for("historias.receta_pdf", id=c.id) if getattr(c, "receta_medica", None) else None,
+            "tab_destino": "soap",
+        })
+
+    # 2. Controles Médicos
+    for ctrl in getattr(mascota, "controles", []):
+        eventos.append({
+            "tipo": "control",
+            "categoria": "Control Clínico",
+            "badge_color": "info",
+            "icono": "bi-clipboard2-check",
+            "fecha": ctrl.fecha_hora,
+            "titulo": f"Control Médico: {ctrl.motivo or 'Revisión y Evolución'}",
+            "descripcion": ctrl.avances or ctrl.plan_terapeutico or "",
+            "profesional": f"Dr/a. {ctrl.veterinario.nombre}" if getattr(ctrl, "veterinario", None) else "",
+            "objeto": ctrl,
+            "url_detalle": None,
+            "url_editar": url_for("historias.control_editar", id=ctrl.id),
+            "url_whatsapp": getattr(ctrl, "enlace_whatsapp", None),
+            "tab_destino": "controles",
+        })
+
+    # 3. Exámenes / Ayudas Diagnósticas & Rx
+    for e in examenes:
+        cat_nombre = e.categoria.capitalize() if getattr(e, "categoria", None) else "Laboratorio"
+        eventos.append({
+            "tipo": "examen",
+            "categoria": f"Ayuda Diagnóstica ({cat_nombre})",
+            "badge_color": "primary",
+            "icono": "bi-clipboard2-pulse",
+            "fecha": e.fecha_toma,
+            "titulo": f"{cat_nombre}: {e.tipo_examen or 'Examen'}",
+            "descripcion": e.interpretacion or (f"Laboratorio: {e.laboratorio_externo}" if getattr(e, "laboratorio_externo", None) else ""),
+            "profesional": f"Dr/a. {e.solicitado_por.nombre}" if getattr(e, "solicitado_por", None) else "",
+            "objeto": e,
+            "url_detalle": url_for("historias.examen_detalle", id=e.id),
+            "url_editar": None,
+            "tab_destino": "examenes",
+        })
+
+    # 4. Vacunas
+    for v in getattr(mascota, "vacunas", []):
+        eventos.append({
+            "tipo": "vacuna",
+            "categoria": "Vacunación",
+            "badge_color": "warning",
+            "icono": "bi-shield-check",
+            "fecha": v.fecha_aplicacion,
+            "titulo": f"Vacunación: {v.nombre_vacuna}",
+            "descripcion": f"Lote: {v.lote or 'N/A'}" + (f" • Próx. Dosis: {v.fecha_proxima.strftime('%d/%m/%Y')}" if getattr(v, "fecha_proxima", None) else ""),
+            "profesional": f"Dr/a. {v.veterinario.nombre}" if getattr(v, "veterinario", None) else "",
+            "objeto": v,
+            "url_editar": None,
+            "url_whatsapp": getattr(v, "enlace_whatsapp", None),
+            "tab_destino": "vacunas",
+        })
+
+    # 5. Desparasitaciones
+    for d in getattr(mascota, "desparasitaciones", []):
+        eventos.append({
+            "tipo": "desparasitacion",
+            "categoria": f"Desparasitación {d.tipo.capitalize() if getattr(d, 'tipo', None) else ''}".strip(),
+            "badge_color": "success",
+            "icono": "bi-capsule",
+            "fecha": d.fecha_aplicacion,
+            "titulo": f"Desparasitación: {d.producto}",
+            "descripcion": f"Dosis: {d.dosis or 'N/A'}" + (f" • Próxima: {d.fecha_proxima.strftime('%d/%m/%Y')}" if getattr(d, "fecha_proxima", None) else ""),
+            "profesional": f"Dr/a. {d.veterinario.nombre}" if getattr(d, "veterinario", None) else "",
+            "objeto": d,
+            "url_editar": None,
+            "tab_destino": "desparasitaciones",
+        })
+
+    # 6. Hospitalizaciones
+    for h in hospitalizaciones:
+        eventos.append({
+            "tipo": "hospitalizacion",
+            "categoria": "Hospitalización",
+            "badge_color": "secondary",
+            "icono": "bi-hospital",
+            "fecha": h.fecha_ingreso,
+            "titulo": f"Hospitalización: {h.motivo_ingreso}",
+            "descripcion": f"Estado: {h.estado.capitalize()}" + (f" • Jaula: {h.jaula_numero}" if getattr(h, "jaula_numero", None) else ""),
+            "profesional": f"Dr/a. {h.veterinario_a_cargo.nombre}" if getattr(h, "veterinario_a_cargo", None) else "",
+            "objeto": h,
+            "url_detalle": url_for("historias.hospitalizacion_detalle", id=h.id),
+            "tab_destino": "avanzada",
+        })
+
+    # 7. Cirugías
+    for cir in cirugias:
+        eventos.append({
+            "tipo": "cirugia",
+            "categoria": "Cirugía",
+            "badge_color": "danger",
+            "icono": "bi-scissors",
+            "fecha": cir.fecha,
+            "titulo": f"Cirugía: {cir.tipo_procedimiento}",
+            "descripcion": f"Estado: {cir.estado.capitalize()}" + (f" • Anestesia: {cir.tipo_anestesia}" if getattr(cir, "tipo_anestesia", None) else ""),
+            "profesional": f"Dr/a. {cir.cirujano.nombre}" if getattr(cir, "cirujano", None) else "",
+            "objeto": cir,
+            "url_detalle": url_for("historias.cirugia_detalle", id=cir.id),
+            "tab_destino": "avanzada",
+        })
+
+    # 8. Consentimientos
+    for cs in getattr(mascota, "consentimientos", []):
+        eventos.append({
+            "tipo": "consentimiento",
+            "categoria": "Consentimiento",
+            "badge_color": "dark",
+            "icono": "bi-file-earmark-medical",
+            "fecha": cs.creado_en,
+            "titulo": f"Consentimiento: {cs.plantilla.titulo if getattr(cs, 'plantilla', None) else 'Documento Clínico'}",
+            "descripcion": f"Estado: {cs.estado_etiqueta} • Consecutivo #{cs.id}",
+            "profesional": f"Dr/a. {cs.veterinario.nombre}" if getattr(cs, "veterinario", None) else "",
+            "objeto": cs,
+            "url_detalle": cs.url_documento() if hasattr(cs, "url_documento") else url_for("consentimientos.documento_publico", id=cs.id),
+            "url_pdf": None,
+            "url_whatsapp": cs.enlace_whatsapp() if hasattr(cs, "enlace_whatsapp") else None,
+            "tab_destino": "consentimientos",
+        })
+
+    # 9. Certificados de Salud
+    for cert in getattr(mascota, "certificados_salud", []):
+        eventos.append({
+            "tipo": "certificado",
+            "categoria": "Certificado de Salud",
+            "badge_color": "danger",
+            "icono": "bi-award-fill",
+            "fecha": cert.fecha_emision,
+            "titulo": f"Certificado de Salud #{cert.consecutivo}",
+            "descripcion": f"Finalidad: {cert.finalidad_etiqueta if hasattr(cert, 'finalidad_etiqueta') else 'General'} • Vigencia: {getattr(cert, 'dias_vigencia', 5)} días",
+            "profesional": f"Dr/a. {cert.veterinario.nombre}" if getattr(cert, "veterinario", None) else "",
+            "objeto": cert,
+            "url_detalle": cert.url_verificacion_publica() if hasattr(cert, "url_verificacion_publica") else url_for("certificados.vista_verificacion_publica", token=cert.token_verificacion),
+            "url_pdf": cert.url_pdf() if hasattr(cert, "url_pdf") else url_for("certificados.certificado_pdf", id=cert.id),
+            "url_whatsapp": cert.enlace_whatsapp() if hasattr(cert, "enlace_whatsapp") else None,
+            "tab_destino": "certificados",
+        })
+
+    # 10. Remisiones
+    for rem in remisiones:
+        centro = f" ({rem.centro_medico_destino})" if getattr(rem, "centro_medico_destino", None) else ""
+        eventos.append({
+            "tipo": "remision",
+            "categoria": "Remisión Médica",
+            "badge_color": "info",
+            "icono": "bi-send-check-fill",
+            "fecha": rem.fecha_remision,
+            "titulo": f"Remisión: {getattr(rem, 'especialidad_destino', 'Interconsulta')}{centro}",
+            "descripcion": f"Motivo: {rem.motivo_remision}" if getattr(rem, "motivo_remision", None) else "",
+            "profesional": f"Dr/a. {rem.veterinario.nombre}" if getattr(rem, "veterinario", None) else "",
+            "objeto": rem,
+            "url_detalle": None,
+            "url_pdf": None,
+            "url_whatsapp": getattr(rem, "enlace_whatsapp", None),
+            "tab_destino": "remisiones",
+        })
+
+    # 11. Registros de peso
+    for p in getattr(mascota, "registros_peso", []):
+        eventos.append({
+            "tipo": "peso",
+            "categoria": "Control de Peso",
+            "badge_color": "secondary",
+            "icono": "bi-graph-up",
+            "fecha": p.fecha,
+            "titulo": f"Registro de Peso: {p.peso_kg} kg",
+            "descripcion": f"Registrado por: {p.registrado_por.nombre if getattr(p, 'registrado_por', None) else 'Clínica'}",
+            "profesional": p.registrado_por.nombre if getattr(p, "registrado_por", None) else "",
+            "objeto": p,
+            "tab_destino": "peso",
+        })
+
+    eventos.sort(key=lambda ev: _normalizar_para_orden(ev.get("fecha")), reverse=True)
+    return eventos
+
+
 @bp.route("/mascota/<int:mascota_id>", methods=["GET"])
 @login_required
 @clinico_required
@@ -116,6 +327,8 @@ def ficha_medica(mascota_id: int):
             selectinload(Mascota.vacunas),
             selectinload(Mascota.desparasitaciones),
             selectinload(Mascota.registros_peso),
+            selectinload(Mascota.consentimientos),
+            selectinload(Mascota.certificados_salud),
         )
     ).scalar_one_or_none()
 
@@ -178,7 +391,15 @@ def ficha_medica(mascota_id: int):
         for r in mascota.registros_peso
     ]
 
-    tab_activa = request.args.get("tab", "soap")
+    eventos_generales = _construir_eventos_generales(
+        mascota=mascota,
+        hospitalizaciones=hospitalizaciones,
+        cirugias=cirugias,
+        examenes=examenes,
+        remisiones=remisiones,
+    )
+
+    tab_activa = request.args.get("tab", "general")
 
     return render_template(
         "historias/ficha_medica.html",
@@ -189,6 +410,7 @@ def ficha_medica(mascota_id: int):
         remisiones=remisiones,
         form_remision=form_remision,
         datos_peso=datos_peso,
+        eventos_generales=eventos_generales,
         tab_activa=tab_activa,
         form_csrf=SoloCsrfForm(),
     )
@@ -823,12 +1045,16 @@ def consulta_pdf(id: int):
 
     pdf_buffer = generar_pdf_consulta(consulta, db.session)
     nombre_archivo = f"Consulta_{consulta.mascota.nombre if consulta.mascota else 'Paciente'}_{consulta.id:04d}.pdf"
-    return send_file(
+    response = send_file(
         pdf_buffer,
         mimetype="application/pdf",
         as_attachment=False,
         download_name=nombre_archivo,
     )
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @bp.route("/consulta/<int:id>/receta/pdf", methods=["GET"])
@@ -873,12 +1099,16 @@ def receta_pdf_raw(id: int):
     descargar = bool(request.args.get("descargar"))
     pdf_buffer = generar_pdf_receta(consulta, db.session)
     nombre_archivo = f"Formula_Medica_{consulta.mascota.nombre if consulta.mascota else 'Paciente'}_{consulta.id:04d}.pdf"
-    return send_file(
+    response = send_file(
         pdf_buffer,
         mimetype="application/pdf",
         as_attachment=descargar,
         download_name=nombre_archivo,
     )
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 

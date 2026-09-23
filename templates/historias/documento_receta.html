@@ -131,7 +131,7 @@
       </a>
       {% endif %}
 
-      <a href="{{ url_for('historias.receta_pdf', id=consulta.id) }}" target="_blank" class="btn btn-danger rounded-pill fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-1.5">
+      <a href="{{ url_for('historias.receta_pdf_raw', id=consulta.id, descargar=1) }}" class="btn btn-danger rounded-pill fw-bold px-3 py-2 shadow-sm d-flex align-items-center gap-1.5">
         <i class="bi bi-file-earmark-pdf-fill"></i>
         <span>Descargar PDF</span>
       </a>

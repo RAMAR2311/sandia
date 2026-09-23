@@ -2681,7 +2681,7 @@ class CertificadoSaludAnimal(BaseModel):
     peso_kg = db.Column(db.Numeric(6, 2), nullable=False)
     temperatura_c = db.Column(db.Numeric(4, 1))
     frecuencia_cardiaca = db.Column(db.Integer)
-    frecuencia_respiratoria = db.Column(db.String(50))
+    frecuencia_respiratoria = db.Column(db.Integer)
 
     dictamen_texto = db.Column(db.Text, nullable=False)
     apto_para_viajar = db.Column(db.Boolean, default=True, nullable=False)

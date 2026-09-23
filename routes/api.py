@@ -76,7 +76,7 @@ def mascota_a_dict(mascota: Mascota) -> dict:
 @login_required
 def buscar_tutores():
     texto = request.args.get("q", "").strip()
-    if not texto:
+    if not texto or len(texto) < 2:
         return jsonify([])
     condiciones = []
     normalizado = normalizar_texto(texto)

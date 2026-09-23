@@ -120,7 +120,7 @@
 
   <!-- Visor de PDF Integrado -->
   <main class="visor-contenido">
-    <iframe id="frame-pdf" class="iframe-pdf" src="{{ url_for('historias.receta_pdf_raw', id=consulta.id) }}#toolbar=1&navpanes=0"></iframe>
+    <iframe id="frame-pdf" class="iframe-pdf" src="{{ url_for('historias.receta_pdf_raw', id=consulta.id) }}?t={{ range(10000, 99999)|random }}#toolbar=1&navpanes=0"></iframe>
   </main>
 
   <script>

@@ -46,7 +46,6 @@ def upgrade():
         sa.Column('notas_ingreso', sa.Text(), nullable=True),
         sa.Column('notas_salida', sa.Text(), nullable=True),
         sa.Column('notificado_whatsapp', sa.Boolean(), nullable=False),
-        sa.Column('fecha_listo', sa.DateTime(timezone=True), nullable=True),
         sa.Column('venta_id', sa.Integer(), nullable=True),
         sa.Column('creado_por_id', sa.Integer(), nullable=True),
         sa.Column('fecha_registro', sa.DateTime(timezone=True), nullable=False),

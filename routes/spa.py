@@ -502,7 +502,7 @@ def cita_cambiar_estado(id: int):
 
     if nuevo_estado == "entregado" and not cita.venta_id:
         flash(
-            f"No se puede entregar a {cita.mascota.nombre} sin registrar el cobro en POS primero.",
+            f"No se puede entregar sin cobrar: debes registrar el cobro de {cita.mascota.nombre} en el Punto de Venta (POS) primero.",
             "warning",
         )
         next_url = request.form.get("next")

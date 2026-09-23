@@ -86,10 +86,7 @@ def upgrade():
     sa.UniqueConstraint('consentimiento_id', name=op.f('uq_firmas_consentimientos_consentimiento_id'))
     )
     with op.batch_alter_table('examenes_laboratorio', schema=None) as batch_op:
-        batch_op.alter_column('categoria',
-               existing_type=sa.VARCHAR(length=50),
-               nullable=False,
-               existing_server_default=sa.text("'laboratorio'::character varying"))
+        batch_op.add_column(sa.Column('categoria', sa.String(length=50), server_default=sa.text("'laboratorio'"), nullable=False))
         batch_op.create_index('ix_examenes_laboratorio_categoria', ['categoria'], unique=False)
 
     with op.batch_alter_table('usuarios', schema=None) as batch_op:
@@ -269,10 +266,7 @@ def downgrade():
 
     with op.batch_alter_table('examenes_laboratorio', schema=None) as batch_op:
         batch_op.drop_index('ix_examenes_laboratorio_categoria')
-        batch_op.alter_column('categoria',
-               existing_type=sa.VARCHAR(length=50),
-               nullable=True,
-               existing_server_default=sa.text("'laboratorio'::character varying"))
+        batch_op.drop_column('categoria')
 
     op.drop_table('firmas_consentimientos')
     with op.batch_alter_table('consentimientos_emitidos', schema=None) as batch_op:

@@ -241,7 +241,14 @@
       <div class="ficha-tabs-header">
         <ul class="ficha-tabs-nav" id="fichaTabs" role="tablist">
           <li class="nav-item" role="presentation">
-            <button class="ficha-tab-btn {% if not tab_activa or tab_activa == 'soap' %}active{% endif %}" id="soap-tab" data-bs-toggle="tab" data-bs-target="#soap" type="button" role="tab">
+            <button class="ficha-tab-btn {% if not tab_activa or tab_activa == 'general' %}active{% endif %}" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
+              <i class="bi bi-clock-history"></i>
+              <span>General</span>
+              <span class="ficha-tab-badge">{{ eventos_generales|length }}</span>
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="ficha-tab-btn {% if tab_activa == 'soap' %}active{% endif %}" id="soap-tab" data-bs-toggle="tab" data-bs-target="#soap" type="button" role="tab">
               <i class="bi bi-journal-medical"></i>
               <span>Consultas SOAP</span>
               <span class="ficha-tab-badge">{{ mascota.consultas|length }}</span>
@@ -315,8 +322,158 @@
       <div class="card-body p-4">
         <div class="tab-content" id="fichaTabsContent">
 
+          <!-- Pestaña 0: Historial y Cronología General -->
+          <div class="tab-pane fade {% if not tab_activa or tab_activa == 'general' %}show active{% endif %}" id="general" role="tabpanel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
+              <div>
+                <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                  <i class="bi bi-clock-history text-danger"></i>
+                  <span>Historial y Cronología General</span>
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill">{{ eventos_generales|length }}</span>
+                </h5>
+                <p class="text-muted small mb-0 mt-1">Línea de tiempo médica unificada: lo último registrado para {{ mascota.nombre }} en primer lugar.</p>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                {% if mascota.consultas and mascota.tutor.whatsapp_efectivo %}
+                  {% set ult_c = mascota.consultas[0] %}
+                  <a href="{{ ult_c.enlace_whatsapp }}" target="_blank" class="btn btn-sm btn-success fw-bold rounded-pill shadow-xs">
+                    <i class="bi bi-whatsapp me-1"></i> WhatsApp Consulta
+                  </a>
+                {% endif %}
+                <a href="{{ url_for('historias.consulta_nueva', mascota_id=mascota.id) }}" class="btn btn-sm btn-danger fw-bold rounded-pill px-3 shadow-xs">
+                  <i class="bi bi-plus-lg me-1"></i> Nueva Consulta
+                </a>
+              </div>
+            </div>
+
+            {% if eventos_generales %}
+            <div class="timeline-soap">
+              {% for ev in eventos_generales %}
+              <div class="timeline-soap-item">
+                <div class="timeline-soap-badge" style="background-color: var(--bs-{{ ev.badge_color }}, #E53935);">
+                  <i class="bi {{ ev.icono }} text-white"></i>
+                </div>
+                <div class="card border-0 shadow-xs rounded-3 bg-light">
+                  <div class="card-header bg-white border-bottom-0 d-flex flex-wrap justify-content-between align-items-center py-2 px-3 gap-2">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <span class="fw-bold text-dark">
+                        <i class="bi bi-calendar-event me-1 text-{{ ev.badge_color }}"></i>
+                        {% if ev.fecha %}
+                          {{ ev.fecha|fecha_hora if (ev.tipo in ['soap', 'control', 'peso', 'consentimiento']) else ev.fecha|fecha }}
+                        {% else %}
+                          Sin fecha
+                        {% endif %}
+                      </span>
+                      <span class="badge bg-{{ ev.badge_color }}-subtle text-{{ ev.badge_color }} border border-{{ ev.badge_color }}-subtle rounded-pill">
+                        <i class="bi {{ ev.icono }} me-1"></i>{{ ev.categoria }}
+                      </span>
+                    </div>
+                    {% if ev.profesional %}
+                    <span class="badge bg-light text-muted border rounded-pill small">
+                      <i class="bi bi-person-badge me-1"></i>{{ ev.profesional }}
+                    </span>
+                    {% endif %}
+                  </div>
+
+                  <div class="card-body p-3">
+                    <h6 class="fw-bold text-dark mb-2">{{ ev.titulo }}</h6>
+
+                    {# Detalles según el tipo de evento #}
+                    {% if ev.tipo == 'soap' %}
+                      {% set c = ev.objeto %}
+                      <div class="vitales-strip">
+                        {% if c.peso_kg %}<span class="vital-pill"><i class="bi bi-speedometer2"></i> Peso: {{ c.peso_kg }} kg</span>{% endif %}
+                        {% if c.temperatura_c %}<span class="vital-pill"><i class="bi bi-thermometer-half"></i> Temp: {{ c.temperatura_c }} °C</span>{% endif %}
+                        {% if c.frecuencia_cardiaca %}<span class="vital-pill"><i class="bi bi-heart-pulse"></i> FC: {{ c.frecuencia_cardiaca }} lpm</span>{% endif %}
+                        {% if c.frecuencia_respiratoria %}<span class="vital-pill"><i class="bi bi-wind"></i> FR: {{ c.frecuencia_respiratoria }} rpm</span>{% endif %}
+                        {% if c.mucosas %}<span class="vital-pill"><i class="bi bi-eye"></i> Mucosas: {{ c.mucosas }}</span>{% endif %}
+                        {% if c.tllc_segundos %}<span class="vital-pill"><i class="bi bi-clock-history"></i> TLLC: {{ c.tllc_segundos }}s</span>{% endif %}
+                      </div>
+                      <div class="mt-2.5">
+                        {% if c.anamnesis %}<div class="soap-seccion soap-seccion--s small mb-1.5"><strong class="text-primary">Subjetivo (S):</strong> {{ c.anamnesis }}</div>{% endif %}
+                        {% if c.diagnostico %}<div class="soap-seccion soap-seccion--a small mb-1.5"><strong class="text-warning">Diagnóstico (A):</strong> {{ c.diagnostico }}</div>{% endif %}
+                        {% if c.plan_tratamiento %}<div class="soap-seccion soap-seccion--p small mb-1.5"><strong class="text-danger">Plan (P):</strong> {{ c.plan_tratamiento }}</div>{% endif %}
+                      </div>
+                    {% elif ev.tipo == 'control' %}
+                      {% set ctrl = ev.objeto %}
+                      {% if ctrl.peso_kg %}
+                        <div class="vitales-strip mb-2">
+                          <span class="vital-pill"><i class="bi bi-speedometer2"></i> Peso en control: {{ ctrl.peso_kg }} kg</span>
+                        </div>
+                      {% endif %}
+                      {% if ctrl.evaluacion_control %}
+                        <div class="small text-secondary mb-1"><strong>Evolución:</strong> {{ ctrl.evaluacion_control }}</div>
+                      {% elif ctrl.avances %}
+                        <div class="small text-secondary mb-1"><strong>Evolución:</strong> {{ ctrl.avances }}</div>
+                      {% endif %}
+                      {% if ctrl.ajuste_tratamiento %}
+                        <div class="small text-dark mb-1"><strong>Ajustes al tratamiento:</strong> {{ ctrl.ajuste_tratamiento }}</div>
+                      {% elif ctrl.plan_terapeutico %}
+                        <div class="small text-dark mb-1"><strong>Plan terapéutico:</strong> {{ ctrl.plan_terapeutico }}</div>
+                      {% endif %}
+                    {% elif ev.tipo == 'examen' %}
+                      {% set ex = ev.objeto %}
+                      <div class="small mb-1">
+                        {% if ex.laboratorio_o_proveedor %}<span class="text-muted d-block"><strong>Laboratorio / Proveedor:</strong> {{ ex.laboratorio_o_proveedor }}</span>{% endif %}
+                        {% if ex.resultado_texto %}<div class="text-dark mt-1"><strong>Resultado:</strong> {{ ex.resultado_texto }}</div>{% endif %}
+                        {% if ex.interpretacion %}<div class="text-secondary mt-1"><strong>Interpretación:</strong> {{ ex.interpretacion }}</div>{% endif %}
+                      </div>
+                    {% else %}
+                      {% if ev.descripcion %}
+                        <p class="small text-secondary mb-1">{{ ev.descripcion }}</p>
+                      {% endif %}
+                    {% endif %}
+
+                    {# Botones de acción rápida #}
+                    <div class="mt-3 pt-2 border-top d-flex flex-wrap justify-content-between align-items-center gap-2">
+                      <div class="d-flex flex-wrap align-items-center gap-2">
+                        {% if ev.url_whatsapp %}
+                          <a href="{{ ev.url_whatsapp }}" target="_blank" rel="noopener" class="btn btn-xs btn-outline-success fw-bold rounded-pill px-2.5 py-1" style="font-size: 0.78rem;">
+                            <i class="bi bi-whatsapp me-1"></i> WhatsApp
+                          </a>
+                        {% endif %}
+                        {% if ev.url_pdf %}
+                          <a href="{{ ev.url_pdf }}" target="_blank" class="btn btn-xs btn-outline-danger fw-bold rounded-pill px-2.5 py-1" style="font-size: 0.78rem;">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                          </a>
+                        {% endif %}
+                        {% if ev.url_descargar %}
+                          <a href="{{ ev.url_descargar }}" class="btn btn-xs btn-outline-primary fw-bold rounded-pill px-2.5 py-1" style="font-size: 0.78rem;">
+                            <i class="bi bi-download me-1"></i> Descargar Adjunto
+                          </a>
+                        {% endif %}
+                        {% if ev.url_editar %}
+                          <a href="{{ ev.url_editar }}" class="btn btn-xs btn-outline-secondary fw-bold rounded-pill px-2.5 py-1" style="font-size: 0.78rem;">
+                            <i class="bi bi-pencil-square me-1"></i> Editar
+                          </a>
+                        {% endif %}
+                      </div>
+
+                      {% if ev.url_detalle %}
+                        <a href="{{ ev.url_detalle }}" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3" style="font-size: 0.8rem;">
+                          Ver detalle completo <i class="bi bi-chevron-right ms-1"></i>
+                        </a>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+              <div class="display-4 text-muted mb-2"><i class="bi bi-folder-x"></i></div>
+              <h5 class="fw-bold">Sin historial clínico registrado</h5>
+              <p class="text-muted small mb-3">Aún no se ha registrado ninguna consulta, examen, vacuna o procedimiento para {{ mascota.nombre }}.</p>
+              <a href="{{ url_for('historias.consulta_nueva', mascota_id=mascota.id) }}" class="btn btn-danger rounded-pill px-4 fw-bold">
+                <i class="bi bi-plus-circle me-1"></i> Registrar Primera Consulta
+              </a>
+            </div>
+            {% endif %}
+          </div>
+
           <!-- Pestaña 1: Consultas SOAP -->
-          <div class="tab-pane fade {% if not tab_activa or tab_activa == 'soap' %}show active{% endif %}" id="soap" role="tabpanel">
+          <div class="tab-pane fade {% if tab_activa == 'soap' %}show active{% endif %}" id="soap" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-journal-medical text-danger me-1"></i> Historial de Consultas SOAP</h5>
               {% if mascota.consultas and mascota.tutor.whatsapp_efectivo %}
