@@ -203,6 +203,25 @@ def _crear_estilos():
     ))
 
     estilos.add(ParagraphStyle(
+        'TextoPequeno',
+        parent=estilos['Normal'],
+        fontName='Helvetica',
+        fontSize=7.5,
+        leading=10,
+        textColor=COLOR_TEXTO,
+    ))
+
+    estilos.add(ParagraphStyle(
+        'TextoCentrado',
+        parent=estilos['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8.5,
+        leading=11.5,
+        textColor=COLOR_OSCURO,
+        alignment=1, # Centro
+    ))
+
+    estilos.add(ParagraphStyle(
         'PiePagina',
         parent=estilos['Normal'],
         fontName='Helvetica-Oblique',
@@ -386,12 +405,17 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
 
     # Examen por Sistemas (9 Sistemas)
     sistemas = consulta.sistemas_evaluados
-    if sistemas:
+    if sistemas and isinstance(sistemas, dict):
         sist_rows = [["Sistema Evaluado", "Estado", "Hallazgos / Observaciones Clínicas"]]
         for k, v in sistemas.items():
-            nom = v.get("nombre") or k.replace("_", " ").capitalize()
-            est = v.get("estado", "normal").upper()
-            obs = v.get("observacion") or "Sin alteraciones aparentes."
+            if isinstance(v, dict):
+                nom = v.get("nombre") or str(k).replace("_", " ").capitalize()
+                est = str(v.get("estado", "normal")).upper()
+                obs = v.get("observacion") or "Sin alteraciones aparentes."
+            else:
+                nom = str(k).replace("_", " ").capitalize()
+                est = str(v).upper() if v else "NORMAL"
+                obs = "Sin alteraciones aparentes."
             color_est = "<font color='#166534'><b>NORMAL</b></font>" if est == "NORMAL" else "<font color='#B91C1C'><b>ANORMAL</b></font>"
             sist_rows.append([
                 Paragraph(f"<b>{nom}</b>", estilos['TextoNormal']),
@@ -420,7 +444,8 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
     # =========================================================================
     historia.append(Paragraph("<b>A · AVALÚO (Diagnóstico Presuntivo)</b>", estilos['SeccionHeader']))
     historia.append(Spacer(1, 2))
-    diag_data = [[Paragraph(f"<b>DIAGNÓSTICO:</b> {consulta.diagnostico}", estilos['TextoNormal'])]]
+    diag_txt = consulta.diagnostico or "Sin diagnóstico presuntivo registrado."
+    diag_data = [[Paragraph(f"<b>DIAGNÓSTICO:</b> {diag_txt}", estilos['TextoNormal'])]]
     t_diag = Table(diag_data, colWidths=[188 * mm])
     t_diag.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#FEF3C7")),
@@ -436,8 +461,9 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
     historia.append(Paragraph("<b>P · PLAN TERAPÉUTICO & PRESCRIPCIÓN MÉDICA</b>", estilos['SeccionHeader']))
     historia.append(Spacer(1, 2))
     
+    plan_txt = (consulta.plan_tratamiento or "Sin plan de tratamiento registrado.").replace("\n", "<br/>")
     plan_data = [
-        [Paragraph(f"<b>Indicaciones Clínicas & Procedimientos:</b><br/>{consulta.plan_tratamiento.replace(chr(10), '<br/>')}", estilos['TextoNormal'])]
+        [Paragraph(f"<b>Indicaciones Clínicas & Procedimientos:</b><br/>{plan_txt}", estilos['TextoNormal'])]
     ]
     t_plan = Table(plan_data, colWidths=[188 * mm])
     t_plan.setStyle(TableStyle([
@@ -450,12 +476,13 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
 
     # Receta Médica formal si existe
     if consulta.receta_medica:
+        receta_txt = consulta.receta_medica.replace("\n", "<br/>")
         receta_data = [
             [
                 Paragraph("<b><font color='#E53935' size=11>Rx</font> FÓRMULA MÉDICA & PRESCRIPCIÓN AL TUTOR</b>", estilos['TextoNegrita'])
             ],
             [
-                Paragraph(consulta.receta_medica.replace(chr(10), "<br/>"), estilos['TextoReceta'])
+                Paragraph(receta_txt, estilos['TextoReceta'])
             ]
         ]
         t_receta = Table(receta_data, colWidths=[188 * mm])
@@ -571,10 +598,11 @@ def generar_pdf_factura(venta, db_session=None) -> io.BytesIO:
 
     # 2. Cliente y Vendedor
     cliente_nom = tutor.nombre_completo if tutor else "Cliente General / Consumidor Final"
-    cliente_doc = f"NIT/CC: {tutor.documento_texto}" if tutor and hasattr(tutor, "documento_texto") else "NIT/CC: 222222222222"
+    cliente_doc = f"NIT/CC: {tutor.documento_texto}" if tutor and hasattr(tutor, "documento_texto") and tutor.documento_texto else "NIT/CC: 222222222222"
     cliente_tel = f"Tel: {tutor.telefono}" if tutor and tutor.telefono else ""
     cajero_nom = usuario_vendedor.nombre if usuario_vendedor else "Caja Principal"
-    mascota_nom = f" · Mascota: <strong>{venta.mascota.nombre}</strong>" if venta.mascota else ""
+    mascota_nom = f" · Mascota: <strong>{venta.mascota.nombre}</strong>" if getattr(venta, "mascota", None) and venta.mascota.nombre else ""
+    estado_venta = str(getattr(venta, "estado", "PAGADO")).upper()
 
     info_data = [
         [
@@ -583,7 +611,7 @@ def generar_pdf_factura(venta, db_session=None) -> io.BytesIO:
         ],
         [
             Paragraph(f"<b>Documento:</b> {cliente_doc} · {cliente_tel}", estilos['TextoNormal']),
-            Paragraph(f"<b>Estado:</b> <font color='#166534'><b>{venta.estado.upper()}</b></font>", estilos['TextoNormal']),
+            Paragraph(f"<b>Estado:</b> <font color='#166534'><b>{estado_venta}</b></font>", estilos['TextoNormal']),
         ]
     ]
     t_info = Table(info_data, colWidths=[100 * mm, 88 * mm])
@@ -597,14 +625,21 @@ def generar_pdf_factura(venta, db_session=None) -> io.BytesIO:
 
     # 3. Detalle de Ítems
     items_table = [["Cant", "Descripción / Producto o Servicio", "V. Unitario", "Desc.", "Total"]]
-    detalles_lista = getattr(venta, 'detalles', [])
+    detalles_lista = getattr(venta, 'detalles', []) or []
     for item in detalles_lista:
-        desc = item.descripcion
-        cant = f"{item.cantidad:g}" if hasattr(item, "cantidad") else str(item.cantidad)
-        unit = f"${item.precio_unitario:,.2f}"
-        desc_txt = f"-${item.descuento:,.2f}" if hasattr(item, "descuento") and item.descuento else "$0.00"
-        total_it = f"${item.total_linea:,.2f}"
+        desc = getattr(item, 'descripcion', 'Ítem') or 'Ítem'
+        cant_val = getattr(item, "cantidad", 1)
+        cant = f"{cant_val:g}" if isinstance(cant_val, (int, float)) else str(cant_val or 1)
+        p_unit = getattr(item, 'precio_unitario', 0) or 0
+        unit = f"${p_unit:,.2f}"
+        desc_val = getattr(item, "descuento", 0) or 0
+        desc_txt = f"-${desc_val:,.2f}" if desc_val else "$0.00"
+        t_linea = getattr(item, 'total_linea', 0) or 0
+        total_it = f"${t_linea:,.2f}"
         items_table.append([cant, Paragraph(desc, estilos['TextoNormal']), unit, desc_txt, total_it])
+
+    if len(items_table) == 1:
+        items_table.append(["1", Paragraph("Venta general", estilos['TextoNormal']), f"${getattr(venta, 'total', 0) or 0:,.2f}", "$0.00", f"${getattr(venta, 'total', 0) or 0:,.2f}"])
 
     t_items = Table(items_table, colWidths=[16 * mm, 98 * mm, 26 * mm, 18 * mm, 30 * mm])
     t_items.setStyle(TableStyle([
@@ -623,10 +658,15 @@ def generar_pdf_factura(venta, db_session=None) -> io.BytesIO:
     historia.append(Spacer(1, 8))
 
     # 4. Totales
-    subtotal_str = f"${venta.subtotal:,.2f}" if hasattr(venta, "subtotal") and venta.subtotal else f"${venta.total:,.2f}"
-    descuento_str = f"-${venta.descuento_monto:,.2f}" if hasattr(venta, "descuento_monto") and venta.descuento_monto else "$0.00"
-    iva_str = f"${venta.impuesto_monto:,.2f}" if hasattr(venta, "impuesto_monto") and venta.impuesto_monto else "$0.00"
-    total_str = f"${venta.total:,.2f}"
+    subt_val = getattr(venta, "subtotal", None)
+    tot_val = getattr(venta, "total", 0) or 0
+    desc_monto = getattr(venta, "descuento_monto", 0) or 0
+    imp_monto = getattr(venta, "impuesto_monto", 0) or 0
+
+    subtotal_str = f"${subt_val:,.2f}" if subt_val is not None else f"${tot_val:,.2f}"
+    descuento_str = f"-${desc_monto:,.2f}" if desc_monto else "$0.00"
+    iva_str = f"${imp_monto:,.2f}" if imp_monto else "$0.00"
+    total_str = f"${tot_val:,.2f}"
 
     totales_data = [
         ["Subtotal:", subtotal_str],
@@ -654,8 +694,8 @@ def generar_pdf_factura(venta, db_session=None) -> io.BytesIO:
     historia.append(Spacer(1, 14))
 
     # 5. Formas de Pago
-    pagos_lista = getattr(venta, 'pagos', [])
-    pagos_str = ", ".join([f"{p.metodo_etiqueta}: ${p.monto:,.2f}" for p in pagos_lista]) if pagos_lista else "Pago registrado"
+    pagos_lista = getattr(venta, 'pagos', []) or []
+    pagos_str = ", ".join([f"{getattr(p, 'metodo_etiqueta', 'Pago')}: ${getattr(p, 'monto', 0) or 0:,.2f}" for p in pagos_lista]) if pagos_lista else "Pago registrado"
     historia.append(Paragraph(f"<b>Medio(s) de Pago:</b> {pagos_str}", estilos['TextoNormal']))
     historia.append(Spacer(1, 6))
     historia.append(HRFlowable(width="100%", thickness=0.5, color=COLOR_GRIS_BORDE, spaceAfter=8))
@@ -736,7 +776,7 @@ def generar_pdf_receta(consulta, db_session=None) -> io.BytesIO:
             Paragraph(f"<b>TUTOR:</b> <b>{nombre_tutor}</b>", estilos['TextoNormal']),
         ],
         [
-            Paragraph(f"<b>Diagnóstico:</b> {consulta.diagnostico}", estilos['TextoNormal']),
+            Paragraph(f"<b>Diagnóstico:</b> {consulta.diagnostico or 'Evaluación médica'}", estilos['TextoNormal']),
             Paragraph(f"<b>Médico:</b> {nombre_vet}", estilos['TextoNormal']),
         ]
     ]
@@ -750,13 +790,13 @@ def generar_pdf_receta(consulta, db_session=None) -> io.BytesIO:
     historia.append(Spacer(1, 12))
 
     # 3. Prescripción Rx
-    receta_txt = consulta.receta_medica or consulta.plan_tratamiento or "Sin medicamentos prescritos."
+    receta_txt = (consulta.receta_medica or consulta.plan_tratamiento or "Sin medicamentos prescritos.").replace("\n", "<br/>")
     receta_data = [
         [
             Paragraph("<b><font color='#E53935' size=14>Rx</font> MEDICAMENTOS, DOSIS & INSTRUCCIONES DE USO</b>", estilos['TextoNegrita'])
         ],
         [
-            Paragraph(receta_txt.replace(chr(10), "<br/>"), estilos['TextoReceta'])
+            Paragraph(receta_txt, estilos['TextoReceta'])
         ]
     ]
     t_receta = Table(receta_data, colWidths=[184 * mm])
@@ -1258,6 +1298,9 @@ def generar_pdf_certificado_salud(cert, db_session=None) -> io.BytesIO:
             Paragraph(f"__________________________________________<br/>{sello_html}", estilos['PiePagina'])
         ]
 
+    hash_raw = getattr(cert, "hash_integridad_sha256", "") or ""
+    hash_display = f"{hash_raw[:20]}...{hash_raw[-12:]}" if len(hash_raw) >= 32 else (hash_raw or "Válido")
+
     firma_block = [
         [
             Paragraph(
@@ -1265,7 +1308,7 @@ def generar_pdf_certificado_salud(cert, db_session=None) -> io.BytesIO:
                 f"<font size=7 color='#64748B'>"
                 f"Certificado verificable en línea por autoridades sanitarias y aerolíneas.<br/>"
                 f"URL: <u>{url_verif}</u><br/>"
-                f"Hash SHA-256: <code>{cert.hash_integridad_sha256[:20]}...{cert.hash_integridad_sha256[-12:]}</code></font>",
+                f"Hash SHA-256: <code>{hash_display}</code></font>",
                 estilos['TextoNormal']
             ),
             firma_col_cert
