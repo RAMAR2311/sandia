@@ -25,6 +25,7 @@ from models import (
     CATEGORIAS_EXAMEN,
     CATEGORIAS_GASTO,
     CATEGORIAS_PRODUCTO,
+    CATEGORIAS_SERVICIO_SALUD,
     ESPECIES,
     ESTADOS_CITA,
     ESTADOS_EXAMEN,
@@ -625,13 +626,48 @@ class ConfiguracionClinicaForm(FlaskForm):
 
 
 # ---------------------------------------------------------------------------
-# Agenda médica general
+# Servicios de Salud & Agenda médica general
 # ---------------------------------------------------------------------------
+
+
+class ServicioSaludForm(FlaskForm):
+    """Formulario para crear y editar servicios médicos y clínicos asistenciales."""
+
+    nombre = StringField(
+        "Nombre del servicio médico (ej. Consulta General, Vacuna Pentavalente)",
+        validators=[DataRequired("El nombre del servicio es obligatorio."), Length(max=120)],
+    )
+    categoria = SelectField(
+        "Categoría del servicio",
+        choices=list(CATEGORIAS_SERVICIO_SALUD.items()),
+        default="consulta",
+        validators=[DataRequired("Selecciona la categoría.")],
+    )
+    descripcion = TextAreaField("Descripción o especificaciones (opcional)", validators=[Optional(), Length(max=1000)])
+    duracion_minutos = IntegerField(
+        "Duración estimada en agenda (minutos)",
+        validators=[DataRequired("Ingresa la duración."), NumberRange(min=5, max=480)],
+        default=30,
+    )
+    precio_sugerido = DecimalField(
+        "Tarifa sugerida (COP)",
+        places=2,
+        validators=[DataRequired("Ingresa el precio sugerido."), NumberRange(min=Decimal("0"))],
+        default=Decimal("0.00"),
+    )
+    especie = SelectField(
+        "Especie recomendada (opcional)",
+        choices=[("", "Todas las especies")] + list(ESPECIES.items()),
+        validators=[Optional()],
+    )
+    activo = BooleanField("Servicio activo", default=True)
+    enviar = SubmitField("Guardar servicio médico")
 
 
 class CitaForm(FlaskForm):
     tutor_id = HiddenField(validators=[DataRequired("Selecciona el tutor.")])
     mascota_id = HiddenField(validators=[DataRequired("Selecciona la mascota.")])
+    servicio_salud_id = SelectField("Servicio médico (opcional)", coerce=int, validate_choice=False, validators=[Optional()])
     tipo = SelectField("Tipo de cita", choices=list(TIPOS_CITA.items()), validators=[DataRequired()])
     profesional_id = SelectField("Profesional (opcional)", coerce=int, validate_choice=False, validators=[Optional()])
     fecha = DateField("Fecha", validators=[DataRequired("Selecciona la fecha.")])

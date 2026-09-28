@@ -8,7 +8,7 @@ from flask import Blueprint, jsonify, request, url_for
 from flask_login import login_required
 from sqlalchemy import case, or_, select
 
-from models import ESPECIES, Mascota, Producto, Raza, ServicioSpa, Tutor, db
+from models import ESPECIES, Mascota, Producto, Raza, ServicioSalud, ServicioSpa, Tutor, db
 from utils import PREFIJO_MINIATURA, normalizar_texto, solo_digitos
 
 bp = Blueprint("api", __name__, url_prefix="/api")
@@ -235,13 +235,41 @@ def pos_buscar_items():
 
     items = []
 
-    # 1. Buscar en catálogo de productos y servicios clínicos
-    if categoria_filtro in ("", "todos", "productos", "clinica"):
+    # 1. Buscar en catálogo de Servicios Médicos & Salud (ServicioSalud)
+    if categoria_filtro in ("", "todos", "clinica"):
+        consulta_salud = select(ServicioSalud).where(ServicioSalud.activo.is_(True))
+        if texto:
+            filtros_salud = [
+                ServicioSalud.nombre.ilike(f"%{texto}%"),
+                ServicioSalud.nombre.ilike(f"%{normalizado}%"),
+            ]
+            consulta_salud = consulta_salud.where(or_(*filtros_salud))
+        consulta_salud = consulta_salud.order_by(ServicioSalud.categoria, ServicioSalud.nombre).limit(limite_pos)
+        servicios_salud = db.session.execute(consulta_salud).scalars().all()
+
+        for s in servicios_salud:
+            items.append({
+                "id": f"salud_{s.id}",
+                "servicio_salud_id": s.id,
+                "sku": f"MED-{s.id:02d}",
+                "codigo_barras": "",
+                "nombre": s.nombre,
+                "tipo": "servicio",
+                "categoria": "clinica",
+                "subcategoria": s.categoria,
+                "precio_sugerido": float(s.precio_sugerido),
+                "duracion_minutos": s.duracion_minutos,
+                "stock_total": None,
+                "controla_lote": False,
+                "requiere_receta": False,
+                "variantes": [],
+            })
+
+    # 2. Buscar en catálogo de productos físicos (y productos de inventario)
+    if categoria_filtro in ("", "todos", "productos"):
         consulta = select(Producto).where(Producto.activo.is_(True))
         if categoria_filtro == "productos":
             consulta = consulta.where(Producto.tipo == "producto")
-        elif categoria_filtro == "clinica":
-            consulta = consulta.where(Producto.tipo == "servicio")
 
         if normalizado:
             consulta = consulta.where(
@@ -252,7 +280,7 @@ def pos_buscar_items():
                 )
             )
 
-        consulta = consulta.order_by(Producto.tipo.desc(), Producto.nombre_busqueda).limit(limite_pos)
+        consulta = consulta.order_by(Producto.nombre_busqueda).limit(limite_pos)
         productos = db.session.execute(consulta).scalars().all()
 
         for p in productos:
@@ -274,7 +302,7 @@ def pos_buscar_items():
                 "codigo_barras": p.codigo_barras or "",
                 "nombre": p.nombre,
                 "tipo": p.tipo,
-                "categoria": "clinica" if p.tipo == "servicio" else p.categoria,
+                "categoria": p.categoria if p.tipo == "producto" else "clinica",
                 "precio_sugerido": float(p.precio_sugerido),
                 "stock_total": float(p.stock_total) if p.tipo == "producto" else None,
                 "controla_lote": p.controla_lote,
@@ -282,7 +310,7 @@ def pos_buscar_items():
                 "variantes": variantes,
             })
 
-    # 2. Buscar en catálogo de Spa & Peluquería
+    # 3. Buscar en catálogo de Spa & Peluquería
     if categoria_filtro in ("", "todos", "spa"):
         consulta_spa = select(ServicioSpa).where(ServicioSpa.activo.is_(True))
         if normalizado:
@@ -300,6 +328,7 @@ def pos_buscar_items():
                 "tipo": "servicio",
                 "categoria": "spa",
                 "precio_sugerido": float(s.precio_sugerido),
+                "duracion_minutos": s.duracion_minutos,
                 "stock_total": None,
                 "controla_lote": False,
                 "requiere_receta": False,

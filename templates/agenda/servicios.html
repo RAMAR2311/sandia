@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block titulo %}Catálogo de Servicios Médicos · Sandía{% endblock %}
+
+{% block contenido %}
+{# Cabecera Principal #}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('agenda.lista') }}" class="btn btn-sm btn-outline-secondary rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px;" title="Volver a la agenda">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca);">
+        Catálogo de Servicios Médicos & Salud
+      </h1>
+    </div>
+    <p class="text-secondary small mb-0 mt-1 ms-4 ps-2">
+      Tarifas sugeridas, tiempos de atención y catálogo de consultas, procedimientos, vacunas y exámenes.
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('agenda.servicio_nuevo') }}" class="btn btn-primary rounded-pill px-4 shadow-sm fw-semibold">
+      <i class="bi bi-plus-circle me-1"></i> Nuevo Servicio Médico
+    </a>
+  </div>
+</div>
+
+{# Grid de Servicios Médicos #}
+{% if not servicios %}
+<div class="card border-0 shadow-sm rounded-4 bg-white" style="border: 1.5px solid #FECDD3 !important;">
+  <div class="card-body text-center text-secondary py-5">
+    <div class="display-4 mb-3">🩺</div>
+    <h5 class="fw-bold text-dark" style="font-family: var(--fuente-marca);">No hay servicios médicos registrados aún</h5>
+    <p class="text-muted small mb-3">Crea consultas, planes de vacunación, ecografías o procedimientos para agendar y facturar en el POS.</p>
+    <a href="{{ url_for('agenda.servicio_nuevo') }}" class="btn btn-sm btn-primary rounded-pill px-4 shadow-sm">
+      <i class="bi bi-plus-circle me-1"></i> Crear Primer Servicio Médico
+    </a>
+  </div>
+</div>
+{% else %}
+<div class="row g-3">
+  {% for s in servicios %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="card border-0 shadow-sm rounded-4 h-100 bg-white hover-shadow transition-all overflow-hidden" style="border: 1.5px solid #E2E8F0 !important; border-top: 4px solid {% if s.categoria == 'consulta' %}#3B82F6{% elif s.categoria == 'vacunacion' %}#10B981{% elif s.categoria == 'cirugia' %}#EF4444{% elif s.categoria == 'laboratorio' or s.categoria == 'imagenologia' %}#8B5CF6{% else %}#F59E0B{% endif %} !important;">
+      <div class="card-body p-4 d-flex flex-column">
+        <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+          <div>
+            <span class="badge rounded-pill px-2.5 py-1 mb-1 fw-semibold small" style="background-color: #F1F5F9; color: #334155; font-size: 0.72rem;">
+              {{ s.categoria_etiqueta }}
+            </span>
+            <h2 class="h5 fw-bold text-dark mb-0 lh-sm" style="font-family: var(--fuente-marca);">
+              {{ s.nombre }}
+            </h2>
+          </div>
+          {% if s.activo %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 small">Activo</span>
+          {% else %}
+            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0.5 small">Inactivo</span>
+          {% endif %}
+        </div>
+
+        {% if s.descripcion %}
+          <p class="small text-secondary mb-3 lh-sm text-truncate-2" style="min-height: 38px;">
+            {{ s.descripcion }}
+          </p>
+        {% else %}
+          <div class="small text-muted mb-3 fst-italic" style="min-height: 38px;">Sin observaciones adicionales</div>
+        {% endif %}
+
+        <div class="d-flex flex-wrap gap-1 align-items-center mb-3">
+          <span class="badge bg-light text-secondary border rounded-pill px-2 py-1 small">
+            <i class="bi bi-clock me-1 text-primary"></i>{{ s.duracion_minutos }} min en agenda
+          </span>
+          <span class="badge bg-light text-dark border rounded-pill px-2 py-1 small">
+            {% if s.especie == 'canino' %}🐶 Canino{% elif s.especie == 'felino' %}🐱 Felino{% else %}🐾 Todas las especies{% endif %}
+          </span>
+          <span class="badge bg-light text-muted border rounded-pill px-2 py-1 small font-monospace">
+            ID: MED-{{ "%02d"|format(s.id) }}
+          </span>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between pt-3 mt-auto border-top">
+          <div>
+            <div class="small text-muted" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700;">Tarifa Sugerida</div>
+            <div class="fw-bold text-success font-monospace fs-5">{{ s.precio_sugerido|cop }}</div>
+          </div>
+
+          <div class="d-flex align-items-center gap-1">
+            <a href="{{ url_for('agenda.servicio_editar', id=s.id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-xs">
+              <i class="bi bi-pencil me-1"></i>Editar
+            </a>
+            <form method="post" action="{{ url_for('agenda.servicio_eliminar', id=s.id) }}" class="m-0" onsubmit="return confirm('¿Deseas eliminar el servicio médico \'{{ s.nombre }}\'? Si tiene citas pasadas en el historial, será desactivado automáticamente.')">
+              {{ form_csrf.csrf_token }}
+              <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5 shadow-xs" title="Eliminar servicio">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

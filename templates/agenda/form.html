@@ -115,6 +115,23 @@
             </div>
 
             <div class="col-12">
+              <div class="p-3 bg-light rounded-3 border">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <label class="form-label fw-bold text-dark mb-0 small" for="{{ form.servicio_salud_id.id }}">
+                    <i class="bi bi-journal-medical text-danger me-1"></i>Servicio del Catálogo Médico (Opcional)
+                  </label>
+                  <a href="{{ url_for('agenda.servicios_lista') }}" target="_blank" class="small fw-semibold text-danger text-decoration-none" title="Administrar catálogo">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Ver Catálogo
+                  </a>
+                </div>
+                {{ campo_select(form.servicio_salud_id) }}
+                <div class="form-text text-muted small mt-1">
+                  Al seleccionar un servicio médico, su nombre y duración se sincronizan automáticamente.
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
               <label class="form-label fw-bold">{{ form.duracion_minutos.label.text }}</label>
               <div class="d-flex gap-2 flex-wrap mb-2">
                 <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 chip-duracion" data-minutos="15">15 min</button>
@@ -128,7 +145,7 @@
             </div>
 
             <div class="col-12">
-              {{ campo(form.motivo, autocomplete="off", placeholder="Ej: Control de vacunas, consulta dermatológica, profilaxis dental, baño y peluquería...") }}
+              {{ campo(form.motivo, autocomplete="off", placeholder="Ej: Control de vacunas, consulta dermatológica, profilaxis dental, ecografía...") }}
             </div>
 
             <div class="col-12">

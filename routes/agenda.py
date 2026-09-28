@@ -10,9 +10,21 @@ from flask_login import current_user, login_required
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from decorators import recepcion_required
-from forms import CambiarEstadoCitaForm, CitaForm, SoloCsrfForm
-from models import ESTADOS_CITA, TIPOS_CITA, Cita, CitaSpa, Mascota, ServicioSpa, Tutor, Usuario, db
+from decorators import admin_required, recepcion_required
+from forms import CambiarEstadoCitaForm, CitaForm, ServicioSaludForm, SoloCsrfForm
+from models import (
+    CATEGORIAS_SERVICIO_SALUD,
+    ESTADOS_CITA,
+    TIPOS_CITA,
+    Cita,
+    CitaSpa,
+    Mascota,
+    ServicioSalud,
+    ServicioSpa,
+    Tutor,
+    Usuario,
+    db,
+)
 from utils import ZONA_BOGOTA, enlace_whatsapp, hoy_bogota
 
 
@@ -24,6 +36,150 @@ def _opciones_profesionales():
         select(Usuario).where(Usuario.activo.is_(True), Usuario.rol.in_(("admin", "veterinario", "auxiliar"))).order_by(Usuario.nombre)
     ).scalars()
     return [(0, "Sin asignar")] + [(u.id, u.nombre) for u in usuarios]
+
+
+def _opciones_servicios_salud():
+    servicios = db.session.execute(
+        select(ServicioSalud).where(ServicioSalud.activo.is_(True)).order_by(ServicioSalud.categoria, ServicioSalud.nombre)
+    ).scalars()
+    return [(0, "Seleccionar del catálogo o escribir motivo personalizado...")] + [
+        (s.id, f"{s.categoria_etiqueta}: {s.nombre} (${int(s.precio_sugerido):,} COP - {s.duracion_minutos} min)".replace(",", "."))
+        for s in servicios
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Catálogo de Servicios Médicos & Salud
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/servicios", methods=["GET"])
+@login_required
+@recepcion_required
+def servicios_lista():
+    """Listado del catálogo independiente de servicios de salud."""
+    servicios = db.session.execute(
+        select(ServicioSalud).order_by(ServicioSalud.activo.desc(), ServicioSalud.categoria, ServicioSalud.nombre)
+    ).scalars().all()
+    form_csrf = SoloCsrfForm()
+    return render_template(
+        "agenda/servicios.html",
+        servicios=servicios,
+        form_csrf=form_csrf,
+        CATEGORIAS_SERVICIO_SALUD=CATEGORIAS_SERVICIO_SALUD,
+    )
+
+
+@bp.route("/servicios/nuevo", methods=["GET", "POST"])
+@login_required
+@admin_required
+def servicio_nuevo():
+    """Crea un nuevo servicio médico en el catálogo de salud."""
+    form = ServicioSaludForm()
+    if form.validate_on_submit():
+        try:
+            nuevo = ServicioSalud(
+                nombre=form.nombre.data.strip(),
+                categoria=form.categoria.data,
+                descripcion=form.descripcion.data.strip() if form.descripcion.data else None,
+                duracion_minutos=form.duracion_minutos.data,
+                precio_sugerido=form.precio_sugerido.data,
+                especie=form.especie.data or None,
+                activo=form.activo.data,
+                creado_por_id=current_user.id,
+            )
+            db.session.add(nuevo)
+            db.session.commit()
+            flash(f"Servicio médico '{nuevo.nombre}' creado exitosamente en el catálogo.", "success")
+            return redirect(url_for("agenda.servicios_lista"))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Error al crear servicio de salud")
+            flash("Ocurrió un error al guardar el servicio médico.", "danger")
+
+    return render_template(
+        "agenda/form_servicio.html",
+        form=form,
+        titulo="Nuevo Servicio Médico",
+        subtitulo="Registra un servicio clínico con tarifa sugerida y tiempo estimado de atención.",
+    )
+
+
+@bp.route("/servicios/<int:id>/editar", methods=["GET", "POST"])
+@login_required
+@admin_required
+def servicio_editar(id: int):
+    """Edita un servicio médico del catálogo."""
+    servicio = db.session.get(ServicioSalud, id)
+    if not servicio:
+        flash("El servicio médico no existe.", "danger")
+        return redirect(url_for("agenda.servicios_lista"))
+
+    form = ServicioSaludForm(obj=servicio)
+    if form.validate_on_submit():
+        try:
+            servicio.nombre = form.nombre.data.strip()
+            servicio.categoria = form.categoria.data
+            servicio.descripcion = form.descripcion.data.strip() if form.descripcion.data else None
+            servicio.duracion_minutos = form.duracion_minutos.data
+            servicio.precio_sugerido = form.precio_sugerido.data
+            servicio.especie = form.especie.data or None
+            servicio.activo = form.activo.data
+
+            db.session.commit()
+            flash(f"Servicio médico '{servicio.nombre}' actualizado correctamente.", "success")
+            return redirect(url_for("agenda.servicios_lista"))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Error al actualizar servicio de salud %d", id)
+            flash("Ocurrió un error al guardar los cambios.", "danger")
+
+    return render_template(
+        "agenda/form_servicio.html",
+        form=form,
+        titulo=f"Editar Servicio: {servicio.nombre}",
+        subtitulo="Modifica la tarifa sugerida, duración o detalles clínicos del servicio.",
+    )
+
+
+@bp.route("/servicios/<int:id>/eliminar", methods=["POST"])
+@login_required
+@admin_required
+def servicio_eliminar(id: int):
+    """Elimina o desactiva un servicio médico del catálogo."""
+    servicio = db.session.get(ServicioSalud, id)
+    if not servicio:
+        flash("El servicio médico no existe.", "danger")
+        return redirect(url_for("agenda.servicios_lista"))
+
+    form = SoloCsrfForm()
+    if not form.validate_on_submit():
+        flash("Validación de seguridad CSRF fallida.", "danger")
+        return redirect(url_for("agenda.servicios_lista"))
+
+    try:
+        nombre = servicio.nombre
+        # Si tiene citas vinculadas, desactivar para integridad referencial
+        citas_count = db.session.query(Cita).filter_by(servicio_salud_id=servicio.id).count()
+        if citas_count > 0:
+            servicio.activo = False
+            db.session.commit()
+            flash(f"El servicio '{nombre}' tiene citas registradas en el historial, por lo que fue marcado como inactivo.", "info")
+        else:
+            db.session.delete(servicio)
+            db.session.commit()
+            flash(f"Servicio médico '{nombre}' eliminado correctamente.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al eliminar servicio de salud %d", id)
+        flash("No se pudo eliminar el servicio médico.", "danger")
+
+    return redirect(url_for("agenda.servicios_lista"))
+
+
+# ---------------------------------------------------------------------------
+# Agenda General
+# ---------------------------------------------------------------------------
 
 
 @bp.route("/", methods=["GET"])
@@ -43,7 +199,12 @@ def lista():
     citas_medicas = db.session.execute(
         select(Cita)
         .where(Cita.fecha_hora >= inicio, Cita.fecha_hora <= fin)
-        .options(selectinload(Cita.mascota), selectinload(Cita.tutor), selectinload(Cita.profesional))
+        .options(
+            selectinload(Cita.mascota),
+            selectinload(Cita.tutor),
+            selectinload(Cita.profesional),
+            selectinload(Cita.servicio_salud),
+        )
         .order_by(Cita.fecha_hora)
     ).scalars().all()
 
@@ -64,8 +225,9 @@ def lista():
     citas_unificadas = []
 
     for cm in citas_medicas:
+        serv_med_nombre = cm.servicio_salud.nombre if cm.servicio_salud else (cm.motivo or "Consulta médica general")
         msg_wa = (
-            f"Hola {cm.tutor.nombre_completo if cm.tutor else ''}, te recordamos la cita médica de {cm.mascota.nombre if cm.mascota else ''} "
+            f"Hola {cm.tutor.nombre_completo if cm.tutor else ''}, te recordamos la cita médica ({serv_med_nombre}) de {cm.mascota.nombre if cm.mascota else ''} "
             f"para hoy a las {cm.fecha_hora.strftime('%I:%M %p')} en Sandía Medicina & Spa Veterinario 🐾."
         ) if cm.tutor else ""
         tel_tutor = (cm.tutor.whatsapp or cm.tutor.telefono) if cm.tutor else ""
@@ -85,7 +247,7 @@ def lista():
             "tutor": cm.tutor,
             "profesional_nombre": cm.profesional.nombre if cm.profesional else "Sin médico asignado",
             "profesional_cargo": "Médico/a Veterinario",
-            "motivo_o_servicio": cm.motivo or "Consulta médica general",
+            "motivo_o_servicio": serv_med_nombre,
             "estado": cm.estado,
             "estado_etiqueta": ESTADOS_CITA.get(cm.estado, cm.estado.capitalize()),
             "enlace_detalle": url_for("agenda.detalle", id=cm.id),
@@ -180,6 +342,7 @@ def lista():
 def nueva():
     form = CitaForm()
     form.profesional_id.choices = _opciones_profesionales()
+    form.servicio_salud_id.choices = _opciones_servicios_salud()
     if request.method == "GET":
         form.fecha.data = hoy_bogota()
 
@@ -190,14 +353,19 @@ def nueva():
             flash("Selecciona la mascota (y su tutor) de la cita.", "danger")
         else:
             fecha_hora = datetime.combine(form.fecha.data, form.hora.data, tzinfo=ZONA_BOGOTA)
+            servicio_id = form.servicio_salud_id.data if form.servicio_salud_id.data and form.servicio_salud_id.data > 0 else None
+            servicio_obj = db.session.get(ServicioSalud, servicio_id) if servicio_id else None
+            motivo_final = form.motivo.data or (servicio_obj.nombre if servicio_obj else "Consulta médica general")
+
             cita = Cita(
                 mascota_id=mascota.id,
                 tutor_id=tutor.id,
                 profesional_id=form.profesional_id.data or None,
+                servicio_salud_id=servicio_id,
                 tipo=form.tipo.data,
                 fecha_hora=fecha_hora,
                 duracion_minutos=form.duracion_minutos.data,
-                motivo=form.motivo.data,
+                motivo=motivo_final,
                 notas=form.notas.data,
                 creado_por_id=current_user.id,
             )

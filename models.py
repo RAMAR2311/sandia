@@ -1805,8 +1805,50 @@ class DesparasitacionMascota(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Agenda médica general (consultas, vacunación, cirugía, control)
+# Agenda médica general y Servicios de Salud
 # ---------------------------------------------------------------------------
+
+CATEGORIAS_SERVICIO_SALUD = {
+    "consulta": "Consulta Médica",
+    "vacunacion": "Vacunación & Inmunización",
+    "desparasitacion": "Desparasitación",
+    "procedimiento": "Procedimiento / Curación",
+    "cirugia": "Cirugía & Quirófano",
+    "laboratorio": "Exámenes & Laboratorio",
+    "imagenologia": "Ecografía & Rayos X",
+    "certificado": "Certificados & Documentos",
+    "control": "Control & Seguimiento",
+    "otro": "Otro Servicio de Salud",
+}
+
+
+class ServicioSalud(BaseModel):
+    """Catálogo independiente de servicios médicos y asistenciales de salud.
+    No requiere inventario ni stock físico."""
+
+    __tablename__ = "servicios_salud"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(120), nullable=False)
+    categoria = db.Column(db.String(30), nullable=False, default="consulta")
+    descripcion = db.Column(db.Text)
+    duracion_minutos = db.Column(db.Integer, nullable=False, default=30)
+    precio_sugerido = db.Column(db.Numeric(12, 2), nullable=False, default=Decimal("0.00"))
+    especie = db.Column(db.String(20))
+    activo = db.Column(db.Boolean, nullable=False, default=True)
+
+    creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
+
+    @property
+    def categoria_etiqueta(self):
+        return CATEGORIAS_SERVICIO_SALUD.get(self.categoria, self.categoria.capitalize())
+
+    def __repr__(self):
+        return f"<ServicioSalud {self.id} {self.nombre}>"
+
 
 TIPOS_CITA = {
     "consulta": "Consulta",
@@ -1840,6 +1882,7 @@ class Cita(BaseModel):
     mascota_id = db.Column(db.Integer, db.ForeignKey("mascotas.id"), nullable=False, index=True)
     tutor_id = db.Column(db.Integer, db.ForeignKey("tutores.id"), nullable=False, index=True)
     profesional_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), index=True)
+    servicio_salud_id = db.Column(db.Integer, db.ForeignKey("servicios_salud.id"), nullable=True)
 
     tipo = db.Column(db.String(20), nullable=False, default="consulta")
     fecha_hora = db.Column(db.DateTime(timezone=True), nullable=False)
@@ -1855,6 +1898,7 @@ class Cita(BaseModel):
     mascota = db.relationship("Mascota")
     tutor = db.relationship("Tutor")
     profesional = db.relationship("Usuario", foreign_keys=[profesional_id])
+    servicio_salud = db.relationship("ServicioSalud")
     creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
 
     @validates("tipo")

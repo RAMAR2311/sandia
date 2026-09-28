@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }} · Sandía{% endblock %}
+
+{% block contenido %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    
+    {# Cabecera #}
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <a href="{{ url_for('agenda.servicios_lista') }}" class="btn btn-sm btn-outline-secondary rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <div>
+        <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca);">
+          {{ titulo }}
+        </h1>
+        <p class="text-secondary small mb-0 mt-1">
+          {{ subtitulo }}
+        </p>
+      </div>
+    </div>
+
+    {# Formulario #}
+    <div class="card border-0 shadow-sm rounded-4 bg-white p-4 p-md-5" style="border: 1.5px solid #E2E8F0 !important;">
+      <form method="post" novalidate>
+        {{ form.csrf_token }}
+
+        <div class="row g-3">
+          {# Nombre del Servicio #}
+          <div class="col-12">
+            <label class="form-label fw-bold small text-dark mb-1" for="{{ form.nombre.id }}">
+              Nombre del Servicio Clínico <span class="text-danger">*</span>
+            </label>
+            {{ form.nombre(class_="form-control bg-light", placeholder="Ej: Consulta Médica General, Vacuna Octavalente, Ecografía Abdominal...") }}
+            {% for error in form.nombre.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            <div class="form-text text-muted small">Este es el nombre visible en la agenda médica y en la factura del POS.</div>
+          </div>
+
+          {# Categoría del Servicio #}
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-dark mb-1" for="{{ form.categoria.id }}">
+              Categoría Médica <span class="text-danger">*</span>
+            </label>
+            {{ form.categoria(class_="form-select bg-light") }}
+            {% for error in form.categoria.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+
+          {# Especie Recomendada #}
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-dark mb-1" for="{{ form.especie.id }}">
+              Especie Destinada
+            </label>
+            {{ form.especie(class_="form-select bg-light") }}
+            {% for error in form.especie.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+
+          {# Duración Estimada en Agenda #}
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-dark mb-1" for="{{ form.duracion_minutos.id }}">
+              <i class="bi bi-clock me-1 text-primary"></i>Duración Estimada (Minutos) <span class="text-danger">*</span>
+            </label>
+            {{ form.duracion_minutos(class_="form-control bg-light", type="number", min="5", max="480", step="5") }}
+            {% for error in form.duracion_minutos.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            <div class="form-text text-muted small">Tiempo que bloqueará por defecto en la agenda médica.</div>
+          </div>
+
+          {# Tarifa Sugerida COP #}
+          <div class="col-md-6">
+            <label class="form-label fw-bold small text-dark mb-1" for="{{ form.precio_sugerido.id }}">
+              <i class="bi bi-cash-stack me-1 text-success"></i>Tarifa Sugerida (COP) <span class="text-danger">*</span>
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-light text-muted fw-bold">$</span>
+              {{ form.precio_sugerido(class_="form-control bg-light font-monospace fw-bold", type="number", min="0", step="1000", placeholder="50000") }}
+            </div>
+            {% for error in form.precio_sugerido.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+            <div class="form-text text-muted small">Valor precargado automáticamente al cobrar en el POS.</div>
+          </div>
+
+          {# Descripción #}
+          <div class="col-12">
+            <label class="form-label fw-bold small text-dark mb-1" for="{{ form.descripcion.id }}">
+              Descripción o Instrucciones Previas (Opcional)
+            </label>
+            {{ form.descripcion(class_="form-control bg-light", rows="3", placeholder="Ej: Requiere ayuno de 8 horas para toma de muestra / Incluye valoración de constantes y certificado...") }}
+            {% for error in form.descripcion.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+          </div>
+
+          {# Estado Activo #}
+          <div class="col-12">
+            <div class="form-check form-switch p-2 bg-light rounded-3 border">
+              {{ form.activo(class_="form-check-input ms-0 me-2") }}
+              <label class="form-check-label fw-semibold small text-dark" for="{{ form.activo.id }}">
+                Servicio Activo y Disponible para Agendamiento y Facturación
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {# Botones de Acción #}
+        <div class="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top">
+          <a href="{{ url_for('agenda.servicios_lista') }}" class="btn btn-outline-secondary rounded-pill px-4">
+            Cancelar
+          </a>
+          <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">
+            <i class="bi bi-check-circle-fill me-1"></i> Guardar Servicio
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
