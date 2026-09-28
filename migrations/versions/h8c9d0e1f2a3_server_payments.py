@@ -17,17 +17,20 @@ depends_on = None
 
 
 def upgrade():
-    op.create_table(
-        'server_payments',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('anio', sa.Integer(), nullable=False),
-        sa.Column('mes', sa.Integer(), nullable=False),
-        sa.Column('estado', sa.String(length=20), nullable=False, server_default='pagado'),
-        sa.Column('fecha_pago', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('observacion', sa.String(length=255), nullable=True),
-        sa.PrimaryKeyConstraint('id', name=op.f('pk_server_payments')),
-        sa.UniqueConstraint('anio', 'mes', name='uq_server_payments_anio_mes')
-    )
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    if 'server_payments' not in inspector.get_table_names():
+        op.create_table(
+            'server_payments',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('anio', sa.Integer(), nullable=False),
+            sa.Column('mes', sa.Integer(), nullable=False),
+            sa.Column('estado', sa.String(length=20), nullable=False, server_default='pagado'),
+            sa.Column('fecha_pago', sa.DateTime(timezone=True), nullable=False),
+            sa.Column('observacion', sa.String(length=255), nullable=True),
+            sa.PrimaryKeyConstraint('id', name=op.f('pk_server_payments')),
+            sa.UniqueConstraint('anio', 'mes', name='uq_server_payments_anio_mes')
+        )
 
 
 def downgrade():
