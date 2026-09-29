@@ -13,7 +13,10 @@
     <p class="text-secondary small mb-0 mt-1">Gestión de propietarios, datos de contacto, historial de compras y mascotas asociadas</p>
   </div>
   {% if current_user.rol in ('admin', 'recepcion', 'auxiliar', 'veterinario') %}
-  <div>
+  <div class="d-flex align-items-center gap-2">
+    <a class="btn btn-outline-success rounded-pill px-3 shadow-xs fw-semibold" href="{{ url_for('tutores.importar_excel') }}">
+      <i class="bi bi-file-earmark-excel me-1"></i>Importar Excel
+    </a>
     <a class="btn btn-primary rounded-pill px-4 shadow-sm fw-semibold" href="{{ url_for('tutores.nuevo') }}">
       <i class="bi bi-person-plus-fill me-2"></i>Nuevo Tutor
     </a>

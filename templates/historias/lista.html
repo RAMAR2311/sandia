@@ -62,6 +62,11 @@
       <button type="submit" class="btn btn-sandia btn-lg px-4 flex-grow-1 flex-md-grow-0 fw-bold">
         <i class="bi bi-search me-1"></i> Buscar
       </button>
+      {% if current_user.rol in ('admin', 'veterinario', 'auxiliar') %}
+      <a href="{{ url_for('historias.importar_excel') }}" class="btn btn-outline-success btn-lg px-3 fw-semibold shadow-xs" title="Importar consultas desde Excel">
+        <i class="bi bi-file-earmark-excel me-1"></i> Importar Excel
+      </a>
+      {% endif %}
     </div>
   </form>
 

@@ -1,13 +1,17 @@
 """Tutores (dueños de las mascotas): directorio, ficha y edición."""
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
+import io
+from datetime import datetime
+from zoneinfo import ZoneInfo
+import pandas as pd
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import or_, select
 
 from decorators import admin_required, recepcion_required
-from forms import AbonoCuentaTutorForm, CuentaTutorForm, SoloCsrfForm, TutorForm
-from models import AbonoCuentaTutor, CuentaTutor, Tutor, db
-from utils import hoy_bogota, normalizar_texto, solo_digitos
+from forms import AbonoCuentaTutorForm, CuentaTutorForm, ImportarExcelForm, SoloCsrfForm, TutorForm
+from models import AbonoCuentaTutor, CuentaTutor, TIPOS_DOCUMENTO, Tutor, db
+from utils import ZONA_BOGOTA, hoy_bogota, normalizar_texto, normalizar_whatsapp, obtener_hora_bogota, solo_digitos
 
 bp = Blueprint("tutores", __name__, url_prefix="/tutores")
 
@@ -239,3 +243,234 @@ def cartera_abono(cuenta_id):
             else:
                 flash("Abono registrado.", "success")
     return redirect(url_for("tutores.cartera", tutor_id=cuenta.tutor_id))
+
+
+# ---------------------------------------------------------------------------
+# Importación masiva desde Excel
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/plantilla-excel")
+@login_required
+@recepcion_required
+def plantilla_excel():
+    """Descarga la plantilla oficial en Excel (.xlsx) para importar tutores."""
+    columnas = [
+        "ID",
+        "Tipo_Doc",
+        "Documento",
+        "Nombres",
+        "Apellidos",
+        "Correo",
+        "Telefono",
+        "WhatsApp",
+        "Direccion",
+        "Barrio",
+        "Estado",
+        "Fecha_Ingreso",
+    ]
+    ejemplos = [
+        {
+            "ID": 1,
+            "Tipo_Doc": "CC",
+            "Documento": "1010202020",
+            "Nombres": "Miguel",
+            "Apellidos": "Herrera",
+            "Correo": "",
+            "Telefono": "300 3034316",
+            "WhatsApp": "",
+            "Direccion": "alameda la felicidad",
+            "Barrio": "",
+            "Estado": "Activo",
+            "Fecha_Ingreso": "10/01/2026 1:01",
+        },
+        {
+            "ID": 2,
+            "Tipo_Doc": "CC",
+            "Documento": "1014249063",
+            "Nombres": "SEBASTIAN LEONARDO",
+            "Apellidos": "RAMIREZ CASTILLO",
+            "Correo": "elnheodark@gmail.com",
+            "Telefono": "",
+            "WhatsApp": "573242100713",
+            "Direccion": "Calle 51 # 3 - 90",
+            "Barrio": "",
+            "Estado": "Activo",
+            "Fecha_Ingreso": "10/01/2026 18:01",
+        },
+    ]
+
+    df = pd.DataFrame(ejemplos, columns=columnas)
+    out = io.BytesIO()
+    with pd.ExcelWriter(out, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Tutores")
+    out.seek(0)
+
+    return send_file(
+        out,
+        as_attachment=True,
+        download_name="plantilla_tutores_sandia.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@bp.route("/importar-excel", methods=["GET", "POST"])
+@login_required
+@recepcion_required
+def importar_excel():
+    """Importación masiva de tutores a partir de un archivo Excel (.xlsx)."""
+    form = ImportarExcelForm()
+    reporte = None
+
+    if form.validate_on_submit():
+        archivo = form.archivo.data
+        if not archivo.filename.lower().endswith(".xlsx"):
+            flash("El archivo debe tener extensión .xlsx", "danger")
+            return render_template("tutores/importar.html", form=form, reporte=None)
+
+        try:
+            # Leer todas las columnas como string inicialmente para preservar ceros a la izquierda y formatos
+            df = pd.read_excel(archivo.stream, engine="openpyxl", dtype=str)
+        except Exception as exc:
+            current_app.logger.exception("Error al leer archivo Excel de tutores")
+            flash(f"No se pudo procesar el archivo Excel: {exc}", "danger")
+            return render_template("tutores/importar.html", form=form, reporte=None)
+
+        columnas_requeridas = ["Documento", "Nombres"]
+        for col in columnas_requeridas:
+            if col not in df.columns:
+                flash(f"Falta la columna obligatoria '{col}' en el archivo Excel.", "danger")
+                return render_template("tutores/importar.html", form=form, reporte=None)
+
+        creados = 0
+        actualizados = 0
+        errores = []
+
+        def _limpiar_celda(val):
+            if val is None or pd.isna(val):
+                return ""
+            s = str(val).strip()
+            return "" if s.lower() in ("nan", "none", "null") else s
+
+        for indice, fila in df.iterrows():
+            num_fila = indice + 2
+
+            doc_raw = _limpiar_celda(fila.get("Documento"))
+            nombres_raw = _limpiar_celda(fila.get("Nombres"))
+            apellidos_raw = _limpiar_celda(fila.get("Apellidos"))
+
+            # Validar nombres
+            if not nombres_raw and not apellidos_raw:
+                errores.append(f"Fila {num_fila}: Nombre y Apellidos vacíos.")
+                continue
+
+            nombre_completo = f"{nombres_raw} {apellidos_raw}".strip()
+
+            tipo_doc_raw = _limpiar_celda(fila.get("Tipo_Doc")).upper()
+            if tipo_doc_raw and tipo_doc_raw not in TIPOS_DOCUMENTO:
+                tipo_doc_raw = "CC" if tipo_doc_raw in ("CEDULA", "CÉDULA") else "OTRO"
+            elif not tipo_doc_raw:
+                tipo_doc_raw = "CC" if doc_raw else None
+
+            correo_raw = _limpiar_celda(fila.get("Correo")).lower() or None
+            telefono_raw = _limpiar_celda(fila.get("Telefono")) or None
+            whatsapp_raw = _limpiar_celda(fila.get("WhatsApp")) or None
+            direccion_raw = _limpiar_celda(fila.get("Direccion")) or None
+            barrio_raw = _limpiar_celda(fila.get("Barrio")) or None
+
+            # Estado
+            estado_raw = _limpiar_celda(fila.get("Estado")).lower()
+            activo = estado_raw not in ("inactivo", "desactivado", "false", "0", "no")
+
+            # Fecha de ingreso / registro
+            fecha_ingreso_raw = _limpiar_celda(fila.get("Fecha_Ingreso"))
+            fecha_registro = None
+            if fecha_ingreso_raw:
+                formatos = [
+                    "%d/%m/%Y %H:%M",
+                    "%d/%m/%Y %H:%M:%S",
+                    "%Y-%m-%d %H:%M:%S",
+                    "%Y-%m-%d %H:%M",
+                    "%d-%m-%Y %H:%M",
+                    "%d/%m/%Y",
+                    "%Y-%m-%d",
+                ]
+                for fmt in formatos:
+                    try:
+                        dt = datetime.strptime(fecha_ingreso_raw, fmt)
+                        fecha_registro = dt.replace(tzinfo=ZONA_BOGOTA)
+                        break
+                    except ValueError:
+                        continue
+            if not fecha_registro:
+                fecha_registro = obtener_hora_bogota()
+
+            try:
+                tutor_existente = None
+                # Si viene documento, buscar por documento
+                if doc_raw:
+                    tutor_existente = db.session.execute(
+                        select(Tutor).where(Tutor.numero_documento == doc_raw)
+                    ).scalar_one_or_none()
+
+                # Si no se encontró por documento pero viene ID numérico, buscar por ID
+                if not tutor_existente:
+                    id_raw = _limpiar_celda(fila.get("ID"))
+                    if id_raw.isdigit():
+                        tutor_existente = db.session.get(Tutor, int(id_raw))
+
+                if tutor_existente:
+                    # Actualizar tutor existente
+                    tutor_existente.nombre_completo = nombre_completo
+                    if tipo_doc_raw:
+                        tutor_existente.tipo_documento = tipo_doc_raw
+                    if doc_raw:
+                        tutor_existente.numero_documento = doc_raw
+                    if telefono_raw:
+                        tutor_existente.telefono = telefono_raw
+                    if whatsapp_raw:
+                        tutor_existente.whatsapp = whatsapp_raw
+                    if correo_raw:
+                        tutor_existente.email = correo_raw
+                    if direccion_raw:
+                        tutor_existente.direccion = direccion_raw
+                    if barrio_raw:
+                        tutor_existente.barrio = barrio_raw
+                    tutor_existente.activo = activo
+                    actualizados += 1
+                else:
+                    nuevo_tutor = Tutor(
+                        tipo_documento=tipo_doc_raw,
+                        numero_documento=doc_raw or None,
+                        nombre_completo=nombre_completo,
+                        telefono=telefono_raw,
+                        whatsapp=whatsapp_raw,
+                        email=correo_raw,
+                        direccion=direccion_raw,
+                        barrio=barrio_raw,
+                        activo=activo,
+                        fecha_registro=fecha_registro,
+                        creado_por_id=current_user.id,
+                    )
+                    db.session.add(nuevo_tutor)
+                    creados += 1
+
+                db.session.commit()
+            except Exception as exc:
+                db.session.rollback()
+                current_app.logger.exception("Error al procesar fila %s de tutores", num_fila)
+                errores.append(f"Fila {num_fila} ({nombre_completo}): {exc}")
+
+        reporte = {
+            "creados": creados,
+            "actualizados": actualizados,
+            "errores": errores,
+            "total_procesados": creados + actualizados,
+        }
+        flash(
+            f"Importación completada. Creados: {creados}, Actualizados: {actualizados}, Con error: {len(errores)}.",
+            "success" if not errores else "warning",
+        )
+
+    return render_template("tutores/importar.html", form=form, reporte=reporte)
+

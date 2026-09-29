@@ -1,14 +1,15 @@
-"""Mascotas: directorio, ficha (centro de todo), fotos, curva de peso y línea de tiempo."""
-
+import io
 from datetime import datetime, time
+from decimal import Decimal, InvalidOperation
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
+import pandas as pd
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from decorators import admin_required, recepcion_required
-from forms import FallecimientoForm, FotoForm, MascotaForm, RegistroPesoForm, SoloCsrfForm
+from forms import FallecimientoForm, FotoForm, ImportarExcelForm, MascotaForm, RegistroPesoForm, SoloCsrfForm
 from models import (
     ESPECIES,
     Cirugia,
@@ -714,3 +715,345 @@ def cambiar_estado(mascota_id):
         current_app.logger.info("Mascota %s %s por %s", mascota.id, accion, current_user.email)
         flash(f"Ficha {accion}.", "success")
     return redirect(url_for("mascotas.detalle", mascota_id=mascota.id))
+
+
+# ---------------------------------------------------------------------------
+# Importación masiva desde Excel
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/plantilla-excel")
+@login_required
+@recepcion_required
+def plantilla_excel():
+    """Descarga la plantilla oficial en Excel (.xlsx) para importar pacientes/mascotas."""
+    columnas = [
+        "ID",
+        "Mascota",
+        "Especie",
+        "Raza",
+        "Sexo",
+        "Fecha_Nacimiento",
+        "Peso",
+        "Color",
+        "Microchip",
+        "Propietario",
+        "Doc_Propietario",
+        "Tel_Propietario",
+        "Email_Propietario",
+        "Fecha_Ingreso",
+        "Ultima_Atencion",
+    ]
+    ejemplos = [
+        {
+            "ID": 1,
+            "Mascota": "AMY HERRERA",
+            "Especie": "Felino",
+            "Raza": "D.S.H",
+            "Sexo": 0,
+            "Fecha_Nacimiento": "10/01/2019",
+            "Peso": 6.00,
+            "Color": "BICOLOR",
+            "Microchip": "",
+            "Propietario": "Miguel Herrera",
+            "Doc_Propietario": "1010202020",
+            "Tel_Propietario": "300 3034316",
+            "Email_Propietario": "",
+            "Fecha_Ingreso": "10/01/2026",
+            "Ultima_Atencion": "9/01/2026",
+        },
+        {
+            "ID": 2,
+            "Mascota": "CANELO RAMIREZ",
+            "Especie": "Canino",
+            "Raza": "Mestizo",
+            "Sexo": 1,
+            "Fecha_Nacimiento": "10/02/2019",
+            "Peso": 13.00,
+            "Color": "CAFE",
+            "Microchip": "",
+            "Propietario": "SEBASTIAN LEONARDO RAMIREZ CASTILLO",
+            "Doc_Propietario": "1014249063",
+            "Tel_Propietario": "",
+            "Email_Propietario": "elnheodark@gmail.com",
+            "Fecha_Ingreso": "10/01/2026",
+            "Ultima_Atencion": "10/01/2026",
+        },
+        {
+            "ID": 3,
+            "Mascota": "SABINA PEREZ",
+            "Especie": "Canino",
+            "Raza": "Golden Retriever",
+            "Sexo": 0,
+            "Fecha_Nacimiento": "",
+            "Peso": 23.00,
+            "Color": "CREMA",
+            "Microchip": "",
+            "Propietario": "ANDRES PEREZ",
+            "Doc_Propietario": "80061040",
+            "Tel_Propietario": "3107843390",
+            "Email_Propietario": "ps.andresperez@gmail.com",
+            "Fecha_Ingreso": "14/01/2026",
+            "Ultima_Atencion": "24/06/2026",
+        },
+    ]
+
+    df = pd.DataFrame(ejemplos, columns=columnas)
+    out = io.BytesIO()
+    with pd.ExcelWriter(out, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Pacientes")
+    out.seek(0)
+
+    return send_file(
+        out,
+        as_attachment=True,
+        download_name="plantilla_pacientes_sandia.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@bp.route("/importar-excel", methods=["GET", "POST"])
+@login_required
+@recepcion_required
+def importar_excel():
+    """Importación masiva de pacientes/mascotas desde archivo Excel (.xlsx)."""
+    form = ImportarExcelForm()
+    reporte = None
+
+    if form.validate_on_submit():
+        archivo = form.archivo.data
+        if not archivo.filename.lower().endswith(".xlsx"):
+            flash("El archivo debe tener extensión .xlsx", "danger")
+            return render_template("mascotas/importar.html", form=form, reporte=None)
+
+        try:
+            df = pd.read_excel(archivo.stream, engine="openpyxl", dtype=str)
+        except Exception as exc:
+            current_app.logger.exception("Error al procesar archivo Excel de mascotas")
+            flash(f"No se pudo procesar el archivo Excel: {exc}", "danger")
+            return render_template("mascotas/importar.html", form=form, reporte=None)
+
+        columnas_requeridas = ["Mascota", "Especie"]
+        for col in columnas_requeridas:
+            if col not in df.columns:
+                flash(f"Falta la columna obligatoria '{col}' en el archivo Excel.", "danger")
+                return render_template("mascotas/importar.html", form=form, reporte=None)
+
+        creados = 0
+        actualizados = 0
+        errores = []
+
+        def _limpiar(val):
+            if val is None or pd.isna(val):
+                return ""
+            s = str(val).strip()
+            return "" if s.lower() in ("nan", "none", "null") else s
+
+        def _parsear_fecha(texto):
+            if not texto:
+                return None
+            formatos = [
+                "%d/%m/%Y %H:%M:%S",
+                "%d/%m/%Y %H:%M",
+                "%d/%m/%Y",
+                "%Y-%m-%d %H:%M:%S",
+                "%Y-%m-%d %H:%M",
+                "%Y-%m-%d",
+                "%d-%m-%Y",
+            ]
+            for fmt in formatos:
+                try:
+                    return datetime.strptime(texto, fmt)
+                except ValueError:
+                    continue
+            return None
+
+        for indice, fila in df.iterrows():
+            num_fila = indice + 2
+
+            nombre_mascota = _limpiar(fila.get("Mascota"))
+            if not nombre_mascota:
+                errores.append(f"Fila {num_fila}: Nombre de mascota vacío.")
+                continue
+
+            # Especie
+            especie_raw = _limpiar(fila.get("Especie")).lower()
+            if "can" in especie_raw or "perr" in especie_raw or "dog" in especie_raw:
+                especie = "canino"
+            elif "fel" in especie_raw or "gat" in especie_raw or "cat" in especie_raw:
+                especie = "felino"
+            elif "ave" in especie_raw or "paj" in especie_raw:
+                especie = "ave"
+            elif "roed" in especie_raw or "cone" in especie_raw or "hamst" in especie_raw:
+                especie = "roedor"
+            elif especie_raw in ESPECIES:
+                especie = especie_raw
+            else:
+                especie = "otro"
+
+            # Sexo (0 = hembra, 1 = macho o texto)
+            sexo_raw = _limpiar(fila.get("Sexo")).lower()
+            if sexo_raw in ("0", "h", "hembra", "female", "f"):
+                sexo = "hembra"
+            elif sexo_raw in ("1", "m", "macho", "male"):
+                sexo = "macho"
+            else:
+                sexo = "desconocido"
+
+            # Tutor / Propietario
+            doc_prop = _limpiar(fila.get("Doc_Propietario"))
+            nom_prop = _limpiar(fila.get("Propietario"))
+            tel_prop = _limpiar(fila.get("Tel_Propietario")) or None
+            email_prop = _limpiar(fila.get("Email_Propietario")).lower() or None
+
+            tutor = None
+            if doc_prop:
+                tutor = db.session.execute(
+                    select(Tutor).where(Tutor.numero_documento == doc_prop)
+                ).scalar_one_or_none()
+
+            if not tutor and nom_prop:
+                norm_nom = normalizar_texto(nom_prop)
+                tutor = db.session.execute(
+                    select(Tutor).where(Tutor.nombre_busqueda == norm_nom)
+                ).first()
+                if tutor:
+                    tutor = tutor[0]
+
+            if not tutor:
+                if not nom_prop and not doc_prop:
+                    errores.append(f"Fila {num_fila} ({nombre_mascota}): Debe especificar el Propietario o Doc_Propietario.")
+                    continue
+                # Crear tutor automáticamente
+                tutor = Tutor(
+                    tipo_documento="CC" if doc_prop else None,
+                    numero_documento=doc_prop or None,
+                    nombre_completo=nom_prop or f"Propietario Doc {doc_prop}",
+                    telefono=tel_prop,
+                    email=email_prop,
+                    activo=True,
+                    creado_por_id=current_user.id,
+                )
+                db.session.add(tutor)
+                db.session.flush()
+            else:
+                # Actualizar datos de contacto del tutor si no los tenía
+                if tel_prop and not tutor.telefono:
+                    tutor.telefono = tel_prop
+                if email_prop and not tutor.email:
+                    tutor.email = email_prop
+
+            # Raza
+            raza_nombre = _limpiar(fila.get("Raza"))
+            raza_obj = None
+            if raza_nombre:
+                raza_obj = db.session.execute(
+                    select(Raza).where(
+                        Raza.especie == especie,
+                        Raza.nombre.ilike(raza_nombre)
+                    )
+                ).scalar_one_or_none()
+                if not raza_obj:
+                    # Crear raza automáticamente para esa especie si no existe
+                    raza_obj = Raza(especie=especie, nombre=raza_nombre, activo=True)
+                    db.session.add(raza_obj)
+                    db.session.flush()
+
+            # Fecha Nacimiento
+            fnac_dt = _parsear_fecha(_limpiar(fila.get("Fecha_Nacimiento")))
+            fecha_nacimiento = fnac_dt.date() if fnac_dt else None
+
+            # Color y Microchip
+            color = _limpiar(fila.get("Color")) or None
+            microchip = _limpiar(fila.get("Microchip")) or None
+
+            # Fecha de Ingreso
+            fing_dt = _parsear_fecha(_limpiar(fila.get("Fecha_Ingreso")))
+            fecha_registro = fing_dt.replace(tzinfo=ZONA_BOGOTA) if fing_dt else obtener_hora_bogota()
+
+            # Peso
+            peso_raw = _limpiar(fila.get("Peso"))
+            peso_num = None
+            if peso_raw:
+                try:
+                    peso_val = Decimal(peso_raw.replace(",", "."))
+                    if peso_val > 0:
+                        peso_num = peso_val
+                except (InvalidOperation, ValueError):
+                    pass
+
+            try:
+                mascota_existente = None
+                id_raw = _limpiar(fila.get("ID"))
+                if id_raw.isdigit():
+                    mascota_existente = db.session.get(Mascota, int(id_raw))
+
+                if not mascota_existente and microchip:
+                    mascota_existente = db.session.execute(
+                        select(Mascota).where(Mascota.microchip == microchip)
+                    ).scalar_one_or_none()
+
+                if not mascota_existente:
+                    # Buscar coincidencia exacta por tutor y nombre de mascota
+                    norm_mascota = normalizar_texto(nombre_mascota)
+                    mascota_existente = db.session.execute(
+                        select(Mascota).where(
+                            Mascota.tutor_id == tutor.id,
+                            Mascota.nombre_busqueda == norm_mascota
+                        )
+                    ).scalar_one_or_none()
+
+                if mascota_existente:
+                    mascota_existente.nombre = nombre_mascota
+                    mascota_existente.especie = especie
+                    if raza_obj:
+                        mascota_existente.raza_id = raza_obj.id
+                    mascota_existente.sexo = sexo
+                    if fecha_nacimiento:
+                        mascota_existente.fecha_nacimiento = fecha_nacimiento
+                    if color:
+                        mascota_existente.color = color
+                    if microchip:
+                        mascota_existente.microchip = microchip
+                    if peso_num is not None:
+                        mascota_existente.peso_actual = peso_num
+                    actualizados += 1
+                else:
+                    nueva_mascota = Mascota(
+                        tutor_id=tutor.id,
+                        nombre=nombre_mascota,
+                        especie=especie,
+                        raza_id=raza_obj.id if raza_obj else None,
+                        sexo=sexo,
+                        fecha_nacimiento=fecha_nacimiento,
+                        color=color,
+                        microchip=microchip,
+                        activo=True,
+                        fecha_registro=fecha_registro,
+                        creado_por_id=current_user.id,
+                    )
+                    db.session.add(nueva_mascota)
+                    db.session.flush()
+                    if peso_num is not None:
+                        nueva_mascota.peso_actual = peso_num
+                    creados += 1
+
+                db.session.commit()
+            except Exception as exc:
+                db.session.rollback()
+                current_app.logger.exception("Error al procesar fila %s de mascotas", num_fila)
+                errores.append(f"Fila {num_fila} ({nombre_mascota}): {exc}")
+
+        reporte = {
+            "creados": creados,
+            "actualizados": actualizados,
+            "errores": errores,
+            "total_procesados": creados + actualizados,
+        }
+        flash(
+            f"Importación de pacientes finalizada. Creados: {creados}, Actualizados: {actualizados}, Con error: {len(errores)}.",
+            "success" if not errores else "warning",
+        )
+
+    return render_template("mascotas/importar.html", form=form, reporte=reporte)
+

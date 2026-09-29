@@ -167,6 +167,18 @@
     flex-shrink: 0;
     color: #ffffff;
   }
+  .kpi-icon-box-compact--caja-abierta {
+    background: linear-gradient(135deg, #15803d 0%, #22c55e 100%);
+    box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);
+  }
+  .kpi-icon-box-compact--caja-cerrada,
+  .kpi-icon-box-compact--stock-normal {
+    background: #64748b;
+  }
+  .kpi-icon-box-compact--stock-alerta {
+    background: linear-gradient(135deg, #d97706 0%, #fbbf24 100%);
+    box-shadow: 0 4px 10px rgba(217, 119, 6, 0.35);
+  }
   .kpi-value-compact {
     font-size: 1.28rem;
     font-weight: 800;
@@ -273,7 +285,26 @@
     justify-content: center;
     font-size: 1.25rem;
     flex-shrink: 0;
+    background: #f1f5f9;
+    color: #475569;
   }
+  .tarjeta-modulo-compact[data-modulo="historias"] .tarjeta-modulo-compact__icono { background: #dbeafe; color: #1d4ed8; }
+  .tarjeta-modulo-compact[data-modulo="mascotas"] .tarjeta-modulo-compact__icono { background: #fee2e2; color: #dc2626; }
+  .tarjeta-modulo-compact[data-modulo="tutores"] .tarjeta-modulo-compact__icono { background: #f3e8ff; color: #7e22ce; }
+  .tarjeta-modulo-compact[data-modulo="spa"] .tarjeta-modulo-compact__icono { background: #ccfbf1; color: #0f766e; }
+  .tarjeta-modulo-compact[data-modulo="pos"] .tarjeta-modulo-compact__icono { background: #fef3c7; color: #b45309; }
+  .tarjeta-modulo-compact[data-modulo="caja"] .tarjeta-modulo-compact__icono { background: #dcfce7; color: #15803d; }
+  .tarjeta-modulo-compact[data-modulo="inventario"] .tarjeta-modulo-compact__icono { background: #e0e7ff; color: #4338ca; }
+  .tarjeta-modulo-compact[data-modulo="agenda"] .tarjeta-modulo-compact__icono { background: #e0f2fe; color: #0369a1; }
+  .tarjeta-modulo-compact[data-modulo="proveedores"] .tarjeta-modulo-compact__icono { background: #ffe4e6; color: #be123c; }
+  .tarjeta-modulo-compact[data-modulo="reportes"] .tarjeta-modulo-compact__icono { background: #d1fae5; color: #065f46; }
+  .tarjeta-modulo-compact[data-modulo="gastos"] .tarjeta-modulo-compact__icono { background: #ffedd5; color: #c2410c; }
+  .tarjeta-modulo-compact[data-modulo="cuentas_por_pagar"] .tarjeta-modulo-compact__icono { background: #e0f2fe; color: #0284c7; }
+  .tarjeta-modulo-compact[data-modulo="aprobaciones_precio"] .tarjeta-modulo-compact__icono { background: #fef9c3; color: #a16207; }
+  .tarjeta-modulo-compact[data-modulo="usuarios"] .tarjeta-modulo-compact__icono { background: #f1f5f9; color: #334155; }
+  .tarjeta-modulo-compact[data-modulo="configuracion"] .tarjeta-modulo-compact__icono { background: #e2e8f0; color: #1e293b; }
+  .tarjeta-modulo-compact[data-modulo="razas"] .tarjeta-modulo-compact__icono { background: #fef3c7; color: #d97706; }
+  .tarjeta-modulo-compact[data-modulo="mi_cuenta"] .tarjeta-modulo-compact__icono { background: #f3e8ff; color: #9333ea; }
   .tarjeta-modulo-compact__flecha {
     font-size: 1.2rem;
     color: #94a3b8;
@@ -384,7 +415,7 @@
   {% else %}
   <div class="col-6 col-md-3">
     <a href="{{ url_for('pos.caja_estado') if current_user.rol == 'cajero' else '#' }}" class="kpi-card-compact kpi-card-compact--ventas">
-      <div class="kpi-icon-box-compact" style="{% if metricas.turno_abierto %}background: linear-gradient(135deg, #15803d 0%, #22c55e 100%); box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35);{% else %}background: #64748b;{% endif %}">
+      <div class="kpi-icon-box-compact {{ 'kpi-icon-box-compact--caja-abierta' if metricas.turno_abierto else 'kpi-icon-box-compact--caja-cerrada' }}">
         <i class="bi bi-cash-coin"></i>
       </div>
       <div class="min-w-0">
@@ -398,7 +429,7 @@
   <!-- Stock Bajo / Alerta -->
   <div class="col-6 col-md-3">
     <a href="{{ url_for('inventario.alertas') if 'inventario.alertas' else url_for('inventario.lista') }}" class="kpi-card-compact kpi-card-compact--stock">
-      <div class="kpi-icon-box-compact" style="{% if metricas.stock_critico > 0 %}background: linear-gradient(135deg, #d97706 0%, #fbbf24 100%); box-shadow: 0 4px 10px rgba(217, 119, 6, 0.35);{% else %}background: #64748b;{% endif %}">
+      <div class="kpi-icon-box-compact {{ 'kpi-icon-box-compact--stock-alerta' if metricas.stock_critico > 0 else 'kpi-icon-box-compact--stock-normal' }}">
         <i class="bi bi-exclamation-triangle-fill"></i>
       </div>
       <div class="min-w-0">
@@ -943,29 +974,9 @@
 {% endif %}
 
 {% macro render_modulo(modulo, es_secundario=False) %}
-  {% set icon_style = 'background: #f1f5f9; color: #475569;' %}
-  {% if modulo.clave == 'historias' %}{% set icon_style = 'background: #dbeafe; color: #1d4ed8;' %}
-  {% elif modulo.clave == 'mascotas' %}{% set icon_style = 'background: #fee2e2; color: #dc2626;' %}
-  {% elif modulo.clave == 'tutores' %}{% set icon_style = 'background: #f3e8ff; color: #7e22ce;' %}
-  {% elif modulo.clave == 'spa' %}{% set icon_style = 'background: #ccfbf1; color: #0f766e;' %}
-  {% elif modulo.clave == 'pos' %}{% set icon_style = 'background: #fef3c7; color: #b45309;' %}
-  {% elif modulo.clave == 'caja' %}{% set icon_style = 'background: #dcfce7; color: #15803d;' %}
-  {% elif modulo.clave == 'inventario' %}{% set icon_style = 'background: #e0e7ff; color: #4338ca;' %}
-  {% elif modulo.clave == 'agenda' %}{% set icon_style = 'background: #e0f2fe; color: #0369a1;' %}
-  {% elif modulo.clave == 'proveedores' %}{% set icon_style = 'background: #ffe4e6; color: #be123c;' %}
-  {% elif modulo.clave == 'reportes' %}{% set icon_style = 'background: #d1fae5; color: #065f46;' %}
-  {% elif modulo.clave == 'gastos' %}{% set icon_style = 'background: #ffedd5; color: #c2410c;' %}
-  {% elif modulo.clave == 'cuentas_por_pagar' %}{% set icon_style = 'background: #e0f2fe; color: #0284c7;' %}
-  {% elif modulo.clave == 'aprobaciones_precio' %}{% set icon_style = 'background: #fef9c3; color: #a16207;' %}
-  {% elif modulo.clave == 'usuarios' %}{% set icon_style = 'background: #f1f5f9; color: #334155;' %}
-  {% elif modulo.clave == 'configuracion' %}{% set icon_style = 'background: #e2e8f0; color: #1e293b;' %}
-  {% elif modulo.clave == 'razas' %}{% set icon_style = 'background: #fef3c7; color: #d97706;' %}
-  {% elif modulo.clave == 'mi_cuenta' %}{% set icon_style = 'background: #f3e8ff; color: #9333ea;' %}
-  {% endif %}
-
   <div class="col-12 col-sm-6 col-lg-4 item-modulo" data-nombre="{{ modulo.nombre|lower }}" data-desc="{{ modulo.descripcion|lower }}" data-secundario="{{ 'true' if es_secundario else 'false' }}">
     <a class="tarjeta-modulo-compact" href="{{ url_for(modulo.endpoint) }}" data-modulo="{{ modulo.clave }}">
-      <span class="tarjeta-modulo-compact__icono" style="{{ icon_style }}">
+      <span class="tarjeta-modulo-compact__icono">
         <i class="bi {{ modulo.icono }}"></i>
       </span>
       <span class="flex-grow-1 min-w-0">
