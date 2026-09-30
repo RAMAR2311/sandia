@@ -1,6 +1,7 @@
 """Tutores (dueños de las mascotas): directorio, ficha y edición."""
 
 import io
+import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import pandas as pd
@@ -10,8 +11,8 @@ from sqlalchemy import or_, select
 
 from decorators import admin_required, recepcion_required
 from forms import AbonoCuentaTutorForm, CuentaTutorForm, ImportarExcelForm, SoloCsrfForm, TutorForm
-from models import AbonoCuentaTutor, CuentaTutor, TIPOS_DOCUMENTO, Tutor, db
-from utils import ZONA_BOGOTA, hoy_bogota, normalizar_texto, normalizar_whatsapp, obtener_hora_bogota, solo_digitos
+from models import AbonoCuentaTutor, CuentaTutor, LoteImportacion, TIPOS_DOCUMENTO, Tutor, db
+from utils import ZONA_BOGOTA, hoy_bogota, leer_archivo_tabular, normalizar_texto, normalizar_whatsapp, obtener_hora_bogota, solo_digitos
 
 bp = Blueprint("tutores", __name__, url_prefix="/tutores")
 
@@ -318,33 +319,46 @@ def plantilla_excel():
 @login_required
 @recepcion_required
 def importar_excel():
-    """Importación masiva de tutores a partir de un archivo Excel (.xlsx)."""
+    """Importación masiva de tutores a partir de archivo Excel (.xlsx) o CSV (.csv)."""
     form = ImportarExcelForm()
+    form_csrf = SoloCsrfForm()
     reporte = None
 
     if form.validate_on_submit():
         archivo = form.archivo.data
-        if not archivo.filename.lower().endswith(".xlsx"):
-            flash("El archivo debe tener extensión .xlsx", "danger")
-            return render_template("tutores/importar.html", form=form, reporte=None)
-
         try:
-            # Leer todas las columnas como string inicialmente para preservar ceros a la izquierda y formatos
-            df = pd.read_excel(archivo.stream, engine="openpyxl", dtype=str)
+            df = leer_archivo_tabular(archivo)
         except Exception as exc:
-            current_app.logger.exception("Error al leer archivo Excel de tutores")
-            flash(f"No se pudo procesar el archivo Excel: {exc}", "danger")
-            return render_template("tutores/importar.html", form=form, reporte=None)
+            current_app.logger.exception("Error al leer archivo de tutores")
+            flash(f"No se pudo procesar el archivo: {exc}", "danger")
+            return redirect(url_for("tutores.importar_excel"))
 
-        columnas_requeridas = ["Documento", "Nombres"]
-        for col in columnas_requeridas:
-            if col not in df.columns:
-                flash(f"Falta la columna obligatoria '{col}' en el archivo Excel.", "danger")
-                return render_template("tutores/importar.html", form=form, reporte=None)
+        # Limpiar nombres de columnas
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # Mapeo flexible de nombres de columnas
+        col_doc = next((c for c in df.columns if c.lower() in ("documento", "doc", "numero_documento", "cedula")), None)
+        col_nom = next((c for c in df.columns if c.lower() in ("nombres", "nombre", "nombre_completo")), None)
+
+        if not col_nom:
+            flash("Falta la columna obligatoria de nombres ('Nombres' o 'Nombre') en el archivo.", "danger")
+            return redirect(url_for("tutores.importar_excel"))
+
+        col_ape = next((c for c in df.columns if c.lower() in ("apellidos", "apellido")), None)
+        col_tipo_doc = next((c for c in df.columns if c.lower() in ("tipo_doc", "tipo_documento", "tipodoc")), None)
+        col_correo = next((c for c in df.columns if c.lower() in ("correo", "email", "correo_electronico")), None)
+        col_tel = next((c for c in df.columns if c.lower() in ("telefono", "tel", "celular")), None)
+        col_ws = next((c for c in df.columns if c.lower() in ("whatsapp", "ws")), None)
+        col_dir = next((c for c in df.columns if c.lower() in ("direccion", "dirección", "domicilio")), None)
+        col_barrio = next((c for c in df.columns if c.lower() in ("barrio", "sector")), None)
+        col_estado = next((c for c in df.columns if c.lower() in ("estado", "activo")), None)
+        col_fecha = next((c for c in df.columns if c.lower() in ("fecha_ingreso", "fecha", "fecha_registro")), None)
+        col_id = next((c for c in df.columns if c.lower() in ("id", "id_tutor", "codigo")), None)
 
         creados = 0
         actualizados = 0
         errores = []
+        lote_uuid = str(uuid.uuid4())
 
         def _limpiar_celda(val):
             if val is None or pd.isna(val):
@@ -352,91 +366,84 @@ def importar_excel():
             s = str(val).strip()
             return "" if s.lower() in ("nan", "none", "null") else s
 
-        for indice, fila in df.iterrows():
-            num_fila = indice + 2
+        try:
+            for indice, fila in df.iterrows():
+                num_fila = indice + 2
 
-            doc_raw = _limpiar_celda(fila.get("Documento"))
-            nombres_raw = _limpiar_celda(fila.get("Nombres"))
-            apellidos_raw = _limpiar_celda(fila.get("Apellidos"))
+                doc_raw = _limpiar_celda(fila.get(col_doc)) if col_doc else ""
+                nombres_raw = _limpiar_celda(fila.get(col_nom))
+                apellidos_raw = _limpiar_celda(fila.get(col_ape)) if col_ape else ""
 
-            # Validar nombres
-            if not nombres_raw and not apellidos_raw:
-                errores.append(f"Fila {num_fila}: Nombre y Apellidos vacíos.")
-                continue
+                if not nombres_raw and not apellidos_raw:
+                    errores.append(f"Fila {num_fila}: Nombre y Apellidos vacíos.")
+                    continue
 
-            nombre_completo = f"{nombres_raw} {apellidos_raw}".strip()
+                nombre_completo = f"{nombres_raw} {apellidos_raw}".strip()
 
-            tipo_doc_raw = _limpiar_celda(fila.get("Tipo_Doc")).upper()
-            if tipo_doc_raw and tipo_doc_raw not in TIPOS_DOCUMENTO:
-                tipo_doc_raw = "CC" if tipo_doc_raw in ("CEDULA", "CÉDULA") else "OTRO"
-            elif not tipo_doc_raw:
-                tipo_doc_raw = "CC" if doc_raw else None
+                tipo_doc_raw = _limpiar_celda(fila.get(col_tipo_doc)).upper() if col_tipo_doc else ""
+                if tipo_doc_raw and tipo_doc_raw not in TIPOS_DOCUMENTO:
+                    tipo_doc_raw = "CC" if tipo_doc_raw in ("CEDULA", "CÉDULA") else "OTRO"
+                elif not tipo_doc_raw:
+                    tipo_doc_raw = "CC" if doc_raw else None
 
-            correo_raw = _limpiar_celda(fila.get("Correo")).lower() or None
-            telefono_raw = _limpiar_celda(fila.get("Telefono")) or None
-            whatsapp_raw = _limpiar_celda(fila.get("WhatsApp")) or None
-            direccion_raw = _limpiar_celda(fila.get("Direccion")) or None
-            barrio_raw = _limpiar_celda(fila.get("Barrio")) or None
+                correo_raw = (_limpiar_celda(fila.get(col_correo)).lower() if col_correo else "") or None
+                telefono_raw = (_limpiar_celda(fila.get(col_tel)) if col_tel else "") or None
+                whatsapp_raw = (_limpiar_celda(fila.get(col_ws)) if col_ws else "") or None
+                direccion_raw = (_limpiar_celda(fila.get(col_dir)) if col_dir else "") or None
+                barrio_raw = (_limpiar_celda(fila.get(col_barrio)) if col_barrio else "") or None
 
-            # Estado
-            estado_raw = _limpiar_celda(fila.get("Estado")).lower()
-            activo = estado_raw not in ("inactivo", "desactivado", "false", "0", "no")
+                # Estado
+                estado_raw = _limpiar_celda(fila.get(col_estado)).lower() if col_estado else "activo"
+                activo = estado_raw not in ("inactivo", "desactivado", "false", "0", "no")
 
-            # Fecha de ingreso / registro
-            fecha_ingreso_raw = _limpiar_celda(fila.get("Fecha_Ingreso"))
-            fecha_registro = None
-            if fecha_ingreso_raw:
-                formatos = [
-                    "%d/%m/%Y %H:%M",
-                    "%d/%m/%Y %H:%M:%S",
-                    "%Y-%m-%d %H:%M:%S",
-                    "%Y-%m-%d %H:%M",
-                    "%d-%m-%Y %H:%M",
-                    "%d/%m/%Y",
-                    "%Y-%m-%d",
-                ]
-                for fmt in formatos:
-                    try:
-                        dt = datetime.strptime(fecha_ingreso_raw, fmt)
-                        fecha_registro = dt.replace(tzinfo=ZONA_BOGOTA)
-                        break
-                    except ValueError:
-                        continue
-            if not fecha_registro:
-                fecha_registro = obtener_hora_bogota()
+                # Fecha de ingreso / registro
+                fecha_ingreso_raw = _limpiar_celda(fila.get(col_fecha)) if col_fecha else ""
+                fecha_registro = None
+                if fecha_ingreso_raw:
+                    formatos = [
+                        "%d/%m/%Y %H:%M",
+                        "%d/%m/%Y %H:%M:%S",
+                        "%Y-%m-%d %H:%M:%S",
+                        "%Y-%m-%d %H:%M",
+                        "%d-%m-%Y %H:%M",
+                        "%d/%m/%Y",
+                        "%Y-%m-%d",
+                    ]
+                    for fmt in formatos:
+                        try:
+                            dt = datetime.strptime(fecha_ingreso_raw, fmt)
+                            fecha_registro = dt.replace(tzinfo=ZONA_BOGOTA)
+                            break
+                        except ValueError:
+                            continue
+                if not fecha_registro:
+                    fecha_registro = obtener_hora_bogota()
 
-            try:
+                id_raw = _limpiar_celda(fila.get(col_id)) if col_id else ""
+
+                # REGLA TÉCNICA 1: Búsqueda segura EXCLUSIVAMENTE por documento. NUNCA por ID numérico.
                 tutor_existente = None
-                # Si viene documento, buscar por documento
                 if doc_raw:
                     tutor_existente = db.session.execute(
                         select(Tutor).where(Tutor.numero_documento == doc_raw)
                     ).scalar_one_or_none()
 
-                # Si no se encontró por documento pero viene ID numérico, buscar por ID
-                if not tutor_existente:
-                    id_raw = _limpiar_celda(fila.get("ID"))
-                    if id_raw.isdigit():
-                        tutor_existente = db.session.get(Tutor, int(id_raw))
-
                 if tutor_existente:
-                    # Actualizar tutor existente
                     tutor_existente.nombre_completo = nombre_completo
                     if tipo_doc_raw:
                         tutor_existente.tipo_documento = tipo_doc_raw
-                    if doc_raw:
-                        tutor_existente.numero_documento = doc_raw
-                    if telefono_raw:
+                    if telefono_raw and not tutor_existente.telefono:
                         tutor_existente.telefono = telefono_raw
-                    if whatsapp_raw:
+                    if whatsapp_raw and not tutor_existente.whatsapp:
                         tutor_existente.whatsapp = whatsapp_raw
-                    if correo_raw:
+                    if correo_raw and not tutor_existente.email:
                         tutor_existente.email = correo_raw
-                    if direccion_raw:
+                    if direccion_raw and not tutor_existente.direccion:
                         tutor_existente.direccion = direccion_raw
-                    if barrio_raw:
+                    if barrio_raw and not tutor_existente.barrio:
                         tutor_existente.barrio = barrio_raw
-                    tutor_existente.activo = activo
+                    if id_raw and not tutor_existente.id_externo:
+                        tutor_existente.id_externo = id_raw
                     actualizados += 1
                 else:
                     nuevo_tutor = Tutor(
@@ -451,26 +458,105 @@ def importar_excel():
                         activo=activo,
                         fecha_registro=fecha_registro,
                         creado_por_id=current_user.id,
+                        lote_importacion=lote_uuid,
+                        id_externo=id_raw or None,
                     )
                     db.session.add(nuevo_tutor)
                     creados += 1
 
-                db.session.commit()
-            except Exception as exc:
-                db.session.rollback()
-                current_app.logger.exception("Error al procesar fila %s de tutores", num_fila)
-                errores.append(f"Fila {num_fila} ({nombre_completo}): {exc}")
+            # Registrar lote de importación para trazabilidad y reversión
+            lote_registro = LoteImportacion(
+                uuid=lote_uuid,
+                tipo="tutores",
+                nombre_archivo=getattr(archivo, "filename", "tutores.xlsx"),
+                creados=creados,
+                actualizados=actualizados,
+                usuario_id=current_user.id,
+            )
+            db.session.add(lote_registro)
 
-        reporte = {
-            "creados": creados,
-            "actualizados": actualizados,
-            "errores": errores,
-            "total_procesados": creados + actualizados,
-        }
-        flash(
-            f"Importación completada. Creados: {creados}, Actualizados: {actualizados}, Con error: {len(errores)}.",
-            "success" if not errores else "warning",
-        )
+            # Transacción atómica
+            db.session.commit()
 
-    return render_template("tutores/importar.html", form=form, reporte=reporte)
+            reporte = {
+                "lote_uuid": lote_uuid,
+                "creados": creados,
+                "actualizados": actualizados,
+                "errores": errores,
+                "total_procesados": creados + actualizados,
+            }
+            flash(
+                f"Importación completada. Creados: {creados}, Actualizados: {actualizados}, Con observaciones: {len(errores)}.",
+                "success" if not errores else "warning",
+            )
+        except Exception as exc:
+            db.session.rollback()
+            current_app.logger.exception("Error general al importar lote de tutores")
+            flash(f"Ocurrió un error y se canceló la importación (Rollback preventivo): {exc}", "danger")
+
+    lotes_recientes = db.session.execute(
+        select(LoteImportacion).where(LoteImportacion.tipo == "tutores").order_by(LoteImportacion.fecha.desc()).limit(5)
+    ).scalars().all()
+
+    return render_template(
+        "tutores/importar.html",
+        form=form,
+        form_csrf=form_csrf,
+        reporte=reporte,
+        lotes_recientes=lotes_recientes,
+    )
+
+
+@bp.route("/revertir-lote/<uuid_lote>", methods=["POST"])
+@login_required
+@admin_required
+def revertir_lote(uuid_lote):
+    """Elimina de forma segura únicamente los tutores creados en el lote indicado."""
+    form_csrf = SoloCsrfForm()
+    if not form_csrf.validate_on_submit():
+        flash("Error de validación de seguridad (CSRF).", "danger")
+        return redirect(url_for("tutores.importar_excel"))
+
+    lote = db.session.execute(
+        select(LoteImportacion).where(LoteImportacion.uuid == uuid_lote, LoteImportacion.tipo == "tutores")
+    ).scalar_one_or_none()
+
+    if not lote:
+        flash("El lote de importación no existe.", "danger")
+        return redirect(url_for("tutores.importar_excel"))
+
+    if lote.revertido:
+        flash("Este lote ya fue revertido previamente.", "warning")
+        return redirect(url_for("tutores.importar_excel"))
+
+    tutores = db.session.execute(
+        select(Tutor).where(Tutor.lote_importacion == uuid_lote)
+    ).scalars().all()
+
+    eliminados = 0
+    no_eliminables = 0
+    try:
+        for t in tutores:
+            if t.mascotas:
+                no_eliminables += 1
+                continue
+            db.session.delete(t)
+            eliminados += 1
+
+        lote.revertido = True
+        lote.fecha_reversion = obtener_hora_bogota()
+        lote.usuario_reversion_id = current_user.id
+        db.session.commit()
+
+        msg = f"Reversión finalizada: Se eliminaron {eliminados} tutores creados en el lote."
+        if no_eliminables > 0:
+            msg += f" {no_eliminables} tutores se conservaron porque ya cuentan con mascotas registradas."
+        flash(msg, "info")
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception("Error al revertir lote %s de tutores", uuid_lote)
+        flash(f"Error al revertir lote: {exc}", "danger")
+
+    return redirect(url_for("tutores.importar_excel"))
+
 

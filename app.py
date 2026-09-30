@@ -61,15 +61,30 @@ def _env_int(nombre: str, predeterminado: int) -> int:
         raise RuntimeError(f"{nombre} debe ser un número entero, no {valor!r}.") from exc
 
 
+def _detectar_driver_postgres() -> str:
+    try:
+        import psycopg
+        from psycopg import pq
+        pq.import_from_libpq()
+        return "psycopg"
+    except Exception:
+        return "psycopg2"
+
+
 def _normalizar_url_postgres(url: str) -> str:
-    """Acepta solo PostgreSQL y fuerza el driver psycopg 3."""
-    if url.startswith("postgresql://"):
-        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+    """Acepta solo PostgreSQL y selecciona automáticamente el driver disponible (psycopg o psycopg2)."""
+    driver = _detectar_driver_postgres()
+
     if url.startswith("postgres://"):
-        url = "postgresql+psycopg://" + url[len("postgres://"):]
-    if not url.startswith("postgresql+psycopg://"):
+        url = f"postgresql+{driver}://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://"):
+        url = f"postgresql+{driver}://" + url[len("postgresql://"):]
+    elif url.startswith("postgresql+psycopg://") and driver == "psycopg2":
+        url = "postgresql+psycopg2://" + url[len("postgresql+psycopg://"):]
+
+    if not (url.startswith("postgresql+psycopg://") or url.startswith("postgresql+psycopg2://")):
         raise RuntimeError(
-            "VetCare solo soporta PostgreSQL: DATABASE_URL debe empezar por postgresql+psycopg://"
+            "VetCare solo soporta PostgreSQL: DATABASE_URL debe ser una URL de conexión válida a PostgreSQL."
         )
     return url
 

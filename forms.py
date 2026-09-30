@@ -397,7 +397,7 @@ class AjusteStockForm(FlaskForm):
 
 
 class ImportarExcelForm(FlaskForm):
-    archivo = FileField("Archivo Excel (.xlsx)", validators=[DataRequired("Selecciona el archivo Excel.")])
+    archivo = FileField("Archivo Excel o CSV (.xlsx, .csv)", validators=[DataRequired("Selecciona el archivo Excel o CSV.")])
     enviar = SubmitField("Cargar e importar")
 
 

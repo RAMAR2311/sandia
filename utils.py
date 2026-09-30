@@ -439,3 +439,36 @@ def eliminar_firma_digital(nombre: str, subcarpeta: str = "firmas") -> None:
     except OSError:
         current_app.logger.warning("No se pudo borrar la firma %s", ruta)
 
+
+def leer_archivo_tabular(archivo_storage):
+    """Lee un archivo cargado (.xlsx, .xls o .csv) y devuelve un DataFrame con todas las columnas como string.
+    
+    Detecta automáticamente delimitador (, o ;) y codificaciones (utf-8, latin-1, utf-8-sig).
+    """
+    import io
+    import pandas as pd
+
+    nombre = (getattr(archivo_storage, "filename", "") or "").lower()
+    stream = archivo_storage.stream
+    stream.seek(0)
+    contenido = stream.read()
+    stream.seek(0)
+
+    if nombre.endswith(".xlsx") or nombre.endswith(".xls"):
+        return pd.read_excel(io.BytesIO(contenido), dtype=str)
+    
+    # Para CSV o archivos de texto delimitados:
+    for encoding in ("utf-8-sig", "utf-8", "latin-1", "cp1252"):
+        for sep in (None, ",", ";", "\t"):
+            try:
+                df = pd.read_csv(io.BytesIO(contenido), sep=sep, encoding=encoding, dtype=str, engine="python")
+                if len(df.columns) > 1 or sep == ",":
+                    return df
+            except Exception:
+                continue
+
+    try:
+        return pd.read_csv(io.BytesIO(contenido), dtype=str)
+    except Exception:
+        return pd.read_excel(io.BytesIO(contenido), dtype=str)
+

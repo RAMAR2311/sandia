@@ -1,11 +1,12 @@
 import io
 import json
+import uuid
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 
 import pandas as pd
 from flask import Blueprint, Response, current_app, flash, redirect, render_template, request, send_file, url_for
-from decorators import clinico_required
+from decorators import admin_required, clinico_required
 from pdf_generator import generar_pdf_consulta, generar_pdf_receta
 from flask_login import current_user, login_required
 from sqlalchemy import or_, select
@@ -40,6 +41,7 @@ from models import (
     EvolucionHospitalaria,
     ExamenLaboratorio,
     Hospitalizacion,
+    LoteImportacion,
     Mascota,
     Raza,
     RegistroPeso,
@@ -56,6 +58,7 @@ from utils import (
     generar_enlace_google_calendar,
     guardar_documento,
     hoy_bogota,
+    leer_archivo_tabular,
     normalizar_texto,
     obtener_hora_bogota,
 )
@@ -1944,32 +1947,54 @@ def plantilla_excel():
 @login_required
 @clinico_required
 def importar_excel():
-    """Importación masiva de historias clínicas / consultas médicas desde Excel (.xlsx)."""
+    """Importación masiva de historias clínicas / consultas médicas desde Excel (.xlsx) o CSV (.csv)."""
     form = ImportarExcelForm()
+    form_csrf = SoloCsrfForm()
     reporte = None
 
     if form.validate_on_submit():
         archivo = form.archivo.data
-        if not archivo.filename.lower().endswith(".xlsx"):
-            flash("El archivo debe tener extensión .xlsx", "danger")
-            return render_template("historias/importar.html", form=form, reporte=None)
-
         try:
-            df = pd.read_excel(archivo.stream, engine="openpyxl", dtype=str)
+            df = leer_archivo_tabular(archivo)
         except Exception as exc:
-            current_app.logger.exception("Error al procesar archivo Excel de historias clínicas")
-            flash(f"No se pudo procesar el archivo Excel: {exc}", "danger")
-            return render_template("historias/importar.html", form=form, reporte=None)
+            current_app.logger.exception("Error al procesar archivo de historias clínicas")
+            flash(f"No se pudo procesar el archivo: {exc}", "danger")
+            return redirect(url_for("historias.importar_excel"))
 
-        columnas_requeridas = ["Mascota", "Motivo_Consulta"]
-        for col in columnas_requeridas:
-            if col not in df.columns:
-                flash(f"Falta la columna obligatoria '{col}' en el archivo Excel.", "danger")
-                return render_template("historias/importar.html", form=form, reporte=None)
+        # Limpiar nombres de columnas
+        df.columns = [str(c).strip() for c in df.columns]
+
+        col_paciente = next((c for c in df.columns if c.lower() in ("paciente", "id_paciente", "id_mascota", "codigo_paciente")), None)
+        col_mascota = next((c for c in df.columns if c.lower() in ("mascota", "nombre_mascota", "nombre")), None)
+
+        if not col_paciente and not col_mascota:
+            flash("Falta la columna para identificar al paciente ('paciente' o 'Mascota') en el archivo.", "danger")
+            return redirect(url_for("historias.importar_excel"))
+
+        col_motivo = next((c for c in df.columns if c.lower() in ("motivo_consulta", "motivo", "razon_consulta")), None)
+        col_doc_prop = next((c for c in df.columns if c.lower() in ("doc_propietario", "documento", "doc", "cedula")), None)
+        col_nom_prop = next((c for c in df.columns if c.lower() in ("propietario", "tutor", "dueno", "dueño")), None)
+        col_anamnesis = next((c for c in df.columns if c.lower() in ("anamnesis", "subjetivo", "historia")), None)
+        col_antecedentes = next((c for c in df.columns if c.lower() in ("antecedentes", "previos")), None)
+        col_peso = next((c for c in df.columns if c.lower() in ("peso", "peso_kg")), None)
+        col_temp = next((c for c in df.columns if c.lower() in ("temperatura", "temperatura_c", "temp")), None)
+        col_fc = next((c for c in df.columns if c.lower() in ("frec_cardiaca", "fc", "frecuencia_cardiaca")), None)
+        col_fr = next((c for c in df.columns if c.lower() in ("frec_respiratoria", "fr", "frecuencia_respiratoria")), None)
+        col_examen = next((c for c in df.columns if c.lower() in ("examen_general", "examen_fisico", "examen_sistemas", "hallazgos")), None)
+        col_diag_def = next((c for c in df.columns if c.lower() in ("diag_definitivo", "diagnostico_definitivo")), None)
+        col_diag_fin = next((c for c in df.columns if c.lower() in ("diag_final", "diagnostico_final", "diagnostico", "diag")), None)
+        col_diag_pres = next((c for c in df.columns if c.lower() in ("diag_presuntivo", "diagnostico_presuntivo")), None)
+        col_plan = next((c for c in df.columns if c.lower() in ("plan_terapeutico", "plan", "plan_tratamiento")), None)
+        col_trat = next((c for c in df.columns if c.lower() in ("tratamiento", "terapia")), None)
+        col_med = next((c for c in df.columns if c.lower() in ("medicamentos", "medicamento", "receta", "receta_medica", "formula")), None)
+        col_pronostico = next((c for c in df.columns if c.lower() in ("pronostico", "pronóstico")), None)
+        col_obs = next((c for c in df.columns if c.lower() in ("observaciones", "notas")), None)
+        col_vet = next((c for c in df.columns if c.lower() in ("veterinario", "medico", "doctor", "atendido_por")), None)
+        col_fecha = next((c for c in df.columns if c.lower() in ("fecha", "fecha_hora", "fecha_consulta")), None)
 
         creados = 0
-        actualizados = 0
         errores = []
+        lote_uuid = str(uuid.uuid4())
 
         def _limpiar(val):
             if val is None or pd.isna(val):
@@ -1997,258 +2022,277 @@ def importar_excel():
                     continue
             return None
 
-        for indice, fila in df.iterrows():
-            num_fila = indice + 2
+        try:
+            for indice, fila in df.iterrows():
+                num_fila = indice + 2
 
-            nombre_mascota = _limpiar(fila.get("Mascota"))
-            motivo = _limpiar(fila.get("Motivo_Consulta"))
+                paciente_val = _limpiar(fila.get(col_paciente)) if col_paciente else ""
+                nombre_mascota = _limpiar(fila.get(col_mascota)) if col_mascota else ""
 
-            if not nombre_mascota:
-                errores.append(f"Fila {num_fila}: Nombre de mascota vacío.")
-                continue
+                if not paciente_val and not nombre_mascota:
+                    errores.append(f"Fila {num_fila}: No se especificó el paciente ni la mascota.")
+                    continue
 
-            if not motivo:
-                motivo = "Consulta general / Revisión médica"
+                # REGLA TÉCNICA 2: Vinculación segura de Mascota.
+                # 1) Buscar primero por ID legado (id_externo) que provino de 2_PACIENTES.csv
+                mascota = None
+                if paciente_val:
+                    mascota = db.session.execute(
+                        select(Mascota).where(Mascota.id_externo == paciente_val)
+                    ).scalar_one_or_none()
 
-            # 1. Tutor / Propietario
-            doc_prop = _limpiar(fila.get("Doc_Propietario"))
-            nom_prop = _limpiar(fila.get("Propietario"))
+                # 2) Si no se encontró por ID legado, buscar por Tutor + Nombre de Mascota
+                if not mascota and nombre_mascota:
+                    norm_mascota = normalizar_texto(nombre_mascota)
+                    doc_prop = _limpiar(fila.get(col_doc_prop)) if col_doc_prop else ""
+                    nom_prop = _limpiar(fila.get(col_nom_prop)) if col_nom_prop else ""
 
-            tutor = None
-            if doc_prop:
-                tutor = db.session.execute(
-                    select(Tutor).where(Tutor.numero_documento == doc_prop)
-                ).scalar_one_or_none()
+                    tutor = None
+                    if doc_prop:
+                        tutor = db.session.execute(
+                            select(Tutor).where(Tutor.numero_documento == doc_prop)
+                        ).scalar_one_or_none()
+                    if not tutor and nom_prop:
+                        norm_nom = normalizar_texto(nom_prop)
+                        tutor = db.session.execute(
+                            select(Tutor).where(Tutor.nombre_busqueda == norm_nom)
+                        ).first()
+                        if tutor:
+                            tutor = tutor[0]
 
-            if not tutor and nom_prop:
-                norm_nom = normalizar_texto(nom_prop)
-                tutor = db.session.execute(
-                    select(Tutor).where(Tutor.nombre_busqueda == norm_nom)
-                ).first()
-                if tutor:
-                    tutor = tutor[0]
+                    if tutor:
+                        mascota = db.session.execute(
+                            select(Mascota).where(
+                                Mascota.tutor_id == tutor.id,
+                                Mascota.nombre_busqueda == norm_mascota
+                            )
+                        ).scalar_one_or_none()
+                    else:
+                        # Si no hay tutor explícito, buscar coincidencia única por nombre de mascota activa
+                        coincidencias = db.session.execute(
+                            select(Mascota).where(
+                                Mascota.nombre_busqueda == norm_mascota,
+                                Mascota.activo.is_(True)
+                            )
+                        ).scalars().all()
+                        if len(coincidencias) == 1:
+                            mascota = coincidencias[0]
 
-            if not tutor:
-                # Crear tutor básico si no existe
-                tutor = Tutor(
-                    tipo_documento="CC" if doc_prop else None,
-                    numero_documento=doc_prop or None,
-                    nombre_completo=nom_prop or f"Propietario Doc {doc_prop or 'S/N'}",
-                    activo=True,
-                    creado_por_id=current_user.id,
-                )
-                db.session.add(tutor)
-                db.session.flush()
-
-            # 2. Mascota
-            norm_mascota = normalizar_texto(nombre_mascota)
-            mascota = db.session.execute(
-                select(Mascota).where(
-                    Mascota.tutor_id == tutor.id,
-                    Mascota.nombre_busqueda == norm_mascota
-                )
-            ).scalar_one_or_none()
-
-            especie_raw = _limpiar(fila.get("Especie")).lower()
-            if "fel" in especie_raw or "gat" in especie_raw:
-                especie = "felino"
-            elif "can" in especie_raw or "perr" in especie_raw:
-                especie = "canino"
-            elif especie_raw in ("ave", "roedor"):
-                especie = especie_raw
-            else:
-                especie = "canino"
-
-            raza_nombre = _limpiar(fila.get("Raza"))
-            raza_obj = None
-            if raza_nombre:
-                raza_obj = db.session.execute(
-                    select(Raza).where(Raza.especie == especie, Raza.nombre.ilike(raza_nombre))
-                ).scalar_one_or_none()
-                if not raza_obj:
-                    raza_obj = Raza(especie=especie, nombre=raza_nombre, activo=True)
-                    db.session.add(raza_obj)
-                    db.session.flush()
-
-            if not mascota:
-                mascota = Mascota(
-                    tutor_id=tutor.id,
-                    nombre=nombre_mascota,
-                    especie=especie,
-                    raza_id=raza_obj.id if raza_obj else None,
-                    activo=True,
-                    creado_por_id=current_user.id,
-                )
-                db.session.add(mascota)
-                db.session.flush()
-            elif raza_obj and not mascota.raza_id:
-                mascota.raza_id = raza_obj.id
-
-            # 3. Veterinario asignado
-            vet_nom = _limpiar(fila.get("Veterinario"))
-            vet_user = None
-            if vet_nom:
-                norm_vet = normalizar_texto(vet_nom)
-                vet_user = db.session.execute(
-                    select(Usuario).where(
-                        Usuario.rol.in_(("veterinario", "admin")),
-                        Usuario.nombre.ilike(f"%{norm_vet}%")
+                if not mascota:
+                    ref = paciente_val or nombre_mascota
+                    errores.append(
+                        f"Fila {num_fila}: No se encontró la mascota '{ref}' en el sistema. Debe importarse primero el catálogo de pacientes."
                     )
-                ).first()
-                if vet_user:
-                    vet_user = vet_user[0]
+                    continue
 
-            if not vet_user:
-                # Si el usuario actual es veterinario o admin, usarlo; sino buscar el primer vet activo
-                if current_user.rol in ("veterinario", "admin"):
-                    vet_user = current_user
-                else:
+                # Veterinario asignado
+                vet_nom = _limpiar(fila.get(col_vet)) if col_vet else ""
+                vet_user = None
+                if vet_nom:
+                    norm_vet = normalizar_texto(vet_nom)
                     vet_user = db.session.execute(
-                        select(Usuario).where(Usuario.rol == "veterinario", Usuario.activo.is_(True))
+                        select(Usuario).where(
+                            Usuario.rol.in_(("veterinario", "admin")),
+                            Usuario.nombre.ilike(f"%{norm_vet}%")
+                        )
                     ).first()
                     if vet_user:
                         vet_user = vet_user[0]
-                    else:
+
+                if not vet_user:
+                    if current_user.rol in ("veterinario", "admin"):
                         vet_user = current_user
+                    else:
+                        vet_user = db.session.execute(
+                            select(Usuario).where(Usuario.rol == "veterinario", Usuario.activo.is_(True))
+                        ).first()
+                        if vet_user:
+                            vet_user = vet_user[0]
+                        else:
+                            vet_user = current_user
 
-            # 4. Fecha de la consulta
-            f_dt = _parsear_fecha(_limpiar(fila.get("Fecha")))
-            fecha_hora = f_dt.replace(tzinfo=ZONA_BOGOTA) if f_dt else obtener_hora_bogota()
+                # Fecha de la consulta
+                f_dt = _parsear_fecha(_limpiar(fila.get(col_fecha))) if col_fecha else None
+                fecha_hora = f_dt.replace(tzinfo=ZONA_BOGOTA) if f_dt else obtener_hora_bogota()
 
-            # 5. Constantes vitales
-            def _a_decimal(val):
-                txt = _limpiar(val).replace(",", ".")
-                if not txt:
-                    return None
-                try:
-                    return Decimal(txt)
-                except (InvalidOperation, ValueError):
-                    return None
+                # Constantes vitales
+                def _a_decimal(val):
+                    txt = _limpiar(val).replace(",", ".")
+                    if not txt:
+                        return None
+                    try:
+                        return Decimal(txt)
+                    except (InvalidOperation, ValueError):
+                        return None
 
-            def _a_int(val):
-                txt = _limpiar(val)
-                if not txt:
-                    return None
-                digs = "".join([c for c in txt if c.isdigit()])
-                return int(digs) if digs else None
+                def _a_int(val):
+                    txt = _limpiar(val)
+                    if not txt:
+                        return None
+                    digs = "".join([c for c in txt if c.isdigit()])
+                    return int(digs) if digs else None
 
-            peso_kg = _a_decimal(fila.get("Peso"))
-            temp_c = _a_decimal(fila.get("Temperatura"))
-            fc = _a_int(fila.get("Frec_Cardiaca"))
-            fr_raw = _limpiar(fila.get("Frec_Respiratoria")) or None
-            examen_gral = _limpiar(fila.get("Examen_General")) or None
+                peso_kg = _a_decimal(fila.get(col_peso)) if col_peso else None
+                temp_c = _a_decimal(fila.get(col_temp)) if col_temp else None
+                fc = _a_int(fila.get(col_fc)) if col_fc else None
+                fr_raw = (_limpiar(fila.get(col_fr)) if col_fr else "") or None
+                examen_gral = (_limpiar(fila.get(col_examen)) if col_examen else "") or None
 
-            # 6. Diagnóstico y Tratamiento
-            anamnesis_txt = _limpiar(fila.get("Anamnesis"))
-            antecedentes_txt = _limpiar(fila.get("Antecedentes"))
-            if antecedentes_txt:
-                anamnesis_txt = f"{anamnesis_txt}\n[Antecedentes]: {antecedentes_txt}".strip()
+                # Motivo, Diagnóstico y Tratamiento
+                motivo = (_limpiar(fila.get(col_motivo)) if col_motivo else "") or "Consulta médica veterinaria"
 
-            diag_def = _limpiar(fila.get("Diag_Definitivo"))
-            diag_fin = _limpiar(fila.get("Diag_Final"))
-            diag_pres = _limpiar(fila.get("Diag_Presuntivo"))
-            diagnostico_final = diag_def or diag_fin or diag_pres or "Evaluación clínica general"
+                anamnesis_txt = _limpiar(fila.get(col_anamnesis)) if col_anamnesis else ""
+                antecedentes_txt = _limpiar(fila.get(col_antecedentes)) if col_antecedentes else ""
+                if antecedentes_txt:
+                    anamnesis_txt = f"{anamnesis_txt}\n[Antecedentes]: {antecedentes_txt}".strip()
 
-            plan_ter = _limpiar(fila.get("Plan_Terapeutico"))
-            tratamiento = _limpiar(fila.get("Tratamiento"))
-            medicamentos = _limpiar(fila.get("Medicamentos"))
-            pronostico = _limpiar(fila.get("Pronostico"))
-            observaciones = _limpiar(fila.get("Observaciones"))
+                diag_def = _limpiar(fila.get(col_diag_def)) if col_diag_def else ""
+                diag_fin = _limpiar(fila.get(col_diag_fin)) if col_diag_fin else ""
+                diag_pres = _limpiar(fila.get(col_diag_pres)) if col_diag_pres else ""
+                diagnostico_final = diag_def or diag_fin or diag_pres or "Evaluación clínica general"
 
-            partes_plan = []
-            if plan_ter:
-                partes_plan.append(plan_ter)
-            if tratamiento:
-                partes_plan.append(f"Tratamiento: {tratamiento}")
-            plan_completo = "\n".join(partes_plan) if partes_plan else (diagnostico_final or "Manejo médico según evolución")
+                plan_ter = _limpiar(fila.get(col_plan)) if col_plan else ""
+                tratamiento = _limpiar(fila.get(col_trat)) if col_trat else ""
+                medicamentos = _limpiar(fila.get(col_med)) if col_med else ""
+                pronostico = _limpiar(fila.get(col_pronostico)) if col_pronostico else ""
+                observaciones = _limpiar(fila.get(col_obs)) if col_obs else ""
 
-            obs_lista = []
-            if observaciones:
-                obs_lista.append(observaciones)
-            if pronostico:
-                obs_lista.append(f"Pronóstico: {pronostico}")
-            observaciones_completas = "\n".join(obs_lista) if obs_lista else None
+                partes_plan = []
+                if plan_ter:
+                    partes_plan.append(plan_ter)
+                if tratamiento:
+                    partes_plan.append(f"Tratamiento: {tratamiento}")
+                plan_completo = "\n".join(partes_plan) if partes_plan else (diagnostico_final or "Manejo médico según evolución")
 
-            try:
-                # Verificar si ya existe por ID_Historia
-                id_hist = _limpiar(fila.get("ID_Historia"))
-                consulta_existente = None
-                if id_hist.isdigit():
-                    consulta_existente = db.session.get(ConsultaMedica, int(id_hist))
+                obs_lista = []
+                if observaciones:
+                    obs_lista.append(observaciones)
+                if pronostico:
+                    obs_lista.append(f"Pronóstico: {pronostico}")
+                observaciones_completas = "\n".join(obs_lista) if obs_lista else None
 
-                if not consulta_existente:
-                    # O verificar si ya existe consulta de esa misma mascota en esa misma fecha_hora
-                    consulta_existente = db.session.execute(
-                        select(ConsultaMedica).where(
-                            ConsultaMedica.mascota_id == mascota.id,
-                            ConsultaMedica.fecha_hora == fecha_hora
-                        )
-                    ).scalar_one_or_none()
+                # REGLA TÉCNICA 1: NUNCA sobreescribir ni usar db.session.get por ID de historia.
+                # Cada consulta importada se inserta SIEMPRE como NUEVA ConsultaMedica vinculada a mascota.id y mascota.tutor_id.
+                nueva_consulta = ConsultaMedica(
+                    mascota_id=mascota.id,
+                    tutor_id=mascota.tutor_id,
+                    veterinario_id=vet_user.id,
+                    fecha_hora=fecha_hora,
+                    motivo_consulta=motivo,
+                    anamnesis=anamnesis_txt or None,
+                    peso_kg=peso_kg,
+                    temperatura_c=temp_c,
+                    frecuencia_cardiaca=fc,
+                    frecuencia_respiratoria=fr_raw,
+                    examen_sistemas=examen_gral,
+                    diagnostico=diagnostico_final,
+                    plan_tratamiento=plan_completo,
+                    receta_medica=medicamentos or None,
+                    observaciones=observaciones_completas,
+                    creado_por_id=current_user.id,
+                    lote_importacion=lote_uuid,
+                )
+                db.session.add(nueva_consulta)
 
-                if consulta_existente:
-                    consulta_existente.motivo_consulta = motivo
-                    consulta_existente.anamnesis = anamnesis_txt or None
-                    if peso_kg is not None:
-                        consulta_existente.peso_kg = peso_kg
-                    if temp_c is not None:
-                        consulta_existente.temperatura_c = temp_c
-                    if fc is not None:
-                        consulta_existente.frecuencia_cardiaca = fc
-                    if fr_raw:
-                        consulta_existente.frecuencia_respiratoria = fr_raw
-                    if examen_gral:
-                        consulta_existente.examen_sistemas = examen_gral
-                    consulta_existente.diagnostico = diagnostico_final
-                    consulta_existente.plan_tratamiento = plan_completo
-                    if medicamentos:
-                        consulta_existente.receta_medica = medicamentos
-                    if observaciones_completas:
-                        consulta_existente.observaciones = observaciones_completas
-                    actualizados += 1
-                else:
-                    nueva_consulta = ConsultaMedica(
-                        mascota_id=mascota.id,
-                        tutor_id=tutor.id,
-                        veterinario_id=vet_user.id,
-                        fecha_hora=fecha_hora,
-                        motivo_consulta=motivo,
-                        anamnesis=anamnesis_txt or None,
-                        peso_kg=peso_kg,
-                        temperatura_c=temp_c,
-                        frecuencia_cardiaca=fc,
-                        frecuencia_respiratoria=fr_raw,
-                        examen_sistemas=examen_gral,
-                        diagnostico=diagnostico_final,
-                        plan_tratamiento=plan_completo,
-                        receta_medica=medicamentos or None,
-                        observaciones=observaciones_completas,
-                        creado_por_id=current_user.id,
-                    )
-                    db.session.add(nueva_consulta)
-                    db.session.flush()
+                if peso_kg is not None:
+                    mascota.peso_actual = peso_kg
+                creados += 1
 
-                    if peso_kg is not None:
-                        mascota.peso_actual = peso_kg
-                    creados += 1
+            # Registrar lote de importación
+            lote_registro = LoteImportacion(
+                uuid=lote_uuid,
+                tipo="historias",
+                nombre_archivo=getattr(archivo, "filename", "historias_clinicas.xlsx"),
+                creados=creados,
+                actualizados=0,
+                usuario_id=current_user.id,
+            )
+            db.session.add(lote_registro)
 
-                db.session.commit()
-            except Exception as exc:
-                db.session.rollback()
-                current_app.logger.exception("Error al procesar fila %s de historias", num_fila)
-                errores.append(f"Fila {num_fila} ({nombre_mascota}): {exc}")
+            # Transacción atómica
+            db.session.commit()
 
-        reporte = {
-            "creados": creados,
-            "actualizados": actualizados,
-            "errores": errores,
-            "total_procesados": creados + actualizados,
-        }
-        flash(
-            f"Importación de historias finalizada. Creadas: {creados}, Actualizadas: {actualizados}, Con error: {len(errores)}.",
-            "success" if not errores else "warning",
-        )
+            reporte = {
+                "lote_uuid": lote_uuid,
+                "creados": creados,
+                "actualizados": 0,
+                "errores": errores,
+                "total_procesados": creados,
+            }
+            flash(
+                f"Importación de historias finalizada. Creadas: {creados}, Con observaciones: {len(errores)}.",
+                "success" if not errores else "warning",
+            )
+        except Exception as exc:
+            db.session.rollback()
+            current_app.logger.exception("Error general al importar lote de historias clínicas")
+            flash(f"Ocurrió un error y se canceló la importación (Rollback preventivo): {exc}", "danger")
 
-    return render_template("historias/importar.html", form=form, reporte=reporte)
+    lotes_recientes = db.session.execute(
+        select(LoteImportacion).where(LoteImportacion.tipo == "historias").order_by(LoteImportacion.fecha.desc()).limit(5)
+    ).scalars().all()
+
+    return render_template(
+        "historias/importar.html",
+        form=form,
+        form_csrf=form_csrf,
+        reporte=reporte,
+        lotes_recientes=lotes_recientes,
+    )
+
+
+@bp.route("/revertir-lote/<uuid_lote>", methods=["POST"])
+@login_required
+@admin_required
+def revertir_lote(uuid_lote):
+    """Elimina de forma segura únicamente las consultas médicas creadas en el lote indicado."""
+    form_csrf = SoloCsrfForm()
+    if not form_csrf.validate_on_submit():
+        flash("Error de validación de seguridad (CSRF).", "danger")
+        return redirect(url_for("historias.importar_excel"))
+
+    lote = db.session.execute(
+        select(LoteImportacion).where(LoteImportacion.uuid == uuid_lote, LoteImportacion.tipo == "historias")
+    ).scalar_one_or_none()
+
+    if not lote:
+        flash("El lote de historias clínicas no existe.", "danger")
+        return redirect(url_for("historias.importar_excel"))
+
+    if lote.revertido:
+        flash("Este lote ya fue revertido previamente.", "warning")
+        return redirect(url_for("historias.importar_excel"))
+
+    consultas = db.session.execute(
+        select(ConsultaMedica).where(ConsultaMedica.lote_importacion == uuid_lote)
+    ).scalars().all()
+
+    eliminadas = 0
+    no_eliminables = 0
+    try:
+        for c in consultas:
+            if c.enmiendas or c.controles_asociados or c.venta_id:
+                no_eliminables += 1
+                continue
+            db.session.delete(c)
+            eliminadas += 1
+
+        lote.revertido = True
+        lote.fecha_reversion = obtener_hora_bogota()
+        lote.usuario_reversion_id = current_user.id
+        db.session.commit()
+
+        msg = f"Reversión finalizada: Se eliminaron {eliminadas} consultas del lote."
+        if no_eliminables > 0:
+            msg += f" {no_eliminables} consultas se conservaron porque ya cuentan con enmiendas, controles o ventas asociadas."
+        flash(msg, "info")
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception("Error al revertir lote %s de historias", uuid_lote)
+        flash(f"Error al revertir lote: {exc}", "danger")
+
+    return redirect(url_for("historias.importar_excel"))
+
 
 
 

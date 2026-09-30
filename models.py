@@ -405,6 +405,37 @@ class IntentoLogin(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Trazabilidad y control de importaciones masivas
+# ---------------------------------------------------------------------------
+
+
+class LoteImportacion(BaseModel):
+    __tablename__ = "lotes_importacion"
+    __table_args__ = (
+        db.Index("ix_lotes_importacion_tipo", "tipo"),
+        db.Index("ix_lotes_importacion_fecha", "fecha"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    uuid = db.Column(db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    tipo = db.Column(db.String(30), nullable=False)  # 'tutores', 'mascotas', 'historias'
+    nombre_archivo = db.Column(db.String(255))
+    creados = db.Column(db.Integer, nullable=False, default=0)
+    actualizados = db.Column(db.Integer, nullable=False, default=0)
+    fecha = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+    revertido = db.Column(db.Boolean, nullable=False, default=False)
+    fecha_reversion = db.Column(db.DateTime(timezone=True))
+    usuario_reversion_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+
+    usuario = db.relationship("Usuario", foreign_keys=[usuario_id])
+    usuario_reversion = db.relationship("Usuario", foreign_keys=[usuario_reversion_id])
+
+    def __repr__(self):
+        return f"<LoteImportacion {self.id} tipo={self.tipo} uuid={self.uuid}>"
+
+
+# ---------------------------------------------------------------------------
 # Catálogos de mascotas
 # ---------------------------------------------------------------------------
 
@@ -489,6 +520,8 @@ class Tutor(BaseModel):
     creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
     fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
     activo = db.Column(db.Boolean, nullable=False, default=True)
+    lote_importacion = db.Column(db.String(64), index=True)
+    id_externo = db.Column(db.String(50), index=True)
 
     creado_por = db.relationship("Usuario", foreign_keys=[creado_por_id])
     mascotas = db.relationship("Mascota", back_populates="tutor", order_by="Mascota.nombre")
@@ -577,6 +610,8 @@ class Mascota(BaseModel):
     fecha_fallecimiento = db.Column(db.Date)
     creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
     fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    lote_importacion = db.Column(db.String(64), index=True)
+    id_externo = db.Column(db.String(50), index=True)
 
     tutor = db.relationship("Tutor", back_populates="mascotas")
     raza = db.relationship("Raza")
@@ -1368,6 +1403,7 @@ class ConsultaMedica(BaseModel):
     venta_id = db.Column(db.Integer, db.ForeignKey("ventas.id"))
     creado_por_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
     fecha_registro = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+    lote_importacion = db.Column(db.String(64), index=True)
 
     mascota = db.relationship("Mascota", backref=db.backref("consultas", order_by="desc(ConsultaMedica.fecha_hora)"))
     tutor = db.relationship("Tutor")
