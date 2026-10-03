@@ -223,16 +223,16 @@
                 </label>
                 <div class="d-flex flex-wrap gap-2">
                   <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-add-adicional" data-nombre="Desenrede y Desmotado" data-precio="15000">
-                    + 🧶 Desenrede ($15.000)
+                    + 🧶 Desenrede / Motas
                   </button>
                   <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-add-adicional" data-nombre="Baño Medicado / Antipulgas" data-precio="12000">
-                    + 🧼 Baño Medicado ($12.000)
+                    + 🧼 Baño Medicado
                   </button>
                   <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-add-adicional" data-nombre="Deslanado Profundo Extra" data-precio="20000">
-                    + 🐶 Deslanado ($20.000)
+                    + 🐶 Deslanado Profundo
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-add-adicional" data-nombre="Corte de Uñas y Oídos Especial" data-precio="8000">
-                    + 🐾 Uñas / Oídos ($8.000)
+                  <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-add-adicional" data-nombre="Corte de Uñas / Limpieza Especial" data-precio="8000">
+                    + 🐾 Uñas / Oídos
                   </button>
                   <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="btnNuevoAdicionalCustom">
                     + ➕ Otro Concepto
@@ -614,13 +614,13 @@
         tr.innerHTML = `
           <td class="py-2">
             <input type="text" class="form-control form-control-sm bg-light" value="${item.nombre || ''}" 
-                   placeholder="Ej: Desenrede, motas..." data-idx="${index}" onchange="cambiarNombreAdicional(${index}, this.value)">
+                   placeholder="Ej: Desenrede, motas..." data-idx="${index}" oninput="cambiarNombreAdicional(${index}, this.value)">
           </td>
           <td class="py-2">
             <div class="input-group input-group-sm">
               <span class="input-group-text bg-light text-muted">$</span>
-              <input type="number" class="form-control form-control-sm bg-light fw-bold font-monospace" value="${item.precio || 0}" 
-                     min="0" step="500" data-idx="${index}" onchange="cambiarPrecioAdicional(${index}, this.value)">
+              <input type="number" class="form-control form-control-sm bg-light fw-bold font-monospace input-precio-adic" value="${item.precio || 0}" 
+                     min="0" step="500" data-idx="${index}" oninput="cambiarPrecioAdicional(${index}, this.value)">
             </div>
           </td>
           <td class="py-2 text-center">
@@ -654,14 +654,23 @@
   window.cambiarNombreAdicional = function(index, nuevoNombre) {
     if (listaAdicionales[index]) {
       listaAdicionales[index].nombre = nuevoNombre.trim();
-      renderizarAdicionalesYTotales();
+      if (inputItemsJson) inputItemsJson.value = JSON.stringify(listaAdicionales);
     }
   };
 
   window.cambiarPrecioAdicional = function(index, nuevoPrecio) {
     if (listaAdicionales[index]) {
       listaAdicionales[index].precio = parseFloat(nuevoPrecio) || 0;
-      renderizarAdicionalesYTotales();
+      if (inputItemsJson) inputItemsJson.value = JSON.stringify(listaAdicionales);
+      
+      let totalAdic = 0;
+      listaAdicionales.forEach(it => { totalAdic += (parseFloat(it.precio) || 0); });
+      const pBase = parseFloat(inputPrecioBase.value) || 0;
+      const pTotal = pBase + totalAdic;
+      const fmt = (v) => '$' + v.toLocaleString('es-CO');
+      document.getElementById('resumenPrecioAdicionales').textContent = fmt(totalAdic);
+      document.getElementById('resumenPrecioTotal').textContent = fmt(pTotal);
+      document.getElementById('badgeTotalCobro').textContent = 'Total Estimado: ' + fmt(pTotal);
     }
   };
 
@@ -670,6 +679,17 @@
     renderizarAdicionalesYTotales();
   };
 
+  function enfocarUltimoAdicional() {
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('.input-precio-adic');
+      if (inputs.length > 0) {
+        const last = inputs[inputs.length - 1];
+        last.focus();
+        last.select();
+      }
+    }, 50);
+  }
+
   // Botones de adicionales rápidos
   document.querySelectorAll('.btn-add-adicional').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -677,6 +697,7 @@
       const precio = parseFloat(this.getAttribute('data-precio')) || 0;
       listaAdicionales.push({ nombre, precio });
       renderizarAdicionalesYTotales();
+      enfocarUltimoAdicional();
     });
   });
 
@@ -684,8 +705,9 @@
   const btnCustom = document.getElementById('btnNuevoAdicionalCustom');
   if (btnCustom) {
     btnCustom.addEventListener('click', function() {
-      listaAdicionales.push({ nombre: 'Adicional / Desenrede', precio: 10000 });
+      listaAdicionales.push({ nombre: 'Adicional Personalizado', precio: 10000 });
       renderizarAdicionalesYTotales();
+      enfocarUltimoAdicional();
     });
   }
 

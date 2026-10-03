@@ -579,16 +579,16 @@
             </label>
             <div class="d-flex flex-wrap gap-2 mb-3">
               <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-modal-add-adic" data-nombre="Desenrede y Desmotado" data-precio="15000">
-                + 🧶 Desenrede ($15.000)
+                + 🧶 Desenrede / Motas
               </button>
               <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-modal-add-adic" data-nombre="Baño Medicado / Antipulgas" data-precio="12000">
-                + 🧼 Baño Medicado ($12.000)
+                + 🧼 Baño Medicado
               </button>
               <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-modal-add-adic" data-nombre="Deslanado Profundo Extra" data-precio="20000">
-                + 🐶 Deslanado ($20.000)
+                + 🐶 Deslanado Profundo
               </button>
-              <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-modal-add-adic" data-nombre="Corte de Uñas Especial" data-precio="8000">
-                + 🐾 Uñas ($8.000)
+              <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-modal-add-adic" data-nombre="Corte de Uñas / Limpieza Especial" data-precio="8000">
+                + 🐾 Uñas / Oídos
               </button>
               <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="btnModalAddCustom">
                 + ➕ Otro Concepto
@@ -722,13 +722,13 @@
         tr.innerHTML = `
           <td class="py-2">
             <input type="text" class="form-control form-control-sm bg-light" value="${item.nombre || ''}" 
-                   placeholder="Concepto" onchange="modalCambiarNombreAdic(${index}, this.value)">
+                   placeholder="Concepto" oninput="modalCambiarNombreAdic(${index}, this.value)">
           </td>
           <td class="py-2">
             <div class="input-group input-group-sm">
               <span class="input-group-text bg-light text-muted">$</span>
-              <input type="number" class="form-control form-control-sm bg-light fw-bold font-monospace" 
-                     value="${item.precio || 0}" min="0" step="500" onchange="modalCambiarPrecioAdic(${index}, this.value)">
+              <input type="number" class="form-control form-control-sm bg-light fw-bold font-monospace input-modal-adic" 
+                     value="${item.precio || 0}" min="0" step="500" oninput="modalCambiarPrecioAdic(${index}, this.value)">
             </div>
           </td>
           <td class="py-2 text-center">
@@ -756,14 +756,21 @@
   window.modalCambiarNombreAdic = function(idx, val) {
     if (modalListaAdic[idx]) {
       modalListaAdic[idx].nombre = val.trim();
-      renderModalAdicionales();
+      if (modalItemsJson) modalItemsJson.value = JSON.stringify(modalListaAdic);
     }
   };
 
   window.modalCambiarPrecioAdic = function(idx, val) {
     if (modalListaAdic[idx]) {
       modalListaAdic[idx].precio = parseFloat(val) || 0;
-      renderModalAdicionales();
+      if (modalItemsJson) modalItemsJson.value = JSON.stringify(modalListaAdic);
+      let totalAdic = 0;
+      modalListaAdic.forEach(it => { totalAdic += (parseFloat(it.precio) || 0); });
+      const baseVal = parseFloat(modalPrecioBaseInput.value) || 0;
+      const totalVal = baseVal + totalAdic;
+      if (modalTotalPreview) {
+        modalTotalPreview.textContent = '$' + totalVal.toLocaleString('es-CO');
+      }
     }
   };
 
@@ -772,20 +779,33 @@
     renderModalAdicionales();
   };
 
+  function enfocarModalUltimoAdic() {
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('.input-modal-adic');
+      if (inputs.length > 0) {
+        const last = inputs[inputs.length - 1];
+        last.focus();
+        last.select();
+      }
+    }, 50);
+  }
+
   document.querySelectorAll('.btn-modal-add-adic').forEach(btn => {
     btn.addEventListener('click', function() {
       const nombre = this.getAttribute('data-nombre');
       const precio = parseFloat(this.getAttribute('data-precio')) || 0;
       modalListaAdic.push({ nombre, precio });
       renderModalAdicionales();
+      enfocarModalUltimoAdic();
     });
   });
 
   const btnModalCustom = document.getElementById('btnModalAddCustom');
   if (btnModalCustom) {
     btnModalCustom.addEventListener('click', function() {
-      modalListaAdic.push({ nombre: 'Adicional / Desenrede', precio: 10000 });
+      modalListaAdic.push({ nombre: 'Adicional Personalizado', precio: 10000 });
       renderModalAdicionales();
+      enfocarModalUltimoAdic();
     });
   }
 
