@@ -14,13 +14,14 @@
       </h1>
     </div>
     <p class="text-secondary small mb-0 mt-1 ms-4 ps-2">
-      {{ 'Modificar servicio, paciente, estilista o fecha de atención del turno' if cita else 'Reserva de turno para baño, corte, deslanado y estética canina y felina' }}
+      {{ 'Modificar servicio, adicionales, paciente, estilista o fecha de atención del turno' if cita else 'Reserva de turno para baño, corte, deslanado, desenrede y estética canina y felina' }}
     </p>
   </div>
 </div>
 
 <form method="post" enctype="multipart/form-data" novalidate id="form-cita-spa">
   {{ form.csrf_token }}
+  {{ form.items_adicionales_json(id="inputItemsAdicionalesJson") }}
 
   <div class="row g-4">
     {# Bloque 1: Paciente y Tutor #}
@@ -34,6 +35,32 @@
           <span class="badge badge-sandia-rosa rounded-pill px-2 py-1 small">Requerido</span>
         </div>
         <div class="card-body p-4">
+
+          {# BUSCADOR RÁPIDO EN VIVO (FILTRO INTELIGENTE) #}
+          <div class="mb-3 position-relative">
+            <label class="form-label small fw-semibold text-secondary mb-1" for="buscarTutorMascota">
+              <i class="bi bi-search text-danger me-1"></i>Buscar rápido por Tutor o Paciente
+            </label>
+            <div class="input-group">
+              <span class="input-group-text bg-white border-end-0 text-danger">
+                <i class="bi bi-search"></i>
+              </span>
+              <input type="search" class="form-control border-start-0 bg-white ps-0" id="buscarTutorMascota" 
+                     placeholder="Escribe nombre de tutor, cédula, teléfono o nombre de mascota..." autocomplete="off">
+              <button class="btn btn-outline-secondary btn-sm" type="button" id="btnLimpiarBusqueda" title="Limpiar filtro" style="display: none;">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            
+            {# Menú flotante de coincidencias instantáneas #}
+            <div class="list-group shadow-lg border rounded-3 position-absolute w-100 overflow-hidden d-none" 
+                 id="menuResultadosBusqueda" 
+                 style="z-index: 1050; max-height: 280px; overflow-y: auto; top: 100%; left: 0;">
+            </div>
+            <div class="form-text small text-muted">Escribe para filtrar tutores y mascotas sin tener que hacer scroll.</div>
+          </div>
+
+          {# SELECT TUTOR #}
           <div class="mb-3">
             <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.tutor_id.id }}">
               <i class="bi bi-person-fill text-danger me-1"></i>Tutor Responsable *
@@ -42,6 +69,7 @@
             {% for error in form.tutor_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
           </div>
 
+          {# SELECT MASCOTA #}
           <div class="mb-3">
             <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.mascota_id.id }}">
               <i class="bi bi-tag-fill text-danger me-1"></i>Mascota / Paciente *
@@ -50,15 +78,32 @@
             {% for error in form.mascota_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
           </div>
 
+          {# TARJETA DE RESUMEN DEL TUTOR Y PACIENTE SELECCIONADO #}
+          <div id="resumenSeleccion" class="p-3 rounded-3 mb-3 bg-light border d-none">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="small fw-bold text-sandia-rosa text-uppercase">
+                <i class="bi bi-check2-circle me-1"></i> Seleccionado
+              </span>
+              <span class="badge bg-white text-secondary border small" id="badgeEspecieRaza">🐾 Mascota</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="fs-4" id="resumenEmoji">🐾</span>
+              <div class="min-w-0">
+                <div class="fw-bold text-dark fs-6 text-truncate" id="resumenMascotaNombre">Nombre de la Mascota</div>
+                <div class="small text-secondary text-truncate" id="resumenTutorInfo">Tutor: - · Tel: -</div>
+              </div>
+            </div>
+          </div>
+
           <div class="p-3 rounded-4 mb-0" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%); border: 1.5px solid #FECDD3;">
             <div class="small fw-bold text-danger mb-2 d-flex align-items-center gap-1" style="color: #BE123C !important;">
               <i class="bi bi-info-circle-fill"></i> ¿El tutor o paciente no están registrados?
             </div>
             <div class="d-flex gap-2 flex-wrap align-items-center">
-              <a href="{{ url_for('tutores.nuevo') }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 shadow-xs">
+              <a href="{{ url_for('tutores.nuevo') }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 shadow-xs" target="_blank">
                 <i class="bi bi-person-plus-fill me-1" style="color: #E11D48;"></i>Crear nuevo tutor
               </a>
-              <a href="{{ url_for('mascotas.nueva') }}" class="btn btn-sm btn-sandia-coral rounded-pill px-3 shadow-xs">
+              <a href="{{ url_for('mascotas.nueva') }}" class="btn btn-sm btn-sandia-coral rounded-pill px-3 shadow-xs" target="_blank">
                 <i class="bi bi-plus-circle-fill me-1"></i>Crear nueva mascota
               </a>
             </div>
@@ -80,7 +125,7 @@
         <div class="card-body p-4">
           <div class="mb-3">
             <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.servicio_spa_id.id }}">
-              Servicio de Spa o Peluquería *
+              <i class="bi bi-scissors text-danger me-1"></i>Servicio Principal de Spa o Peluquería *
             </label>
             {{ form.servicio_spa_id(class_="form-select bg-light" + (" is-invalid" if form.servicio_spa_id.errors else "")) }}
             {% for error in form.servicio_spa_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
@@ -128,7 +173,7 @@
             <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.notas_ingreso.id }}">
               <i class="bi bi-card-text text-muted me-1"></i>Notas de Ingreso y Condiciones Especiales
             </label>
-            {{ form.notas_ingreso(class_="form-control bg-light", rows="2", placeholder="Nudos, corte de uñas, limpieza de oídos, comportamiento...") }}
+            {{ form.notas_ingreso(class_="form-control bg-light", rows="2", placeholder="Motas, comportamiento, corte de uñas, limpieza de oídos...") }}
           </div>
 
           <div class="p-3 bg-light rounded-3 border">
@@ -136,7 +181,106 @@
               <i class="bi bi-camera-fill text-danger me-1"></i>Foto de Ingreso / Antes (Opcional)
             </label>
             <input type="file" name="foto_ingreso" id="{{ form.foto_ingreso.id }}" class="form-control" accept="image/*" capture="environment">
-            <div class="form-text small mt-1">Puedes tomar la foto de llegada de la mascota con la cámara o seleccionarla de la galería.</div>
+            <div class="form-text small mt-1">Toma la foto del estado inicial del pelaje con la cámara o súbela de la galería.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Bloque 3: Adicionales, Desenrede y Tarifas de Cobro #}
+    <div class="col-12">
+      <div class="card border-0 shadow-sm rounded-4 bg-white" style="border: 1.5px solid #FECDD3 !important;">
+        <div class="card-header card-header-sandia py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">💵</span>
+            <div>
+              <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Tarifas y Adicionales (Desenrede, Motas, Medicados)</span>
+              <div class="small text-secondary" style="font-size: 0.78rem;">Agrega costos extra de peluquería que se sumarán automáticamente al total y al mensaje de WhatsApp</div>
+            </div>
+          </div>
+          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-bold" id="badgeTotalCobro">
+            Total Estimado: $0
+          </span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-4">
+            {# Columna izquierda: Precio base y botones rápidos de adicionales #}
+            <div class="col-12 col-md-5">
+              <div class="mb-3">
+                <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.precio_personalizado.id }}">
+                  <i class="bi bi-tag text-danger me-1"></i>Precio Base del Servicio ($)
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light text-muted">$</span>
+                  {{ form.precio_personalizado(class_="form-control bg-light fw-bold font-monospace text-dark", id="inputPrecioBase", placeholder="0") }}
+                </div>
+                <div class="form-text small text-muted">Se llena automáticamente con el servicio seleccionado o puedes ajustarlo.</div>
+              </div>
+
+              <div>
+                <label class="form-label small fw-semibold text-secondary mb-2">
+                  <i class="bi bi-plus-circle text-danger me-1"></i>Añadir Adicionales Frecuentes:
+                </label>
+                <div class="d-flex flex-wrap gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-add-adicional" data-nombre="Desenrede y Desmotado" data-precio="15000">
+                    + 🧶 Desenrede ($15.000)
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-add-adicional" data-nombre="Baño Medicado / Antipulgas" data-precio="12000">
+                    + 🧼 Baño Medicado ($12.000)
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-add-adicional" data-nombre="Deslanado Profundo Extra" data-precio="20000">
+                    + 🐶 Deslanado ($20.000)
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-add-adicional" data-nombre="Corte de Uñas y Oídos Especial" data-precio="8000">
+                    + 🐾 Uñas / Oídos ($8.000)
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="btnNuevoAdicionalCustom">
+                    + ➕ Otro Concepto
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {# Columna derecha: Tabla de adicionales agregados y desglose final #}
+            <div class="col-12 col-md-7">
+              <label class="form-label small fw-semibold text-secondary mb-2">
+                <i class="bi bi-list-check text-danger me-1"></i>Desglose de Adicionales en este Turno:
+              </label>
+
+              <div class="table-responsive border rounded-3 bg-light p-2 mb-3">
+                <table class="table table-sm align-middle table-borderless mb-0" id="tablaAdicionales">
+                  <thead>
+                    <tr class="border-bottom text-secondary small text-uppercase">
+                      <th>Concepto / Adicional</th>
+                      <th style="width: 140px;">Valor ($)</th>
+                      <th style="width: 45px;" class="text-center"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyAdicionales">
+                    <!-- Filas dinámicas generadas por JavaScript -->
+                  </tbody>
+                </table>
+                <div id="sinAdicionalesMsg" class="text-center text-muted small py-3">
+                  <i class="bi bi-info-circle me-1"></i> No se han añadido cargos adicionales. Usa los botones de la izquierda para agregar desenrede o extras.
+                </div>
+              </div>
+
+              {# Cuadro Resumen Total #}
+              <div class="p-3 rounded-3 border bg-white shadow-xs">
+                <div class="d-flex justify-content-between align-items-center small text-secondary mb-1">
+                  <span>Servicio Principal:</span>
+                  <span class="font-monospace fw-semibold text-dark" id="resumenPrecioServicio">$0</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center small text-secondary mb-2">
+                  <span>Total Adicionales / Desenrede:</span>
+                  <span class="font-monospace fw-semibold text-danger" id="resumenPrecioAdicionales">$0</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="fw-bold text-dark fs-6">Total Estimado a Cobrar:</span>
+                  <span class="fw-bold text-success fs-5 font-monospace" id="resumenPrecioTotal">$0</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -160,57 +304,389 @@
 
 {% block scripts %}
 <script>
+  // Datos del backend
+  const tutoresData = {{ (tutores_data or [])|tojson }};
   const mascotasData = {{ (mascotas_data or [])|tojson }};
+  const serviciosData = {{ (servicios_data or [])|tojson }};
+  
+  // Elementos del DOM
   const selectTutor = document.getElementById('{{ form.tutor_id.id }}');
   const selectMascota = document.getElementById('{{ form.mascota_id.id }}');
+  const selectServicio = document.getElementById('{{ form.servicio_spa_id.id }}');
+  const inputPrecioBase = document.getElementById('inputPrecioBase');
+  const inputItemsJson = document.getElementById('inputItemsAdicionalesJson');
+  const buscarInput = document.getElementById('buscarTutorMascota');
+  const menuResultados = document.getElementById('menuResultadosBusqueda');
+  const btnLimpiar = document.getElementById('btnLimpiarBusqueda');
+  const tbodyAdicionales = document.getElementById('tbodyAdicionales');
+  const sinAdicionalesMsg = document.getElementById('sinAdicionalesMsg');
+  const resumenSeleccion = document.getElementById('resumenSeleccion');
 
-  // Filtrado dinámico de mascotas al cambiar de tutor
-  if (selectTutor && selectMascota && mascotasData.length > 0) {
-    function actualizarOpcionesMascota() {
-      const tutorIdSeleccionado = parseInt(selectTutor.value, 10);
-      const valorMascotaActual = parseInt(selectMascota.value, 10);
+  // Estado de adicionales
+  let listaAdicionales = [];
 
-      // Limpiar opciones
-      selectMascota.innerHTML = '';
-      
-      const opcionVacia = document.createElement('option');
-      opcionVacia.value = '';
-      opcionVacia.textContent = '-- Seleccionar mascota --';
-      selectMascota.appendChild(opcionVacia);
-
-      const mascotasFiltradas = tutorIdSeleccionado
-        ? mascotasData.filter(m => m.tutor_id === tutorIdSeleccionado)
-        : mascotasData;
-
-      mascotasFiltradas.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m.id;
-        opt.textContent = `${m.emoji} ${m.nombre} (${m.especie})`;
-        if (m.id === valorMascotaActual) {
-          opt.selected = true;
-        }
-        selectMascota.appendChild(opt);
-      });
-
-      if (mascotasFiltradas.length === 1 && tutorIdSeleccionado) {
-        selectMascota.value = mascotasFiltradas[0].id;
+  // Precargar adicionales existentes si es edición
+  try {
+    if (inputItemsJson && inputItemsJson.value) {
+      const parsed = JSON.parse(inputItemsJson.value);
+      if (Array.isArray(parsed)) {
+        listaAdicionales = parsed;
       }
     }
+  } catch (e) {
+    console.error('Error al parsear adicionales iniciales:', e);
+  }
 
-    selectTutor.addEventListener('change', actualizarOpcionesMascota);
+  // Si no hay json pero hay recargo legacy
+  {% if cita and cita.recargo_adicional and cita.recargo_adicional > 0 %}
+    if (listaAdicionales.length === 0) {
+      listaAdicionales.push({
+        nombre: '{{ cita.concepto_adicional or "Recargo / Desenrede" }}',
+        precio: {{ cita.recargo_adicional|float }}
+      });
+    }
+  {% endif %}
 
+  // ==========================================
+  // 1. FILTRADO Y BÚSQUEDA RÁPIDA DE TUTOR/PACIENTE
+  // ==========================================
+  function normalizarTexto(txt) {
+    return (txt || '').toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  }
+
+  function actualizarOpcionesMascota(mantenerSeleccion = false) {
+    const tutorIdSeleccionado = parseInt(selectTutor.value, 10);
+    const valorMascotaActual = mantenerSeleccion ? parseInt(selectMascota.value, 10) : null;
+
+    selectMascota.innerHTML = '';
+    const opcionVacia = document.createElement('option');
+    opcionVacia.value = '';
+    opcionVacia.textContent = '-- Seleccionar mascota --';
+    selectMascota.appendChild(opcionVacia);
+
+    const mascotasFiltradas = tutorIdSeleccionado
+      ? mascotasData.filter(m => m.tutor_id === tutorIdSeleccionado)
+      : mascotasData;
+
+    mascotasFiltradas.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = `${m.emoji || '🐾'} ${m.nombre} (${m.especie})`;
+      if (valorMascotaActual && m.id === valorMascotaActual) {
+        opt.selected = true;
+      }
+      selectMascota.appendChild(opt);
+    });
+
+    if (mascotasFiltradas.length === 1 && tutorIdSeleccionado) {
+      selectMascota.value = mascotasFiltradas[0].id;
+    }
+
+    actualizarResumenSeleccion();
+  }
+
+  function seleccionarTutorYMascota(tutorId, mascotaId) {
+    if (tutorId) {
+      selectTutor.value = tutorId;
+      actualizarOpcionesMascota();
+    }
+    if (mascotaId) {
+      selectMascota.value = mascotaId;
+    }
+    actualizarResumenSeleccion();
+    cerrarMenuResultados();
+    if (buscarInput) {
+      buscarInput.value = '';
+      if (btnLimpiar) btnLimpiar.style.display = 'none';
+    }
+  }
+
+  function actualizarResumenSeleccion() {
+    const tutorId = parseInt(selectTutor.value, 10);
+    const mascotaId = parseInt(selectMascota.value, 10);
+
+    if (!tutorId && !mascotaId) {
+      if (resumenSeleccion) resumenSeleccion.classList.add('d-none');
+      return;
+    }
+
+    const tutorObj = tutoresData.find(t => t.id === tutorId);
+    const mascotaObj = mascotasData.find(m => m.id === mascotaId);
+
+    if (resumenSeleccion) {
+      resumenSeleccion.classList.remove('d-none');
+      document.getElementById('resumenMascotaNombre').textContent = mascotaObj ? mascotaObj.nombre : (tutorObj ? `Mascotas de ${tutorObj.nombre}` : 'Mascota');
+      document.getElementById('resumenEmoji').textContent = mascotaObj ? (mascotaObj.emoji || '🐾') : '👤';
+      
+      const docTutor = tutorObj && tutorObj.documento ? ` · Doc: ${tutorObj.documento}` : '';
+      const telTutor = tutorObj && tutorObj.telefono ? ` · Tel: ${tutorObj.telefono}` : '';
+      document.getElementById('resumenTutorInfo').textContent = tutorObj ? `Tutor: ${tutorObj.nombre}${docTutor}${telTutor}` : 'Sin tutor asignado';
+      
+      const badgeEspecie = document.getElementById('badgeEspecieRaza');
+      if (badgeEspecie) {
+        badgeEspecie.textContent = mascotaObj ? `${mascotaObj.especie}${mascotaObj.raza ? ' · ' + mascotaObj.raza : ''}` : 'Tutor seleccionado';
+      }
+    }
+  }
+
+  function cerrarMenuResultados() {
+    if (menuResultados) {
+      menuResultados.classList.add('d-none');
+      menuResultados.innerHTML = '';
+    }
+  }
+
+  if (buscarInput) {
+    buscarInput.addEventListener('input', function() {
+      const q = normalizarTexto(this.value);
+      if (btnLimpiar) {
+        btnLimpiar.style.display = q.length > 0 ? 'block' : 'none';
+      }
+
+      if (q.length < 2) {
+        cerrarMenuResultados();
+        return;
+      }
+
+      // Buscar tanto en mascotas como en tutores
+      const mascotasEncontradas = mascotasData.filter(m => 
+        normalizarTexto(m.nombre).includes(q) || 
+        normalizarTexto(m.tutor_nombre).includes(q) ||
+        normalizarTexto(m.especie).includes(q)
+      );
+
+      const tutoresEncontrados = tutoresData.filter(t => 
+        normalizarTexto(t.nombre).includes(q) || 
+        normalizarTexto(t.documento).includes(q) ||
+        normalizarTexto(t.telefono).includes(q)
+      );
+
+      menuResultados.innerHTML = '';
+
+      if (mascotasEncontradas.length === 0 && tutoresEncontrados.length === 0) {
+        const itemVacio = document.createElement('div');
+        itemVacio.className = 'list-group-item text-secondary py-3 text-center bg-white small';
+        itemVacio.innerHTML = '<i class="bi bi-info-circle me-1"></i> No se encontraron tutores o pacientes coincidentes.';
+        menuResultados.appendChild(itemVacio);
+      } else {
+        // Renderizar pacientes primero
+        if (mascotasEncontradas.length > 0) {
+          const encabezadoMascotas = document.createElement('div');
+          encabezadoMascotas.className = 'list-group-item bg-light text-secondary py-1 px-3 small fw-bold text-uppercase';
+          encabezadoMascotas.style.fontSize = '0.72rem';
+          encabezadoMascotas.innerHTML = '<i class="bi bi-tag-fill text-danger me-1"></i> Pacientes Encontrados';
+          menuResultados.appendChild(encabezadoMascotas);
+
+          mascotasEncontradas.slice(0, 6).forEach(m => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'list-group-item list-group-item-action py-2 px-3 d-flex align-items-center justify-content-between';
+            btn.innerHTML = `
+              <div class="d-flex align-items-center gap-2 min-w-0">
+                <span class="fs-5">${m.emoji || '🐾'}</span>
+                <div class="min-w-0 text-start">
+                  <div class="fw-bold text-dark small text-truncate">${m.nombre} <span class="badge bg-danger-subtle text-danger border small" style="font-size: 0.68rem;">${m.especie}</span></div>
+                  <div class="text-secondary small text-truncate" style="font-size: 0.76rem;"><i class="bi bi-person me-1"></i>Tutor: ${m.tutor_nombre || 'Sin asignar'}</div>
+                </div>
+              </div>
+              <span class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1 small">Seleccionar</span>
+            `;
+            btn.addEventListener('click', () => {
+              seleccionarTutorYMascota(m.tutor_id, m.id);
+            });
+            menuResultados.appendChild(btn);
+          });
+        }
+
+        // Renderizar tutores
+        if (tutoresEncontrados.length > 0) {
+          const encabezadoTutores = document.createElement('div');
+          encabezadoTutores.className = 'list-group-item bg-light text-secondary py-1 px-3 small fw-bold text-uppercase';
+          encabezadoTutores.style.fontSize = '0.72rem';
+          encabezadoTutores.innerHTML = '<i class="bi bi-person-fill text-danger me-1"></i> Tutores Encontrados';
+          menuResultados.appendChild(encabezadoTutores);
+
+          tutoresEncontrados.slice(0, 6).forEach(t => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'list-group-item list-group-item-action py-2 px-3 d-flex align-items-center justify-content-between';
+            const infoDoc = t.documento ? ` · Doc: ${t.documento}` : '';
+            const infoTel = t.telefono ? ` · Tel: ${t.telefono}` : '';
+            btn.innerHTML = `
+              <div class="d-flex align-items-center gap-2 min-w-0">
+                <span class="fs-5 text-secondary"><i class="bi bi-person-circle"></i></span>
+                <div class="min-w-0 text-start">
+                  <div class="fw-bold text-dark small text-truncate">${t.nombre}</div>
+                  <div class="text-secondary small text-truncate" style="font-size: 0.76rem;">${infoDoc}${infoTel}</div>
+                </div>
+              </div>
+              <span class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1 small">Elegir Tutor</span>
+            `;
+            btn.addEventListener('click', () => {
+              seleccionarTutorYMascota(t.id, null);
+            });
+            menuResultados.appendChild(btn);
+          });
+        }
+      }
+
+      menuResultados.classList.remove('d-none');
+    });
+
+    if (btnLimpiar) {
+      btnLimpiar.addEventListener('click', function() {
+        buscarInput.value = '';
+        btnLimpiar.style.display = 'none';
+        cerrarMenuResultados();
+      });
+    }
+
+    // Cerrar al hacer clic fuera
+    document.addEventListener('click', function(e) {
+      if (!menuResultados.contains(e.target) && e.target !== buscarInput) {
+        cerrarMenuResultados();
+      }
+    });
+  }
+
+  // Eventos de cambios en selects manuales
+  if (selectTutor) {
+    selectTutor.addEventListener('change', () => actualizarOpcionesMascota(false));
+  }
+
+  if (selectMascota) {
     selectMascota.addEventListener('change', function() {
       const mascotaId = parseInt(this.value, 10);
       const mascotaObj = mascotasData.find(m => m.id === mascotaId);
       if (mascotaObj && mascotaObj.tutor_id && (!selectTutor.value || parseInt(selectTutor.value, 10) !== mascotaObj.tutor_id)) {
         selectTutor.value = mascotaObj.tutor_id;
       }
+      actualizarResumenSeleccion();
     });
+  }
 
-    // Si ya hay un tutor preseleccionado
-    if (selectTutor.value && !selectMascota.value) {
-      actualizarOpcionesMascota();
+  // ==========================================
+  // 2. GESTIÓN DE SERVICIOS Y ADICIONALES (DESENREDE, ETC.)
+  // ==========================================
+  function actualizarPrecioBaseDesdeServicio() {
+    const servicioId = parseInt(selectServicio.value, 10);
+    const servicioObj = serviciosData.find(s => s.id === servicioId);
+    if (servicioObj) {
+      if (!inputPrecioBase.value || parseFloat(inputPrecioBase.value) === 0) {
+        inputPrecioBase.value = servicioObj.precio;
+      }
+      // Actualizar duración estimada por defecto si está vacía
+      const inputDuracion = document.getElementById('inputDuracionSpa');
+      if (inputDuracion && (!inputDuracion.value || parseInt(inputDuracion.value, 10) <= 0)) {
+        inputDuracion.value = servicioObj.duracion;
+      }
     }
+    renderizarAdicionalesYTotales();
+  }
+
+  if (selectServicio) {
+    selectServicio.addEventListener('change', function() {
+      const servicioId = parseInt(this.value, 10);
+      const servicioObj = serviciosData.find(s => s.id === servicioId);
+      if (servicioObj) {
+        inputPrecioBase.value = servicioObj.precio;
+      }
+      renderizarAdicionalesYTotales();
+    });
+  }
+
+  if (inputPrecioBase) {
+    inputPrecioBase.addEventListener('input', renderizarAdicionalesYTotales);
+  }
+
+  function renderizarAdicionalesYTotales() {
+    tbodyAdicionales.innerHTML = '';
+    let totalAdicionales = 0;
+
+    if (listaAdicionales.length === 0) {
+      if (sinAdicionalesMsg) sinAdicionalesMsg.classList.remove('d-none');
+    } else {
+      if (sinAdicionalesMsg) sinAdicionalesMsg.classList.add('d-none');
+
+      listaAdicionales.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-bottom bg-white';
+        tr.innerHTML = `
+          <td class="py-2">
+            <input type="text" class="form-control form-control-sm bg-light" value="${item.nombre || ''}" 
+                   placeholder="Ej: Desenrede, motas..." data-idx="${index}" onchange="cambiarNombreAdicional(${index}, this.value)">
+          </td>
+          <td class="py-2">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-light text-muted">$</span>
+              <input type="number" class="form-control form-control-sm bg-light fw-bold font-monospace" value="${item.precio || 0}" 
+                     min="0" step="500" data-idx="${index}" onchange="cambiarPrecioAdicional(${index}, this.value)">
+            </div>
+          </td>
+          <td class="py-2 text-center">
+            <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="eliminarAdicional(${index})" title="Eliminar adicional">
+              <i class="bi bi-trash3-fill"></i>
+            </button>
+          </td>
+        `;
+        tbodyAdicionales.appendChild(tr);
+        totalAdicionales += (parseFloat(item.precio) || 0);
+      });
+    }
+
+    // Sincronizar hidden input
+    if (inputItemsJson) {
+      inputItemsJson.value = JSON.stringify(listaAdicionales);
+    }
+
+    // Calcular totales
+    const precioBase = parseFloat(inputPrecioBase.value) || 0;
+    const precioTotal = precioBase + totalAdicionales;
+
+    const formatoCOP = (val) => '$' + val.toLocaleString('es-CO');
+
+    document.getElementById('resumenPrecioServicio').textContent = formatoCOP(precioBase);
+    document.getElementById('resumenPrecioAdicionales').textContent = formatoCOP(totalAdicionales);
+    document.getElementById('resumenPrecioTotal').textContent = formatoCOP(precioTotal);
+    document.getElementById('badgeTotalCobro').textContent = 'Total Estimado: ' + formatoCOP(precioTotal);
+  }
+
+  window.cambiarNombreAdicional = function(index, nuevoNombre) {
+    if (listaAdicionales[index]) {
+      listaAdicionales[index].nombre = nuevoNombre.trim();
+      renderizarAdicionalesYTotales();
+    }
+  };
+
+  window.cambiarPrecioAdicional = function(index, nuevoPrecio) {
+    if (listaAdicionales[index]) {
+      listaAdicionales[index].precio = parseFloat(nuevoPrecio) || 0;
+      renderizarAdicionalesYTotales();
+    }
+  };
+
+  window.eliminarAdicional = function(index) {
+    listaAdicionales.splice(index, 1);
+    renderizarAdicionalesYTotales();
+  };
+
+  // Botones de adicionales rápidos
+  document.querySelectorAll('.btn-add-adicional').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const nombre = this.getAttribute('data-nombre');
+      const precio = parseFloat(this.getAttribute('data-precio')) || 0;
+      listaAdicionales.push({ nombre, precio });
+      renderizarAdicionalesYTotales();
+    });
+  });
+
+  // Botón custom adicional
+  const btnCustom = document.getElementById('btnNuevoAdicionalCustom');
+  if (btnCustom) {
+    btnCustom.addEventListener('click', function() {
+      listaAdicionales.push({ nombre: 'Adicional / Desenrede', precio: 10000 });
+      renderizarAdicionalesYTotales();
+    });
   }
 
   // Chips de duración rápida
@@ -222,5 +698,15 @@
       }
     });
   });
+
+  // Inicialización en carga
+  if (selectTutor.value) {
+    actualizarOpcionesMascota(true);
+  }
+  if (selectServicio.value && (!inputPrecioBase.value || parseFloat(inputPrecioBase.value) === 0)) {
+    actualizarPrecioBaseDesdeServicio();
+  } else {
+    renderizarAdicionalesYTotales();
+  }
 </script>
 {% endblock %}

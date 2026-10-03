@@ -277,10 +277,16 @@ class ConfiguracionSistema(BaseModel):
     def _cache(cls):
         """Carga todas las filas una sola vez por petición (o contexto de app)."""
         if not has_app_context():
-            return {fila.clave: fila for fila in db.session.execute(select(cls)).scalars()}
+            try:
+                return {fila.clave: fila for fila in db.session.execute(select(cls)).scalars()}
+            except Exception:
+                return {}
         cache = getattr(g, "_configuracion_cache", None)
         if cache is None:
-            cache = {fila.clave: fila for fila in db.session.execute(select(cls)).scalars()}
+            try:
+                cache = {fila.clave: fila for fila in db.session.execute(select(cls)).scalars()}
+            except Exception:
+                cache = {}
             g._configuracion_cache = cache
         return cache
 
@@ -1271,6 +1277,11 @@ class CitaSpa(BaseModel):
     duracion_minutos = db.Column(db.Integer, nullable=False, default=60)
     estado = db.Column(db.String(20), nullable=False, default="programada")
 
+    precio_personalizado = db.Column(db.Numeric(10, 2), nullable=True)
+    recargo_adicional = db.Column(db.Numeric(10, 2), nullable=False, default=Decimal("0.00"))
+    concepto_adicional = db.Column(db.String(255), nullable=True)
+    items_adicionales_json = db.Column(db.Text, nullable=True)
+
     notas_ingreso = db.Column(db.Text)
     notas_salida = db.Column(db.Text)
     foto_ingreso = db.Column(db.String(255))
@@ -1322,8 +1333,59 @@ class CitaSpa(BaseModel):
         return ESTADOS_SPA.get(self.estado, self.estado)
 
     @property
+    def precio_base_efectivo(self) -> Decimal:
+        if self.precio_personalizado is not None:
+            return Decimal(str(self.precio_personalizado))
+        if self.servicio_spa and self.servicio_spa.precio_sugerido is not None:
+            return Decimal(str(self.servicio_spa.precio_sugerido))
+        return Decimal("0.00")
+
+    @property
+    def lista_adicionales(self) -> list[dict]:
+        """Devuelve la lista de servicios/recargos adicionales [ { 'nombre': str, 'precio': float } ]."""
+        import json
+        resultado = []
+        if self.items_adicionales_json:
+            try:
+                items = json.loads(self.items_adicionales_json)
+                if isinstance(items, list):
+                    for it in items:
+                        if isinstance(it, dict) and it.get("nombre"):
+                            try:
+                                precio = float(it.get("precio", 0) or 0)
+                            except (ValueError, TypeError):
+                                precio = 0.0
+                            resultado.append({
+                                "nombre": str(it["nombre"]).strip(),
+                                "precio": precio
+                            })
+                    if resultado:
+                        return resultado
+            except Exception:
+                pass
+
+        if self.recargo_adicional and float(self.recargo_adicional) > 0:
+            nombre = self.concepto_adicional.strip() if self.concepto_adicional else "Recargo / Desenrede"
+            resultado.append({
+                "nombre": nombre,
+                "precio": float(self.recargo_adicional)
+            })
+        return resultado
+
+    @property
+    def total_adicionales(self) -> Decimal:
+        total = Decimal("0.00")
+        for it in self.lista_adicionales:
+            total += Decimal(str(it.get("precio", 0)))
+        return total
+
+    @property
+    def precio_total_estimado(self) -> Decimal:
+        return self.precio_base_efectivo + self.total_adicionales
+
+    @property
     def mensaje_whatsapp(self) -> str:
-        """Mensaje pre-redactado de aviso de finalización de grooming con documento."""
+        """Mensaje pre-redactado de aviso de finalización de grooming con desglose de cobro y documento."""
         nombre_tutor = self.tutor.nombre_completo if self.tutor else "Estimado/a cliente"
         nombre_mascota = self.mascota.nombre if self.mascota else "su mascota"
         nombre_servicio = self.servicio_spa.nombre if self.servicio_spa else "Spa"
@@ -1336,11 +1398,24 @@ class CitaSpa(BaseModel):
         elif self.notas_ingreso:
             observaciones += f"📝 *Observaciones de Ingreso:*\n_{self.notas_ingreso.strip()}_\n\n"
 
+        # Desglose claro de valor a pagar (Servicio base + Adicionales / Desenrede = Total)
+        desglose_valores = ""
+        adicionales = self.lista_adicionales
+        if adicionales:
+            desglose_valores += "💵 *Detalle de Cobro:*\n"
+            desglose_valores += f"• {nombre_servicio}: ${self.precio_base_efectivo:,.0f}\n"
+            for ad in adicionales:
+                desglose_valores += f"• {ad.get('nombre', 'Adicional')}: ${float(ad.get('precio', 0)):,.0f}\n"
+            desglose_valores += f"👉 *Total a Cancelar: ${self.precio_total_estimado:,.0f}*\n\n"
+        elif self.precio_total_estimado > 0:
+            desglose_valores += f"💵 *Valor a Cancelar:* ${self.precio_total_estimado:,.0f}\n\n"
+
         return (
             f"🐾 *{clinica_nombre}* ✂️🧼\n"
             f"✨ *¡{nombre_mascota} ESTÁ LISTO/A PARA RECOGIDA!*\n\n"
             f"Hola *{nombre_tutor}*,\n"
             f"Te informamos que *{nombre_mascota}* ha terminado su servicio de *{nombre_servicio}* y ya está listo/a y hermoso/a para su recogida.\n\n"
+            f"{desglose_valores}"
             f"{observaciones}"
             f"📄 *Descargar Certificado de Spa en PDF:*\n"
             f"👉 {url_doc}\n\n"

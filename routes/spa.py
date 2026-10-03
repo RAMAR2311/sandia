@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from forms import (
+    AdicionalesSpaModalForm,
     CambioEstadoSpaForm,
     CitaSpaForm,
     FotoSpaModalForm,
@@ -239,9 +240,37 @@ def cita_nueva():
     form.servicio_spa_id.choices = [(s.id, f"{s.nombre} (${s.precio_sugerido:,.0f} - {s.duracion_minutos} min)") for s in servicios]
     form.groomer_id.choices = [(0, "-- Sin groomer asignado --")] + [(g.id, f"{g.nombre} ({g.rol.capitalize()})") for g in groomers]
 
+    tutores_data = [
+        {
+            "id": t.id,
+            "nombre": t.nombre_completo,
+            "documento": t.documento_texto or "",
+            "telefono": t.telefono or t.whatsapp or "",
+        }
+        for t in tutores
+    ]
+
     mascotas_data = [
-        {"id": m.id, "nombre": m.nombre, "especie": m.especie_etiqueta, "emoji": m.especie_emoji, "tutor_id": m.tutor_id}
+        {
+            "id": m.id,
+            "nombre": m.nombre,
+            "especie": m.especie_etiqueta,
+            "raza": m.raza.nombre if m.raza else "",
+            "emoji": m.especie_emoji,
+            "tutor_id": m.tutor_id,
+            "tutor_nombre": m.tutor.nombre_completo if m.tutor else "",
+        }
         for m in mascotas
+    ]
+
+    servicios_data = [
+        {
+            "id": s.id,
+            "nombre": s.nombre,
+            "precio": float(s.precio_sugerido),
+            "duracion": s.duracion_minutos,
+        }
+        for s in servicios
     ]
 
     # Pre-selección por parámetros GET si vienen desde la ficha de mascota o tutor
@@ -268,6 +297,10 @@ def cita_nueva():
                     groomer_id=form.groomer_id.data if form.groomer_id.data and form.groomer_id.data > 0 else None,
                     fecha_hora=fecha_combinada,
                     duracion_minutos=form.duracion_minutos.data,
+                    precio_personalizado=form.precio_personalizado.data,
+                    recargo_adicional=form.recargo_adicional.data or 0,
+                    concepto_adicional=form.concepto_adicional.data.strip() if form.concepto_adicional.data else None,
+                    items_adicionales_json=form.items_adicionales_json.data if form.items_adicionales_json.data else None,
                     estado="programada",
                     notas_ingreso=form.notas_ingreso.data.strip() if form.notas_ingreso.data else None,
                     foto_ingreso=nombre_foto_ingreso,
@@ -285,7 +318,13 @@ def cita_nueva():
                 current_app.logger.exception("Error al agendar cita de spa")
                 flash("Error al agendar la cita. Verifica los campos e inténtalo de nuevo.", "danger")
 
-    return render_template("spa/form_cita.html", form=form, mascotas_data=mascotas_data)
+    return render_template(
+        "spa/form_cita.html",
+        form=form,
+        tutores_data=tutores_data,
+        mascotas_data=mascotas_data,
+        servicios_data=servicios_data,
+    )
 
 
 @bp.route("/cita/<int:id>/editar", methods=["GET", "POST"])
@@ -325,9 +364,37 @@ def cita_editar(id: int):
     form.servicio_spa_id.choices = [(s.id, f"{s.nombre} (${s.precio_sugerido:,.0f} - {s.duracion_minutos} min)") for s in servicios]
     form.groomer_id.choices = [(0, "-- Sin groomer asignado --")] + [(g.id, f"{g.nombre} ({g.rol.capitalize()})") for g in groomers]
 
+    tutores_data = [
+        {
+            "id": t.id,
+            "nombre": t.nombre_completo,
+            "documento": t.documento_texto or "",
+            "telefono": t.telefono or t.whatsapp or "",
+        }
+        for t in tutores
+    ]
+
     mascotas_data = [
-        {"id": m.id, "nombre": m.nombre, "especie": m.especie_etiqueta, "emoji": m.especie_emoji, "tutor_id": m.tutor_id}
+        {
+            "id": m.id,
+            "nombre": m.nombre,
+            "especie": m.especie_etiqueta,
+            "raza": m.raza.nombre if m.raza else "",
+            "emoji": m.especie_emoji,
+            "tutor_id": m.tutor_id,
+            "tutor_nombre": m.tutor.nombre_completo if m.tutor else "",
+        }
         for m in mascotas
+    ]
+
+    servicios_data = [
+        {
+            "id": s.id,
+            "nombre": s.nombre,
+            "precio": float(s.precio_sugerido),
+            "duracion": s.duracion_minutos,
+        }
+        for s in servicios
     ]
 
     if not form.is_submitted():
@@ -340,6 +407,10 @@ def cita_editar(id: int):
             form.fecha.data = fh.date()
             form.hora.data = fh.time().replace(second=0, microsecond=0)
         form.duracion_minutos.data = cita.duracion_minutos
+        form.precio_personalizado.data = cita.precio_personalizado
+        form.recargo_adicional.data = cita.recargo_adicional
+        form.concepto_adicional.data = cita.concepto_adicional
+        form.items_adicionales_json.data = cita.items_adicionales_json
         form.notas_ingreso.data = cita.notas_ingreso
 
     if form.validate_on_submit():
@@ -353,6 +424,10 @@ def cita_editar(id: int):
                 cita.groomer_id = form.groomer_id.data if form.groomer_id.data and form.groomer_id.data > 0 else None
                 cita.fecha_hora = fecha_combinada
                 cita.duracion_minutos = form.duracion_minutos.data
+                cita.precio_personalizado = form.precio_personalizado.data
+                cita.recargo_adicional = form.recargo_adicional.data or 0
+                cita.concepto_adicional = form.concepto_adicional.data.strip() if form.concepto_adicional.data else None
+                cita.items_adicionales_json = form.items_adicionales_json.data if form.items_adicionales_json.data else None
                 cita.notas_ingreso = form.notas_ingreso.data.strip() if form.notas_ingreso.data else None
                 if nombre_foto_ingreso:
                     ant_foto = cita.foto_ingreso
@@ -372,7 +447,9 @@ def cita_editar(id: int):
     return render_template(
         "spa/form_cita.html",
         form=form,
+        tutores_data=tutores_data,
         mascotas_data=mascotas_data,
+        servicios_data=servicios_data,
         cita=cita,
     )
 
@@ -413,6 +490,7 @@ def cita_detalle(id: int):
     form_estado = CambioEstadoSpaForm(obj=cita)
     form_venta = VincularVentaSpaForm()
     form_foto = FotoSpaModalForm()
+    form_adicionales = AdicionalesSpaModalForm(obj=cita)
     return render_template(
         "spa/cita_detalle.html",
         cita=cita,
@@ -420,7 +498,43 @@ def cita_detalle(id: int):
         form_estado=form_estado,
         form_venta=form_venta,
         form_foto=form_foto,
+        form_adicionales=form_adicionales,
     )
+
+
+@bp.route("/cita/<int:id>/adicionales", methods=["POST"])
+@login_required
+@spa_required
+def cita_guardar_adicionales(id: int):
+    """Guarda o actualiza los servicios adicionales y recargo de desenrede de la cita."""
+    cita = db.session.get(CitaSpa, id)
+    if not cita:
+        flash("La cita de spa no existe.", "danger")
+        return redirect(url_for("spa.agenda"))
+
+    if cita.venta_id and cita.venta and cita.venta.estado != "anulada":
+        flash("No se pueden modificar los costos de una cita que ya fue facturada/pagada en POS.", "warning")
+        return redirect(url_for("spa.cita_detalle", id=id))
+
+    form = AdicionalesSpaModalForm()
+    if form.validate_on_submit():
+        try:
+            cita.precio_personalizado = form.precio_personalizado.data
+            cita.recargo_adicional = form.recargo_adicional.data or 0
+            cita.concepto_adicional = form.concepto_adicional.data.strip() if form.concepto_adicional.data else None
+            cita.items_adicionales_json = form.items_adicionales_json.data if form.items_adicionales_json.data else None
+            db.session.commit()
+            flash("Costos, adicionales y desenrede de la cita actualizados con éxito.", "success")
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Error al guardar adicionales de cita spa %d", id)
+            flash("Error al actualizar adicionales.", "danger")
+    else:
+        for err_list in form.errors.values():
+            for err in err_list:
+                flash(err, "danger")
+
+    return redirect(url_for("spa.cita_detalle", id=id))
 
 
 @bp.route("/cita/<int:id>/vincular-venta", methods=["POST"])

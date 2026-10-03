@@ -361,26 +361,41 @@ def terminal():
                     "mascotas": mascotas_tutor,
                 }
 
-            item_servicio = None
+            items_servicio = []
             if cita.servicio_spa:
-                item_servicio = {
+                items_servicio.append({
                     "producto_id": f"spa_{cita.servicio_spa.id}",
                     "servicio_spa_id": cita.servicio_spa.id,
                     "sku": f"SPA-{cita.servicio_spa.id:02d}",
-                    "nombre": cita.servicio_spa.nombre,
+                    "nombre": f"{cita.servicio_spa.nombre} ({cita.mascota.nombre})" if cita.mascota else cita.servicio_spa.nombre,
                     "tipo": "servicio",
                     "categoria": "spa",
-                    "precio_unitario": float(cita.servicio_spa.precio_sugerido),
+                    "precio_unitario": float(cita.precio_base_efectivo),
                     "cantidad": 1,
                     "descuento": 0,
-                }
+                })
+
+            for idx, ad in enumerate(cita.lista_adicionales, start=1):
+                if float(ad.get("precio", 0)) > 0:
+                    nombre_ad = f"{ad.get('nombre', 'Adicional Spa')} ({cita.mascota.nombre})" if cita.mascota else ad.get('nombre', 'Adicional Spa')
+                    items_servicio.append({
+                        "producto_id": f"spa_adic_{cita.id}_{idx}",
+                        "sku": f"SPA-ADIC-{idx:02d}",
+                        "nombre": nombre_ad,
+                        "tipo": "servicio",
+                        "categoria": "spa",
+                        "precio_unitario": float(ad.get("precio", 0)),
+                        "cantidad": 1,
+                        "descuento": 0,
+                    })
 
             datos_precarga = {
                 "cita_spa_id": cita.id,
                 "tutor": tutor_data,
                 "mascota_id": cita.mascota_id,
                 "mascota_nombre": cita.mascota.nombre if cita.mascota else "",
-                "item": item_servicio,
+                "item": items_servicio[0] if items_servicio else None,
+                "items": items_servicio,
             }
 
     return render_template("pos/terminal.html", turno=turno_activo, datos_precarga=datos_precarga)

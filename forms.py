@@ -476,9 +476,23 @@ class CitaSpaForm(FlaskForm):
     fecha = DateField("Fecha del servicio", validators=[DataRequired("Selecciona la fecha.")])
     hora = TimeField("Hora del servicio", validators=[DataRequired("Selecciona la hora.")])
     duracion_minutos = IntegerField("Duración en minutos", validators=[DataRequired(), NumberRange(min=15, max=480)], default=60)
+    precio_personalizado = DecimalField("Precio base del servicio ($)", validators=[Optional(), NumberRange(min=0)], places=2)
+    recargo_adicional = DecimalField("Recargo / Desenrede ($)", validators=[Optional(), NumberRange(min=0)], default=0, places=2)
+    concepto_adicional = StringField("Detalle del recargo (ej: Desenrede, nudos)", validators=[Optional(), Length(max=255)])
+    items_adicionales_json = HiddenField("Adicionales JSON", validators=[Optional()])
     notas_ingreso = TextAreaField("Notas de ingreso / Estado inicial (opcional)", validators=[Optional(), Length(max=1000)])
     foto_ingreso = FileField("Foto de ingreso / Antes (opcional)", validators=[Optional()])
     enviar = SubmitField("Agendar cita de grooming")
+
+
+class AdicionalesSpaModalForm(FlaskForm):
+    """Formulario modal para gestionar servicios adicionales y recargo de desenrede desde el detalle de la cita."""
+
+    precio_personalizado = DecimalField("Precio Base del Servicio ($)", validators=[Optional(), NumberRange(min=0)], places=2)
+    recargo_adicional = DecimalField("Recargo Adicional ($)", validators=[Optional(), NumberRange(min=0)], places=2)
+    concepto_adicional = StringField("Concepto del Adicional", validators=[Optional(), Length(max=255)])
+    items_adicionales_json = HiddenField("Adicionales JSON", validators=[Optional()])
+    enviar = SubmitField("Guardar Adicionales")
 
 
 class CambioEstadoSpaForm(FlaskForm):

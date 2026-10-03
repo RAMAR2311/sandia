@@ -549,7 +549,20 @@ document.addEventListener('DOMContentLoaded', () => {
       seleccionarCliente(0, datosPrecarga.mascota_id || null);
     }
 
-    if (datosPrecarga.item) {
+    if (datosPrecarga.items && Array.isArray(datosPrecarga.items) && datosPrecarga.items.length > 0) {
+      datosPrecarga.items.forEach(it => {
+        carrito.push({
+          producto_id: it.producto_id,
+          nombre: it.nombre,
+          tipo: it.tipo || 'servicio',
+          categoria: it.categoria || 'spa',
+          precio_unitario: it.precio_unitario,
+          cantidad: it.cantidad || 1,
+          descuento: it.descuento || 0
+        });
+      });
+      renderCarrito();
+    } else if (datosPrecarga.item) {
       carrito.push({
         producto_id: datosPrecarga.item.producto_id,
         nombre: datosPrecarga.item.nombre,

@@ -242,10 +242,49 @@
           </div>
           <div class="col-sm-6">
             <div class="p-3 rounded-3 bg-light border">
-              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-cash-stack me-1 text-success"></i> Tarifa Sugerida</div>
-              <div class="fw-bold text-success font-monospace fs-5 mt-1">{{ cita.servicio_spa.precio_sugerido|cop }}</div>
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-cash-stack me-1 text-danger"></i> Servicio Base</div>
+              <div class="fw-bold text-dark font-monospace fs-5 mt-1">{{ cita.precio_base_efectivo|cop }}</div>
             </div>
           </div>
+          <div class="col-sm-6">
+            <div class="p-3 rounded-3 bg-light border">
+              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-receipt me-1 text-success"></i> Total Estimado a Cobrar</div>
+              <div class="fw-bold text-success font-monospace fs-5 mt-1">{{ cita.precio_total_estimado|cop }}</div>
+            </div>
+          </div>
+        </div>
+
+        {# Adicionales y Desenrede #}
+        <div class="mt-3 p-3 rounded-3 bg-light border">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="small fw-semibold text-secondary text-uppercase">
+              <i class="bi bi-plus-circle text-danger me-1"></i> Cargos Adicionales & Desenrede:
+            </div>
+            {% if not cita.venta and current_user.rol in ('admin', 'recepcion', 'auxiliar', 'groomer') %}
+            <button type="button" class="btn btn-xs btn-sandia-rosa rounded-pill px-2.5 py-1 shadow-xs fw-semibold" data-bs-toggle="modal" data-bs-target="#modalAdicionalesSpa">
+              <i class="bi bi-pencil-fill me-1" style="font-size: 0.7rem;"></i> Gestionar Adicionales
+            </button>
+            {% endif %}
+          </div>
+          {% if cita.lista_adicionales %}
+          <div class="d-flex flex-column gap-1">
+            {% for ad in cita.lista_adicionales %}
+            <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded-2 border small">
+              <span class="text-dark fw-medium"><i class="bi bi-check2 text-danger me-1"></i> {{ ad.nombre }}</span>
+              <span class="font-monospace fw-bold text-success">${{ "{:,.0f}".format(ad.precio) }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="small text-muted d-flex align-items-center justify-content-between">
+            <span>Sin recargos adicionales registrados en este turno.</span>
+            {% if not cita.venta and current_user.rol in ('admin', 'recepcion', 'auxiliar', 'groomer') %}
+            <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0.5" data-bs-toggle="modal" data-bs-target="#modalAdicionalesSpa">
+              + Agregar Desenrede / Extra
+            </button>
+            {% endif %}
+          </div>
+          {% endif %}
         </div>
 
         {% if cita.notas_ingreso %}
@@ -495,6 +534,95 @@
   </div>
 </div>
 
+{# MODAL GESTIONAR ADICIONALES Y DESENREDE #}
+<div class="modal fade" id="modalAdicionalesSpa" tabindex="-1" aria-labelledby="modalAdicionalesSpaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header card-header-sandia py-3 px-4 border-0">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-5">🧶</span>
+          <h5 class="modal-title fw-bold text-sandia-rosa fs-6 mb-0" id="modalAdicionalesSpaLabel" style="font-family: var(--fuente-marca);">
+            Gestionar Adicionales y Desenrede (Turno #{{ cita.id }})
+          </h5>
+        </div>
+        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <form method="post" action="{{ url_for('spa.cita_guardar_adicionales', id=cita.id) }}" id="formModalAdicionales">
+        <div class="modal-body p-4">
+          {{ form_adicionales.csrf_token }}
+          {{ form_adicionales.items_adicionales_json(id="modalItemsJson") }}
+
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1" for="modalPrecioBase">
+                <i class="bi bi-scissors text-danger me-1"></i>Precio Base del Servicio ({{ cita.servicio_spa.nombre }}):
+              </label>
+              <div class="input-group">
+                <span class="input-group-text bg-light text-muted">$</span>
+                <input type="number" name="precio_personalizado" id="modalPrecioBase" class="form-control bg-light fw-bold font-monospace" 
+                       value="{{ cita.precio_base_efectivo|float }}" min="0" step="500">
+              </div>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-semibold text-secondary mb-1">
+                <i class="bi bi-calculator text-success me-1"></i>Total Final Estimado:
+              </label>
+              <div class="p-2 bg-success-subtle border border-success-subtle rounded-3 text-success fw-bold font-monospace fs-5 text-center" id="modalTotalFinalPreview">
+                {{ cita.precio_total_estimado|cop }}
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-2">
+              <i class="bi bi-plus-circle text-danger me-1"></i>Añadir Adicionales Rápidos:
+            </label>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+              <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-modal-add-adic" data-nombre="Desenrede y Desmotado" data-precio="15000">
+                + 🧶 Desenrede ($15.000)
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-modal-add-adic" data-nombre="Baño Medicado / Antipulgas" data-precio="12000">
+                + 🧼 Baño Medicado ($12.000)
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-modal-add-adic" data-nombre="Deslanado Profundo Extra" data-precio="20000">
+                + 🐶 Deslanado ($20.000)
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-danger rounded-pill btn-modal-add-adic" data-nombre="Corte de Uñas Especial" data-precio="8000">
+                + 🐾 Uñas ($8.000)
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="btnModalAddCustom">
+                + ➕ Otro Concepto
+              </button>
+            </div>
+
+            <div class="table-responsive border rounded-3 bg-light p-2">
+              <table class="table table-sm align-middle table-borderless mb-0">
+                <thead>
+                  <tr class="border-bottom text-secondary small text-uppercase">
+                    <th>Concepto / Cargo Adicional</th>
+                    <th style="width: 140px;">Valor ($)</th>
+                    <th style="width: 45px;" class="text-center"></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyModalAdicionales"></tbody>
+              </table>
+              <div id="modalSinAdicMsg" class="text-center text-muted small py-3 d-none">
+                <i class="bi bi-info-circle me-1"></i> No hay cargos adicionales añadidos.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-top p-3 justify-content-between">
+          <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-sandia-coral rounded-pill px-4 shadow-sm fw-bold">
+            <i class="bi bi-check-circle-fill me-1"></i> Guardar Adicionales
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {# MODAL CONFIRMAR ELIMINACIÓN DE CITA SPA #}
 <div class="modal fade" id="modalEliminarCitaSpa" tabindex="-1" aria-labelledby="modalEliminarCitaSpaLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -570,5 +698,101 @@
       console.error(e);
     }
   }
+
+  // Lógica Modal Gestionar Adicionales
+  let modalListaAdic = {{ (cita.lista_adicionales or [])|tojson }};
+  const tbodyModalAdic = document.getElementById('tbodyModalAdicionales');
+  const modalSinMsg = document.getElementById('modalSinAdicMsg');
+  const modalItemsJson = document.getElementById('modalItemsJson');
+  const modalPrecioBaseInput = document.getElementById('modalPrecioBase');
+  const modalTotalPreview = document.getElementById('modalTotalFinalPreview');
+
+  function renderModalAdicionales() {
+    if (!tbodyModalAdic) return;
+    tbodyModalAdic.innerHTML = '';
+    let totalAdic = 0;
+
+    if (modalListaAdic.length === 0) {
+      if (modalSinMsg) modalSinMsg.classList.remove('d-none');
+    } else {
+      if (modalSinMsg) modalSinMsg.classList.add('d-none');
+      modalListaAdic.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-bottom bg-white';
+        tr.innerHTML = `
+          <td class="py-2">
+            <input type="text" class="form-control form-control-sm bg-light" value="${item.nombre || ''}" 
+                   placeholder="Concepto" onchange="modalCambiarNombreAdic(${index}, this.value)">
+          </td>
+          <td class="py-2">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-light text-muted">$</span>
+              <input type="number" class="form-control form-control-sm bg-light fw-bold font-monospace" 
+                     value="${item.precio || 0}" min="0" step="500" onchange="modalCambiarPrecioAdic(${index}, this.value)">
+            </div>
+          </td>
+          <td class="py-2 text-center">
+            <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="modalEliminarAdic(${index})">
+              <i class="bi bi-trash3-fill"></i>
+            </button>
+          </td>
+        `;
+        tbodyModalAdic.appendChild(tr);
+        totalAdic += (parseFloat(item.precio) || 0);
+      });
+    }
+
+    if (modalItemsJson) {
+      modalItemsJson.value = JSON.stringify(modalListaAdic);
+    }
+
+    const baseVal = parseFloat(modalPrecioBaseInput.value) || 0;
+    const totalVal = baseVal + totalAdic;
+    if (modalTotalPreview) {
+      modalTotalPreview.textContent = '$' + totalVal.toLocaleString('es-CO');
+    }
+  }
+
+  window.modalCambiarNombreAdic = function(idx, val) {
+    if (modalListaAdic[idx]) {
+      modalListaAdic[idx].nombre = val.trim();
+      renderModalAdicionales();
+    }
+  };
+
+  window.modalCambiarPrecioAdic = function(idx, val) {
+    if (modalListaAdic[idx]) {
+      modalListaAdic[idx].precio = parseFloat(val) || 0;
+      renderModalAdicionales();
+    }
+  };
+
+  window.modalEliminarAdic = function(idx) {
+    modalListaAdic.splice(idx, 1);
+    renderModalAdicionales();
+  };
+
+  document.querySelectorAll('.btn-modal-add-adic').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const nombre = this.getAttribute('data-nombre');
+      const precio = parseFloat(this.getAttribute('data-precio')) || 0;
+      modalListaAdic.push({ nombre, precio });
+      renderModalAdicionales();
+    });
+  });
+
+  const btnModalCustom = document.getElementById('btnModalAddCustom');
+  if (btnModalCustom) {
+    btnModalCustom.addEventListener('click', function() {
+      modalListaAdic.push({ nombre: 'Adicional / Desenrede', precio: 10000 });
+      renderModalAdicionales();
+    });
+  }
+
+  if (modalPrecioBaseInput) {
+    modalPrecioBaseInput.addEventListener('input', renderModalAdicionales);
+  }
+
+  renderModalAdicionales();
 </script>
 {% endblock %}

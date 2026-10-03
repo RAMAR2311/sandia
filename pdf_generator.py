@@ -911,6 +911,9 @@ def generar_pdf_spa(cita_spa, db_session=None) -> io.BytesIO:
     nombre_mascota = mascota.nombre if mascota else "Paciente"
     especie_raza = f"{mascota.especie.capitalize() if mascota else ''} · {mascota.raza.nombre if mascota and mascota.raza else 'Mestizo'}"
     servicio_nom = cita_spa.servicio_spa.nombre if cita_spa.servicio_spa else "Servicio de Peluquería / Baño"
+    if hasattr(cita_spa, "lista_adicionales") and cita_spa.lista_adicionales:
+        adic_text = ", ".join([f"{a['nombre']} (${float(a.get('precio', 0)):,.0f})" for a in cita_spa.lista_adicionales])
+        servicio_nom += f"<br/><font size=7 color='#64748B'>+ Adicionales: {adic_text}</font>"
     groomer_nom = groomer.nombre if groomer else "Estilista Canino/Felino"
 
     info_data = [
