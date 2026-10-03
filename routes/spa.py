@@ -224,44 +224,12 @@ def agenda():
 def cita_nueva():
     form = CitaSpaForm()
 
-    # Cargar opciones de selects
-    tutores = db.session.execute(select(Tutor).filter_by(activo=True).order_by(Tutor.nombre_completo)).scalars().all()
-    mascotas = db.session.execute(
-        select(Mascota).filter_by(activo=True).options(selectinload(Mascota.tutor)).order_by(Mascota.nombre)
-    ).scalars().all()
+    # Cargar servicios y groomers
     servicios = db.session.execute(select(ServicioSpa).filter_by(activo=True).order_by(ServicioSpa.nombre)).scalars().all()
     groomers = db.session.execute(select(Usuario).filter(Usuario.activo.is_(True), Usuario.rol.in_(("groomer", "auxiliar", "admin"))).order_by(Usuario.nombre)).scalars().all()
 
-    form.tutor_id.choices = [(t.id, f"{t.nombre_completo} (Doc: {t.documento_texto or 'S/N'})") for t in tutores]
-    form.mascota_id.choices = [
-        (m.id, f"{m.nombre} ({m.especie_etiqueta}) - Tutor: {m.tutor.nombre_completo if m.tutor else 'Sin tutor'}")
-        for m in mascotas
-    ]
     form.servicio_spa_id.choices = [(s.id, f"{s.nombre} (${s.precio_sugerido:,.0f} - {s.duracion_minutos} min)") for s in servicios]
     form.groomer_id.choices = [(0, "-- Sin groomer asignado --")] + [(g.id, f"{g.nombre} ({g.rol.capitalize()})") for g in groomers]
-
-    tutores_data = [
-        {
-            "id": t.id,
-            "nombre": t.nombre_completo,
-            "documento": t.documento_texto or "",
-            "telefono": t.telefono or t.whatsapp or "",
-        }
-        for t in tutores
-    ]
-
-    mascotas_data = [
-        {
-            "id": m.id,
-            "nombre": m.nombre,
-            "especie": m.especie_etiqueta,
-            "raza": m.raza.nombre if m.raza else "",
-            "emoji": m.especie_emoji,
-            "tutor_id": m.tutor_id,
-            "tutor_nombre": m.tutor.nombre_completo if m.tutor else "",
-        }
-        for m in mascotas
-    ]
 
     servicios_data = [
         {
@@ -273,26 +241,56 @@ def cita_nueva():
         for s in servicios
     ]
 
-    # Pre-selección por parámetros GET si vienen desde la ficha de mascota o tutor
+    mascota_sel = None
+    tutor_sel = None
+
     mascota_pre = request.args.get("mascota_id", type=int)
-    if mascota_pre and not form.is_submitted():
-        mascota_obj = db.session.get(Mascota, mascota_pre)
-        if mascota_obj:
-            form.mascota_id.data = mascota_obj.id
-            form.tutor_id.data = mascota_obj.tutor_id
+    tutor_pre = request.args.get("tutor_id", type=int)
 
     if not form.is_submitted():
         form.fecha.data = hoy_bogota()
         form.hora.data = obtener_hora_bogota().time().replace(second=0, microsecond=0)
+        if mascota_pre:
+            mascota_sel = db.session.get(Mascota, mascota_pre)
+            if mascota_sel:
+                form.mascota_id.data = str(mascota_sel.id)
+                if mascota_sel.tutor_id:
+                    form.tutor_id.data = str(mascota_sel.tutor_id)
+                    tutor_sel = mascota_sel.tutor
+        elif tutor_pre:
+            tutor_sel = db.session.get(Tutor, tutor_pre)
+            if tutor_sel:
+                form.tutor_id.data = str(tutor_sel.id)
+    else:
+        if form.mascota_id.data:
+            try:
+                mascota_sel = db.session.get(Mascota, int(form.mascota_id.data))
+                if mascota_sel and mascota_sel.tutor:
+                    tutor_sel = mascota_sel.tutor
+            except (ValueError, TypeError):
+                pass
+        if not tutor_sel and form.tutor_id.data:
+            try:
+                tutor_sel = db.session.get(Tutor, int(form.tutor_id.data))
+            except (ValueError, TypeError):
+                pass
 
     if form.validate_on_submit():
+        tutor_id_val = int(form.tutor_id.data) if form.tutor_id.data else None
+        mascota_id_val = int(form.mascota_id.data) if form.mascota_id.data else None
+
+        if not tutor_id_val and mascota_id_val:
+            m_obj = db.session.get(Mascota, mascota_id_val)
+            if m_obj and m_obj.tutor_id:
+                tutor_id_val = m_obj.tutor_id
+
         nombre_foto_ingreso = _procesar_foto_spa(form.foto_ingreso)
-        if not form.foto_ingreso.errors:
+        if not form.foto_ingreso.errors and tutor_id_val and mascota_id_val:
             try:
                 fecha_combinada = datetime.combine(form.fecha.data, form.hora.data, tzinfo=ZONA_BOGOTA)
                 nueva_cita = CitaSpa(
-                    tutor_id=form.tutor_id.data,
-                    mascota_id=form.mascota_id.data,
+                    tutor_id=tutor_id_val,
+                    mascota_id=mascota_id_val,
                     servicio_spa_id=form.servicio_spa_id.data,
                     groomer_id=form.groomer_id.data if form.groomer_id.data and form.groomer_id.data > 0 else None,
                     fecha_hora=fecha_combinada,
@@ -321,8 +319,8 @@ def cita_nueva():
     return render_template(
         "spa/form_cita.html",
         form=form,
-        tutores_data=tutores_data,
-        mascotas_data=mascotas_data,
+        mascota_sel=mascota_sel,
+        tutor_sel=tutor_sel,
         servicios_data=servicios_data,
     )
 
@@ -349,43 +347,11 @@ def cita_editar(id: int):
 
     form = CitaSpaForm()
 
-    tutores = db.session.execute(select(Tutor).filter_by(activo=True).order_by(Tutor.nombre_completo)).scalars().all()
-    mascotas = db.session.execute(
-        select(Mascota).filter_by(activo=True).options(selectinload(Mascota.tutor)).order_by(Mascota.nombre)
-    ).scalars().all()
     servicios = db.session.execute(select(ServicioSpa).filter_by(activo=True).order_by(ServicioSpa.nombre)).scalars().all()
     groomers = db.session.execute(select(Usuario).filter(Usuario.activo.is_(True), Usuario.rol.in_(("groomer", "auxiliar", "admin"))).order_by(Usuario.nombre)).scalars().all()
 
-    form.tutor_id.choices = [(t.id, f"{t.nombre_completo} (Doc: {t.documento_texto or 'S/N'})") for t in tutores]
-    form.mascota_id.choices = [
-        (m.id, f"{m.nombre} ({m.especie_etiqueta}) - Tutor: {m.tutor.nombre_completo if m.tutor else 'Sin tutor'}")
-        for m in mascotas
-    ]
     form.servicio_spa_id.choices = [(s.id, f"{s.nombre} (${s.precio_sugerido:,.0f} - {s.duracion_minutos} min)") for s in servicios]
     form.groomer_id.choices = [(0, "-- Sin groomer asignado --")] + [(g.id, f"{g.nombre} ({g.rol.capitalize()})") for g in groomers]
-
-    tutores_data = [
-        {
-            "id": t.id,
-            "nombre": t.nombre_completo,
-            "documento": t.documento_texto or "",
-            "telefono": t.telefono or t.whatsapp or "",
-        }
-        for t in tutores
-    ]
-
-    mascotas_data = [
-        {
-            "id": m.id,
-            "nombre": m.nombre,
-            "especie": m.especie_etiqueta,
-            "raza": m.raza.nombre if m.raza else "",
-            "emoji": m.especie_emoji,
-            "tutor_id": m.tutor_id,
-            "tutor_nombre": m.tutor.nombre_completo if m.tutor else "",
-        }
-        for m in mascotas
-    ]
 
     servicios_data = [
         {
@@ -397,9 +363,12 @@ def cita_editar(id: int):
         for s in servicios
     ]
 
+    mascota_sel = cita.mascota
+    tutor_sel = cita.tutor
+
     if not form.is_submitted():
-        form.tutor_id.data = cita.tutor_id
-        form.mascota_id.data = cita.mascota_id
+        form.tutor_id.data = str(cita.tutor_id)
+        form.mascota_id.data = str(cita.mascota_id)
         form.servicio_spa_id.data = cita.servicio_spa_id
         form.groomer_id.data = cita.groomer_id or 0
         if cita.fecha_hora:
@@ -412,14 +381,30 @@ def cita_editar(id: int):
         form.concepto_adicional.data = cita.concepto_adicional
         form.items_adicionales_json.data = cita.items_adicionales_json
         form.notas_ingreso.data = cita.notas_ingreso
+    else:
+        if form.mascota_id.data:
+            try:
+                mascota_sel = db.session.get(Mascota, int(form.mascota_id.data))
+                if mascota_sel and mascota_sel.tutor:
+                    tutor_sel = mascota_sel.tutor
+            except (ValueError, TypeError):
+                pass
 
     if form.validate_on_submit():
+        tutor_id_val = int(form.tutor_id.data) if form.tutor_id.data else cita.tutor_id
+        mascota_id_val = int(form.mascota_id.data) if form.mascota_id.data else cita.mascota_id
+
+        if not tutor_id_val and mascota_id_val:
+            m_obj = db.session.get(Mascota, mascota_id_val)
+            if m_obj and m_obj.tutor_id:
+                tutor_id_val = m_obj.tutor_id
+
         nombre_foto_ingreso = _procesar_foto_spa(form.foto_ingreso)
         if not form.foto_ingreso.errors:
             try:
                 fecha_combinada = datetime.combine(form.fecha.data, form.hora.data, tzinfo=ZONA_BOGOTA)
-                cita.tutor_id = form.tutor_id.data
-                cita.mascota_id = form.mascota_id.data
+                cita.tutor_id = tutor_id_val
+                cita.mascota_id = mascota_id_val
                 cita.servicio_spa_id = form.servicio_spa_id.data
                 cita.groomer_id = form.groomer_id.data if form.groomer_id.data and form.groomer_id.data > 0 else None
                 cita.fecha_hora = fecha_combinada
@@ -447,8 +432,8 @@ def cita_editar(id: int):
     return render_template(
         "spa/form_cita.html",
         form=form,
-        tutores_data=tutores_data,
-        mascotas_data=mascotas_data,
+        mascota_sel=mascota_sel,
+        tutor_sel=tutor_sel,
         servicios_data=servicios_data,
         cita=cita,
     )

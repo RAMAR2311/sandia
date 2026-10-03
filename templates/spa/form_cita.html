@@ -21,6 +21,8 @@
 
 <form method="post" enctype="multipart/form-data" novalidate id="form-cita-spa">
   {{ form.csrf_token }}
+  {{ form.mascota_id(id="mascota_id") }}
+  {{ form.tutor_id(id="tutor_id") }}
   {{ form.items_adicionales_json(id="inputItemsAdicionalesJson") }}
 
   <div class="row g-4">
@@ -36,66 +38,65 @@
         </div>
         <div class="card-body p-4">
 
-          {# BUSCADOR RÁPIDO EN VIVO (FILTRO INTELIGENTE) #}
-          <div class="mb-3 position-relative">
-            <label class="form-label small fw-semibold text-secondary mb-1" for="buscarTutorMascota">
-              <i class="bi bi-search text-danger me-1"></i>Buscar rápido por Tutor o Paciente
+          {# 1. Estado Mascota Seleccionada #}
+          <div id="mascota-seleccionada" class="p-3 rounded-4 mb-3 border {{ 'd-none' if not mascota_sel and not tutor_sel else '' }}" 
+               style="background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%); border-color: #FECDD3 !important;">
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar-sandia-circulo fs-2 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm flex-shrink-0" 
+                   style="width: 54px; height: 54px;" data-campo="emoji">
+                {{ mascota_sel.especie_emoji if mascota_sel else '🐾' }}
+              </div>
+              <div class="flex-grow-1 min-w-0">
+                <div class="fw-bold text-dark fs-5" data-campo="nombre">{{ mascota_sel.nombre if mascota_sel else (tutor_sel.nombre_completo if tutor_sel else '') }}</div>
+                <div class="small text-danger fw-semibold" data-campo="detalle">
+                  {{ (mascota_sel.especie_etiqueta ~ (' · ' ~ mascota_sel.raza.nombre if mascota_sel.raza else '')) if mascota_sel else '' }}
+                </div>
+                <div class="small text-secondary mt-1" data-campo="tutor">
+                  {% if tutor_sel %}
+                    Tutor: {{ tutor_sel.nombre_completo }}{{ (' · Tel: ' ~ (tutor_sel.telefono or tutor_sel.whatsapp)) if (tutor_sel.telefono or tutor_sel.whatsapp) else '' }}
+                  {% elif mascota_sel and mascota_sel.tutor %}
+                    Tutor: {{ mascota_sel.tutor.nombre_completo }}{{ (' · Tel: ' ~ (mascota_sel.tutor.telefono or mascota_sel.tutor.whatsapp)) if (mascota_sel.tutor.telefono or mascota_sel.tutor.whatsapp) else '' }}
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="mt-3 pt-2 border-top d-flex justify-content-end" style="border-color: #FECDD3 !important;">
+              <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" id="cambiar-mascota">
+                <i class="bi bi-pencil-square me-1"></i> Cambiar paciente
+              </button>
+            </div>
+          </div>
+
+          {# 2. Buscador en vivo oficial #}
+          <div id="buscador-mascota" class="{{ 'd-none' if mascota_sel or tutor_sel else '' }}">
+            <label class="form-label fw-bold text-dark small text-uppercase" for="buscar-mascota">
+              <i class="bi bi-search text-danger me-1"></i>Buscar paciente o tutor
             </label>
-            <div class="input-group">
+            <div class="input-group mb-2">
               <span class="input-group-text bg-white border-end-0 text-danger">
                 <i class="bi bi-search"></i>
               </span>
-              <input type="search" class="form-control border-start-0 bg-white ps-0" id="buscarTutorMascota" 
-                     placeholder="Escribe nombre de tutor, cédula, teléfono o nombre de mascota..." autocomplete="off">
-              <button class="btn btn-outline-secondary btn-sm" type="button" id="btnLimpiarBusqueda" title="Limpiar filtro" style="display: none;">
-                <i class="bi bi-x-lg"></i>
-              </button>
+              <input class="form-control border-start-0 ps-0 bg-white" type="search" id="buscar-mascota" 
+                     placeholder="Escribe nombre de la mascota, tutor, cédula o teléfono..." autocomplete="off" autofocus>
             </div>
-            
-            {# Menú flotante de coincidencias instantáneas #}
-            <div class="list-group shadow-lg border rounded-3 position-absolute w-100 overflow-hidden d-none" 
-                 id="menuResultadosBusqueda" 
-                 style="z-index: 1050; max-height: 280px; overflow-y: auto; top: 100%; left: 0;">
+            <div class="form-text text-muted small mb-2">
+              Escribe al menos 2 letras para buscar pacientes activos y sus tutores registrados.
             </div>
-            <div class="form-text small text-muted">Escribe para filtrar tutores y mascotas sin tener que hacer scroll.</div>
+            <div class="list-group shadow-sm border rounded-3 overflow-hidden d-none mt-2" id="resultados-mascota" style="max-height: 280px; overflow-y: auto;"></div>
           </div>
 
-          {# SELECT TUTOR #}
-          <div class="mb-3">
-            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.tutor_id.id }}">
-              <i class="bi bi-person-fill text-danger me-1"></i>Tutor Responsable *
-            </label>
-            {{ form.tutor_id(class_="form-select bg-light" + (" is-invalid" if form.tutor_id.errors else "")) }}
-            {% for error in form.tutor_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-          </div>
-
-          {# SELECT MASCOTA #}
-          <div class="mb-3">
-            <label class="form-label small fw-semibold text-secondary mb-1" for="{{ form.mascota_id.id }}">
-              <i class="bi bi-tag-fill text-danger me-1"></i>Mascota / Paciente *
-            </label>
-            {{ form.mascota_id(class_="form-select bg-light" + (" is-invalid" if form.mascota_id.errors else "")) }}
-            {% for error in form.mascota_id.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
-          </div>
-
-          {# TARJETA DE RESUMEN DEL TUTOR Y PACIENTE SELECCIONADO #}
-          <div id="resumenSeleccion" class="p-3 rounded-3 mb-3 bg-light border d-none">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <span class="small fw-bold text-sandia-rosa text-uppercase">
-                <i class="bi bi-check2-circle me-1"></i> Seleccionado
-              </span>
-              <span class="badge bg-white text-secondary border small" id="badgeEspecieRaza">🐾 Mascota</span>
+          {% for error in form.mascota_id.errors %}
+            <div class="alert alert-danger py-2 px-3 small rounded-3 mt-3 mb-0">
+              <i class="bi bi-exclamation-circle me-1"></i> {{ error }}
             </div>
-            <div class="d-flex align-items-center gap-2">
-              <span class="fs-4" id="resumenEmoji">🐾</span>
-              <div class="min-w-0">
-                <div class="fw-bold text-dark fs-6 text-truncate" id="resumenMascotaNombre">Nombre de la Mascota</div>
-                <div class="small text-secondary text-truncate" id="resumenTutorInfo">Tutor: - · Tel: -</div>
-              </div>
+          {% endfor %}
+          {% for error in form.tutor_id.errors %}
+            <div class="alert alert-danger py-2 px-3 small rounded-3 mt-3 mb-0">
+              <i class="bi bi-exclamation-circle me-1"></i> {{ error }}
             </div>
-          </div>
+          {% endfor %}
 
-          <div class="p-3 rounded-4 mb-0" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%); border: 1.5px solid #FECDD3;">
+          <div class="p-3 rounded-4 mb-0 mt-3" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%); border: 1.5px solid #FECDD3;">
             <div class="small fw-bold text-danger mb-2 d-flex align-items-center gap-1" style="color: #BE123C !important;">
               <i class="bi bi-info-circle-fill"></i> ¿El tutor o paciente no están registrados?
             </div>
@@ -214,7 +215,7 @@
                   <span class="input-group-text bg-light text-muted">$</span>
                   {{ form.precio_personalizado(class_="form-control bg-light fw-bold font-monospace text-dark", id="inputPrecioBase", placeholder="0") }}
                 </div>
-                <div class="form-text small text-muted">Se llena automáticamente con el servicio seleccionado o puedes ajustarlo.</div>
+                <div class="form-text small text-muted">Se llena automáticamente con el servicio seleccionado o puedes ajustarlo libremente.</div>
               </div>
 
               <div>
@@ -303,24 +304,17 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ static_url('js/buscar_mascota.js') }}"></script>
 <script>
-  // Datos del backend
-  const tutoresData = {{ (tutores_data or [])|tojson }};
-  const mascotasData = {{ (mascotas_data or [])|tojson }};
+  // Datos de servicios
   const serviciosData = {{ (servicios_data or [])|tojson }};
   
   // Elementos del DOM
-  const selectTutor = document.getElementById('{{ form.tutor_id.id }}');
-  const selectMascota = document.getElementById('{{ form.mascota_id.id }}');
   const selectServicio = document.getElementById('{{ form.servicio_spa_id.id }}');
   const inputPrecioBase = document.getElementById('inputPrecioBase');
   const inputItemsJson = document.getElementById('inputItemsAdicionalesJson');
-  const buscarInput = document.getElementById('buscarTutorMascota');
-  const menuResultados = document.getElementById('menuResultadosBusqueda');
-  const btnLimpiar = document.getElementById('btnLimpiarBusqueda');
   const tbodyAdicionales = document.getElementById('tbodyAdicionales');
   const sinAdicionalesMsg = document.getElementById('sinAdicionalesMsg');
-  const resumenSeleccion = document.getElementById('resumenSeleccion');
 
   // Estado de adicionales
   let listaAdicionales = [];
@@ -348,225 +342,7 @@
   {% endif %}
 
   // ==========================================
-  // 1. FILTRADO Y BÚSQUEDA RÁPIDA DE TUTOR/PACIENTE
-  // ==========================================
-  function normalizarTexto(txt) {
-    return (txt || '').toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  }
-
-  function actualizarOpcionesMascota(mantenerSeleccion = false) {
-    const tutorIdSeleccionado = parseInt(selectTutor.value, 10);
-    const valorMascotaActual = mantenerSeleccion ? parseInt(selectMascota.value, 10) : null;
-
-    selectMascota.innerHTML = '';
-    const opcionVacia = document.createElement('option');
-    opcionVacia.value = '';
-    opcionVacia.textContent = '-- Seleccionar mascota --';
-    selectMascota.appendChild(opcionVacia);
-
-    const mascotasFiltradas = tutorIdSeleccionado
-      ? mascotasData.filter(m => m.tutor_id === tutorIdSeleccionado)
-      : mascotasData;
-
-    mascotasFiltradas.forEach(m => {
-      const opt = document.createElement('option');
-      opt.value = m.id;
-      opt.textContent = `${m.emoji || '🐾'} ${m.nombre} (${m.especie})`;
-      if (valorMascotaActual && m.id === valorMascotaActual) {
-        opt.selected = true;
-      }
-      selectMascota.appendChild(opt);
-    });
-
-    if (mascotasFiltradas.length === 1 && tutorIdSeleccionado) {
-      selectMascota.value = mascotasFiltradas[0].id;
-    }
-
-    actualizarResumenSeleccion();
-  }
-
-  function seleccionarTutorYMascota(tutorId, mascotaId) {
-    if (tutorId) {
-      selectTutor.value = tutorId;
-      actualizarOpcionesMascota();
-    }
-    if (mascotaId) {
-      selectMascota.value = mascotaId;
-    }
-    actualizarResumenSeleccion();
-    cerrarMenuResultados();
-    if (buscarInput) {
-      buscarInput.value = '';
-      if (btnLimpiar) btnLimpiar.style.display = 'none';
-    }
-  }
-
-  function actualizarResumenSeleccion() {
-    const tutorId = parseInt(selectTutor.value, 10);
-    const mascotaId = parseInt(selectMascota.value, 10);
-
-    if (!tutorId && !mascotaId) {
-      if (resumenSeleccion) resumenSeleccion.classList.add('d-none');
-      return;
-    }
-
-    const tutorObj = tutoresData.find(t => t.id === tutorId);
-    const mascotaObj = mascotasData.find(m => m.id === mascotaId);
-
-    if (resumenSeleccion) {
-      resumenSeleccion.classList.remove('d-none');
-      document.getElementById('resumenMascotaNombre').textContent = mascotaObj ? mascotaObj.nombre : (tutorObj ? `Mascotas de ${tutorObj.nombre}` : 'Mascota');
-      document.getElementById('resumenEmoji').textContent = mascotaObj ? (mascotaObj.emoji || '🐾') : '👤';
-      
-      const docTutor = tutorObj && tutorObj.documento ? ` · Doc: ${tutorObj.documento}` : '';
-      const telTutor = tutorObj && tutorObj.telefono ? ` · Tel: ${tutorObj.telefono}` : '';
-      document.getElementById('resumenTutorInfo').textContent = tutorObj ? `Tutor: ${tutorObj.nombre}${docTutor}${telTutor}` : 'Sin tutor asignado';
-      
-      const badgeEspecie = document.getElementById('badgeEspecieRaza');
-      if (badgeEspecie) {
-        badgeEspecie.textContent = mascotaObj ? `${mascotaObj.especie}${mascotaObj.raza ? ' · ' + mascotaObj.raza : ''}` : 'Tutor seleccionado';
-      }
-    }
-  }
-
-  function cerrarMenuResultados() {
-    if (menuResultados) {
-      menuResultados.classList.add('d-none');
-      menuResultados.innerHTML = '';
-    }
-  }
-
-  if (buscarInput) {
-    buscarInput.addEventListener('input', function() {
-      const q = normalizarTexto(this.value);
-      if (btnLimpiar) {
-        btnLimpiar.style.display = q.length > 0 ? 'block' : 'none';
-      }
-
-      if (q.length < 2) {
-        cerrarMenuResultados();
-        return;
-      }
-
-      // Buscar tanto en mascotas como en tutores
-      const mascotasEncontradas = mascotasData.filter(m => 
-        normalizarTexto(m.nombre).includes(q) || 
-        normalizarTexto(m.tutor_nombre).includes(q) ||
-        normalizarTexto(m.especie).includes(q)
-      );
-
-      const tutoresEncontrados = tutoresData.filter(t => 
-        normalizarTexto(t.nombre).includes(q) || 
-        normalizarTexto(t.documento).includes(q) ||
-        normalizarTexto(t.telefono).includes(q)
-      );
-
-      menuResultados.innerHTML = '';
-
-      if (mascotasEncontradas.length === 0 && tutoresEncontrados.length === 0) {
-        const itemVacio = document.createElement('div');
-        itemVacio.className = 'list-group-item text-secondary py-3 text-center bg-white small';
-        itemVacio.innerHTML = '<i class="bi bi-info-circle me-1"></i> No se encontraron tutores o pacientes coincidentes.';
-        menuResultados.appendChild(itemVacio);
-      } else {
-        // Renderizar pacientes primero
-        if (mascotasEncontradas.length > 0) {
-          const encabezadoMascotas = document.createElement('div');
-          encabezadoMascotas.className = 'list-group-item bg-light text-secondary py-1 px-3 small fw-bold text-uppercase';
-          encabezadoMascotas.style.fontSize = '0.72rem';
-          encabezadoMascotas.innerHTML = '<i class="bi bi-tag-fill text-danger me-1"></i> Pacientes Encontrados';
-          menuResultados.appendChild(encabezadoMascotas);
-
-          mascotasEncontradas.slice(0, 6).forEach(m => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'list-group-item list-group-item-action py-2 px-3 d-flex align-items-center justify-content-between';
-            btn.innerHTML = `
-              <div class="d-flex align-items-center gap-2 min-w-0">
-                <span class="fs-5">${m.emoji || '🐾'}</span>
-                <div class="min-w-0 text-start">
-                  <div class="fw-bold text-dark small text-truncate">${m.nombre} <span class="badge bg-danger-subtle text-danger border small" style="font-size: 0.68rem;">${m.especie}</span></div>
-                  <div class="text-secondary small text-truncate" style="font-size: 0.76rem;"><i class="bi bi-person me-1"></i>Tutor: ${m.tutor_nombre || 'Sin asignar'}</div>
-                </div>
-              </div>
-              <span class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1 small">Seleccionar</span>
-            `;
-            btn.addEventListener('click', () => {
-              seleccionarTutorYMascota(m.tutor_id, m.id);
-            });
-            menuResultados.appendChild(btn);
-          });
-        }
-
-        // Renderizar tutores
-        if (tutoresEncontrados.length > 0) {
-          const encabezadoTutores = document.createElement('div');
-          encabezadoTutores.className = 'list-group-item bg-light text-secondary py-1 px-3 small fw-bold text-uppercase';
-          encabezadoTutores.style.fontSize = '0.72rem';
-          encabezadoTutores.innerHTML = '<i class="bi bi-person-fill text-danger me-1"></i> Tutores Encontrados';
-          menuResultados.appendChild(encabezadoTutores);
-
-          tutoresEncontrados.slice(0, 6).forEach(t => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'list-group-item list-group-item-action py-2 px-3 d-flex align-items-center justify-content-between';
-            const infoDoc = t.documento ? ` · Doc: ${t.documento}` : '';
-            const infoTel = t.telefono ? ` · Tel: ${t.telefono}` : '';
-            btn.innerHTML = `
-              <div class="d-flex align-items-center gap-2 min-w-0">
-                <span class="fs-5 text-secondary"><i class="bi bi-person-circle"></i></span>
-                <div class="min-w-0 text-start">
-                  <div class="fw-bold text-dark small text-truncate">${t.nombre}</div>
-                  <div class="text-secondary small text-truncate" style="font-size: 0.76rem;">${infoDoc}${infoTel}</div>
-                </div>
-              </div>
-              <span class="btn btn-xs btn-outline-danger rounded-pill px-2 py-1 small">Elegir Tutor</span>
-            `;
-            btn.addEventListener('click', () => {
-              seleccionarTutorYMascota(t.id, null);
-            });
-            menuResultados.appendChild(btn);
-          });
-        }
-      }
-
-      menuResultados.classList.remove('d-none');
-    });
-
-    if (btnLimpiar) {
-      btnLimpiar.addEventListener('click', function() {
-        buscarInput.value = '';
-        btnLimpiar.style.display = 'none';
-        cerrarMenuResultados();
-      });
-    }
-
-    // Cerrar al hacer clic fuera
-    document.addEventListener('click', function(e) {
-      if (!menuResultados.contains(e.target) && e.target !== buscarInput) {
-        cerrarMenuResultados();
-      }
-    });
-  }
-
-  // Eventos de cambios en selects manuales
-  if (selectTutor) {
-    selectTutor.addEventListener('change', () => actualizarOpcionesMascota(false));
-  }
-
-  if (selectMascota) {
-    selectMascota.addEventListener('change', function() {
-      const mascotaId = parseInt(this.value, 10);
-      const mascotaObj = mascotasData.find(m => m.id === mascotaId);
-      if (mascotaObj && mascotaObj.tutor_id && (!selectTutor.value || parseInt(selectTutor.value, 10) !== mascotaObj.tutor_id)) {
-        selectTutor.value = mascotaObj.tutor_id;
-      }
-      actualizarResumenSeleccion();
-    });
-  }
-
-  // ==========================================
-  // 2. GESTIÓN DE SERVICIOS Y ADICIONALES (DESENREDE, ETC.)
+  // GESTIÓN DE SERVICIOS Y ADICIONALES (DESENREDE, ETC.)
   // ==========================================
   function actualizarPrecioBaseDesdeServicio() {
     const servicioId = parseInt(selectServicio.value, 10);
@@ -575,7 +351,6 @@
       if (!inputPrecioBase.value || parseFloat(inputPrecioBase.value) === 0) {
         inputPrecioBase.value = servicioObj.precio;
       }
-      // Actualizar duración estimada por defecto si está vacía
       const inputDuracion = document.getElementById('inputDuracionSpa');
       if (inputDuracion && (!inputDuracion.value || parseInt(inputDuracion.value, 10) <= 0)) {
         inputDuracion.value = servicioObj.duracion;
@@ -722,10 +497,7 @@
   });
 
   // Inicialización en carga
-  if (selectTutor.value) {
-    actualizarOpcionesMascota(true);
-  }
-  if (selectServicio.value && (!inputPrecioBase.value || parseFloat(inputPrecioBase.value) === 0)) {
+  if (selectServicio && selectServicio.value && (!inputPrecioBase.value || parseFloat(inputPrecioBase.value) === 0)) {
     actualizarPrecioBaseDesdeServicio();
   } else {
     renderizarAdicionalesYTotales();

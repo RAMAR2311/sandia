@@ -469,8 +469,8 @@ class ServicioSpaForm(FlaskForm):
 
 
 class CitaSpaForm(FlaskForm):
-    tutor_id = SelectField("Tutor / Cliente", coerce=int, validators=[DataRequired("Selecciona el tutor.")])
-    mascota_id = SelectField("Mascota", coerce=int, validators=[DataRequired("Selecciona la mascota.")])
+    tutor_id = HiddenField("Tutor / Cliente", validators=[DataRequired("Selecciona el tutor o paciente.")])
+    mascota_id = HiddenField("Mascota", validators=[DataRequired("Selecciona el tutor o paciente.")])
     servicio_spa_id = SelectField("Servicio de Spa / Estética", coerce=int, validators=[DataRequired("Selecciona el servicio.")])
     groomer_id = SelectField("Groomer / Responsable (opcional)", coerce=int, validate_choice=False, validators=[Optional()])
     fecha = DateField("Fecha del servicio", validators=[DataRequired("Selecciona la fecha.")])
