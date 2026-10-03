@@ -20,6 +20,9 @@
     </a>
     {% endif %}
     {% if not cita.venta and current_user.rol in ('admin', 'recepcion', 'auxiliar', 'groomer') %}
+    <a href="{{ url_for('spa.cita_editar', id=cita.id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-xs fw-semibold">
+      <i class="bi bi-pencil-square me-1"></i> Editar Turno
+    </a>
     <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-xs fw-semibold" data-bs-toggle="modal" data-bs-target="#modalEliminarCitaSpa">
       <i class="bi bi-trash me-1"></i> Eliminar Turno
     </button>
@@ -206,11 +209,16 @@
     
     {# Card 1: Detalles de la Cita de Spa #}
     <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white" style="border: 1.5px solid #FECDD3 !important;">
-      <div class="card-header card-header-sandia py-3 px-4 rounded-top-4">
+      <div class="card-header card-header-sandia py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-2">
           <span class="fs-5">📋</span>
           <span class="fw-bold fs-6 text-sandia-rosa" style="font-family: var(--fuente-marca);">Detalles del Servicio de Estética</span>
         </div>
+        {% if not cita.venta and current_user.rol in ('admin', 'recepcion', 'auxiliar', 'groomer') %}
+        <a href="{{ url_for('spa.cita_editar', id=cita.id) }}" class="btn btn-sm btn-sandia-rosa rounded-pill px-3 py-1 shadow-xs fw-semibold">
+          <i class="bi bi-pencil-square me-1"></i> Editar Servicio / Datos
+        </a>
+        {% endif %}
       </div>
       <div class="card-body p-4">
         <div class="row g-3">

@@ -150,6 +150,52 @@ def test_agendar_cita_spa(client, admin, app):
         assert cita.notas_ingreso == "Mascota nerviosa con secador"
 
 
+def test_editar_cita_spa(client, admin, app):
+    tutor_id, mascota_id = crear_tutor_y_mascota(app)
+    srv1_id = crear_servicio_spa(app, nombre="Servicio Inicial", precio=Decimal("10000.00"))
+    srv2_id = crear_servicio_spa(app, nombre="Servicio Modificado", precio=Decimal("35000.00"))
+
+    with app.app_context():
+        cita = CitaSpa(
+            tutor_id=tutor_id,
+            mascota_id=mascota_id,
+            servicio_spa_id=srv1_id,
+            fecha_hora=datetime.now(ZONA_BOGOTA),
+            duracion_minutos=60,
+            estado="programada",
+        )
+        db.session.add(cita)
+        db.session.commit()
+        cita_id = cita.id
+
+    iniciar_sesion(client)
+
+    token = token_csrf(client, f"/spa/cita/{cita_id}/editar")
+    res_editar = client.post(
+        f"/spa/cita/{cita_id}/editar",
+        data={
+            "csrf_token": token,
+            "tutor_id": str(tutor_id),
+            "mascota_id": str(mascota_id),
+            "servicio_spa_id": str(srv2_id),
+            "groomer_id": "0",
+            "fecha": hoy_bogota().strftime("%Y-%m-%d"),
+            "hora": "14:00",
+            "duracion_minutos": "90",
+            "notas_ingreso": "Cambio de servicio solicitado por tutor",
+        },
+        follow_redirects=True,
+    )
+    assert res_editar.status_code == 200
+    assert "actualizado correctamente" in res_editar.get_data(as_text=True)
+
+    with app.app_context():
+        cita_db = db.session.get(CitaSpa, cita_id)
+        assert cita_db.servicio_spa_id == srv2_id
+        assert cita_db.duracion_minutos == 90
+        assert cita_db.notas_ingreso == "Cambio de servicio solicitado por tutor"
+
+
 # ---------------------------------------------------------------------------
 # Flujo de Estados y WhatsApp
 # ---------------------------------------------------------------------------

@@ -1,20 +1,20 @@
 {% extends "base.html" %}
-{% block titulo %}Agendar Cita de Spa & Grooming · Sandía{% endblock %}
+{% block titulo %}{{ 'Editar Turno Spa #' ~ cita.id if cita else 'Agendar Cita de Spa & Grooming' }} · Sandía{% endblock %}
 
 {% block contenido %}
 {# Cabecera de Página #}
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
   <div>
     <div class="d-flex align-items-center gap-2">
-      <a href="{{ url_for('spa.agenda') }}" class="btn btn-sm btn-outline-secondary rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+      <a href="{{ url_for('spa.cita_detalle', id=cita.id) if cita else url_for('spa.agenda') }}" class="btn btn-sm btn-outline-secondary rounded-circle shadow-xs d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
         <i class="bi bi-arrow-left"></i>
       </a>
       <h1 class="h3 fw-bold text-dark mb-0" style="font-family: var(--fuente-marca);">
-        Agendar Cita de Spa & Peluquería
+        {{ 'Editar Turno de Spa #' ~ cita.id if cita else 'Agendar Cita de Spa & Peluquería' }}
       </h1>
     </div>
     <p class="text-secondary small mb-0 mt-1 ms-4 ps-2">
-      Reserva de turno para baño, corte, deslanado y estética canina y felina
+      {{ 'Modificar servicio, paciente, estilista o fecha de atención del turno' if cita else 'Reserva de turno para baño, corte, deslanado y estética canina y felina' }}
     </p>
   </div>
 </div>
@@ -146,12 +146,12 @@
   {# Barra de Botones #}
   <div class="card border-0 shadow-sm rounded-4 bg-white mt-4 p-3 p-md-4" style="border: 1.5px solid #FECDD3 !important;">
     <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3">
-      <a class="btn btn-outline-secondary rounded-pill px-4 fw-semibold shadow-xs" href="{{ url_for('spa.agenda') }}">
+      <a class="btn btn-outline-secondary rounded-pill px-4 fw-semibold shadow-xs" href="{{ url_for('spa.cita_detalle', id=cita.id) if cita else url_for('spa.agenda') }}">
         <i class="bi bi-x-circle me-1"></i> Cancelar
       </a>
       <button type="submit" class="btn btn-sandia-coral rounded-pill px-5 py-2 fw-bold shadow-sm d-flex align-items-center gap-2">
         <i class="bi bi-check-circle-fill"></i>
-        <span>Agendar Turno de Spa</span>
+        <span>{{ 'Guardar Cambios del Turno' if cita else 'Agendar Turno de Spa' }}</span>
       </button>
     </div>
   </div>

@@ -288,6 +288,95 @@ def cita_nueva():
     return render_template("spa/form_cita.html", form=form, mascotas_data=mascotas_data)
 
 
+@bp.route("/cita/<int:id>/editar", methods=["GET", "POST"])
+@login_required
+@agenda_spa_required
+def cita_editar(id: int):
+    cita = db.session.execute(
+        select(CitaSpa)
+        .filter_by(id=id)
+        .options(
+            selectinload(CitaSpa.mascota),
+            selectinload(CitaSpa.tutor),
+            selectinload(CitaSpa.groomer),
+            selectinload(CitaSpa.servicio_spa),
+            selectinload(CitaSpa.venta),
+        )
+    ).scalar_one_or_none()
+
+    if not cita:
+        flash("La cita de spa especificada no existe.", "danger")
+        return redirect(url_for("spa.agenda"))
+
+    form = CitaSpaForm()
+
+    tutores = db.session.execute(select(Tutor).filter_by(activo=True).order_by(Tutor.nombre_completo)).scalars().all()
+    mascotas = db.session.execute(
+        select(Mascota).filter_by(activo=True).options(selectinload(Mascota.tutor)).order_by(Mascota.nombre)
+    ).scalars().all()
+    servicios = db.session.execute(select(ServicioSpa).filter_by(activo=True).order_by(ServicioSpa.nombre)).scalars().all()
+    groomers = db.session.execute(select(Usuario).filter(Usuario.activo.is_(True), Usuario.rol.in_(("groomer", "auxiliar", "admin"))).order_by(Usuario.nombre)).scalars().all()
+
+    form.tutor_id.choices = [(t.id, f"{t.nombre_completo} (Doc: {t.documento_texto or 'S/N'})") for t in tutores]
+    form.mascota_id.choices = [
+        (m.id, f"{m.nombre} ({m.especie_etiqueta}) - Tutor: {m.tutor.nombre_completo if m.tutor else 'Sin tutor'}")
+        for m in mascotas
+    ]
+    form.servicio_spa_id.choices = [(s.id, f"{s.nombre} (${s.precio_sugerido:,.0f} - {s.duracion_minutos} min)") for s in servicios]
+    form.groomer_id.choices = [(0, "-- Sin groomer asignado --")] + [(g.id, f"{g.nombre} ({g.rol.capitalize()})") for g in groomers]
+
+    mascotas_data = [
+        {"id": m.id, "nombre": m.nombre, "especie": m.especie_etiqueta, "emoji": m.especie_emoji, "tutor_id": m.tutor_id}
+        for m in mascotas
+    ]
+
+    if not form.is_submitted():
+        form.tutor_id.data = cita.tutor_id
+        form.mascota_id.data = cita.mascota_id
+        form.servicio_spa_id.data = cita.servicio_spa_id
+        form.groomer_id.data = cita.groomer_id or 0
+        if cita.fecha_hora:
+            fh = cita.fecha_hora.astimezone(ZONA_BOGOTA) if cita.fecha_hora.tzinfo else cita.fecha_hora
+            form.fecha.data = fh.date()
+            form.hora.data = fh.time().replace(second=0, microsecond=0)
+        form.duracion_minutos.data = cita.duracion_minutos
+        form.notas_ingreso.data = cita.notas_ingreso
+
+    if form.validate_on_submit():
+        nombre_foto_ingreso = _procesar_foto_spa(form.foto_ingreso)
+        if not form.foto_ingreso.errors:
+            try:
+                fecha_combinada = datetime.combine(form.fecha.data, form.hora.data, tzinfo=ZONA_BOGOTA)
+                cita.tutor_id = form.tutor_id.data
+                cita.mascota_id = form.mascota_id.data
+                cita.servicio_spa_id = form.servicio_spa_id.data
+                cita.groomer_id = form.groomer_id.data if form.groomer_id.data and form.groomer_id.data > 0 else None
+                cita.fecha_hora = fecha_combinada
+                cita.duracion_minutos = form.duracion_minutos.data
+                cita.notas_ingreso = form.notas_ingreso.data.strip() if form.notas_ingreso.data else None
+                if nombre_foto_ingreso:
+                    ant_foto = cita.foto_ingreso
+                    cita.foto_ingreso = nombre_foto_ingreso
+                    if ant_foto:
+                        eliminar_imagen("spa", ant_foto)
+                db.session.commit()
+                flash(f"Turno de Spa #{cita.id} actualizado correctamente.", "success")
+                return redirect(url_for("spa.cita_detalle", id=cita.id))
+            except Exception:
+                db.session.rollback()
+                if nombre_foto_ingreso:
+                    eliminar_imagen("spa", nombre_foto_ingreso)
+                current_app.logger.exception("Error al actualizar cita de spa %d", id)
+                flash("Error al actualizar la cita. Verifica los campos e inténtalo de nuevo.", "danger")
+
+    return render_template(
+        "spa/form_cita.html",
+        form=form,
+        mascotas_data=mascotas_data,
+        cita=cita,
+    )
+
+
 @bp.route("/cita/<int:id>", methods=["GET"])
 @login_required
 @agenda_spa_required
