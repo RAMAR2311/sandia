@@ -7,7 +7,13 @@ from decimal import Decimal, InvalidOperation
 import pandas as pd
 from flask import Blueprint, Response, current_app, flash, redirect, render_template, request, send_file, url_for
 from decorators import admin_required, clinico_required
-from pdf_generator import generar_pdf_consulta, generar_pdf_receta
+from pdf_generator import (
+    generar_pdf_carnet_vacunacion,
+    generar_pdf_consulta,
+    generar_pdf_control,
+    generar_pdf_receta,
+    generar_pdf_remision,
+)
 from flask_login import current_user, login_required
 from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
@@ -140,7 +146,7 @@ def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes,
             "url_detalle": url_for("historias.consulta_detalle", id=c.id),
             "url_editar": url_for("historias.consulta_editar", id=c.id),
             "url_whatsapp": getattr(c, "enlace_whatsapp", None),
-            "url_pdf": url_for("historias.receta_pdf", id=c.id) if getattr(c, "receta_medica", None) else None,
+            "url_pdf": url_for("historias.consulta_pdf", id=c.id),
             "tab_destino": "soap",
         })
 
@@ -159,6 +165,7 @@ def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes,
             "url_detalle": None,
             "url_editar": url_for("historias.control_editar", id=ctrl.id),
             "url_whatsapp": getattr(ctrl, "enlace_whatsapp", None),
+            "url_pdf": url_for("historias.control_pdf", id=ctrl.id),
             "tab_destino": "controles",
         })
 
@@ -193,6 +200,7 @@ def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes,
             "profesional": f"Dr/a. {v.veterinario.nombre}" if getattr(v, "veterinario", None) else "",
             "objeto": v,
             "url_editar": None,
+            "url_pdf": url_for("historias.carnet_vacunacion_pdf", mascota_id=mascota.id),
             "url_whatsapp": getattr(v, "enlace_whatsapp", None),
             "tab_destino": "vacunas",
         })
@@ -258,7 +266,7 @@ def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes,
             "profesional": f"Dr/a. {cs.veterinario.nombre}" if getattr(cs, "veterinario", None) else "",
             "objeto": cs,
             "url_detalle": cs.url_documento() if hasattr(cs, "url_documento") else url_for("consentimientos.documento_publico", id=cs.id),
-            "url_pdf": None,
+            "url_pdf": url_for("consentimientos.consentimiento_pdf", id=cs.id),
             "url_whatsapp": cs.enlace_whatsapp() if hasattr(cs, "enlace_whatsapp") else None,
             "tab_destino": "consentimientos",
         })
@@ -295,7 +303,7 @@ def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes,
             "profesional": f"Dr/a. {rem.veterinario.nombre}" if getattr(rem, "veterinario", None) else "",
             "objeto": rem,
             "url_detalle": None,
-            "url_pdf": None,
+            "url_pdf": url_for("historias.remision_pdf", id=rem.id),
             "url_whatsapp": getattr(rem, "enlace_whatsapp", None),
             "tab_destino": "remisiones",
         })
@@ -1014,6 +1022,36 @@ def control_eliminar(id: int):
 
     next_url = request.form.get("next")
     return redirect(next_url or url_for("historias.ficha_medica", mascota_id=mascota_id, tab="controles"))
+
+
+@bp.route("/control/<int:id>/pdf", methods=["GET"])
+def control_pdf(id: int):
+    """Genera y sirve el documento PDF oficial del control médico."""
+    control = db.session.execute(
+        select(ControlMedico)
+        .filter_by(id=id)
+        .options(
+            selectinload(ControlMedico.mascota).selectinload(Mascota.raza),
+            selectinload(ControlMedico.tutor),
+            selectinload(ControlMedico.veterinario),
+        )
+    ).scalar_one_or_none()
+    if not control:
+        flash("El control médico no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    pdf_buffer = generar_pdf_control(control, db.session)
+    nombre_archivo = f"Control_{control.mascota.nombre if control.mascota else 'Paciente'}_{control.id:04d}.pdf"
+    response = send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=nombre_archivo,
+    )
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @bp.route("/consulta/<int:id>", methods=["GET"])
@@ -1822,6 +1860,69 @@ def remision_detalle_json(id: int):
         return {"ok": False, "error": "Remisión no encontrada."}, 404
 
     return {"ok": True, "remision": remision.to_dict()}
+
+
+@bp.route("/remisiones/<int:id>/pdf", methods=["GET"])
+def remision_pdf(id: int):
+    """Genera y descarga la orden oficial de remisión médica en PDF."""
+    remision = db.session.execute(
+        select(RemisionInterna)
+        .filter_by(id=id)
+        .options(
+            selectinload(RemisionInterna.veterinario),
+            selectinload(RemisionInterna.mascota).selectinload(Mascota.raza),
+            selectinload(RemisionInterna.tutor),
+        )
+    ).scalar_one_or_none()
+
+    if not remision:
+        flash("La orden de remisión clínica no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    pdf_buffer = generar_pdf_remision(remision, db.session)
+    nombre_archivo = f"Remision_{remision.mascota.nombre if remision.mascota else 'Paciente'}_{remision.id:04d}.pdf"
+    response = send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=nombre_archivo,
+    )
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
+@bp.route("/mascota/<int:mascota_id>/carnet/pdf", methods=["GET"])
+def carnet_vacunacion_pdf(mascota_id: int):
+    """Genera y descarga el carnet oficial de vacunación y desparasitación en PDF."""
+    mascota = db.session.execute(
+        select(Mascota)
+        .filter_by(id=mascota_id)
+        .options(
+            selectinload(Mascota.raza),
+            selectinload(Mascota.tutor),
+            selectinload(Mascota.vacunas).selectinload(VacunaMascota.veterinario),
+            selectinload(Mascota.desparasitaciones).selectinload(DesparasitacionMascota.veterinario),
+        )
+    ).scalar_one_or_none()
+
+    if not mascota:
+        flash("La mascota no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    pdf_buffer = generar_pdf_carnet_vacunacion(mascota, db.session)
+    nombre_archivo = f"Carnet_Vacunacion_{mascota.nombre}_{mascota.id:04d}.pdf"
+    response = send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=nombre_archivo,
+    )
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 @bp.route("/mascota/<int:mascota_id>/dieta/actualizar", methods=["POST"])

@@ -700,6 +700,9 @@
                     <!-- Botones de Acción -->
                     <div class="mt-3 pt-2 border-top d-flex flex-wrap justify-content-between align-items-center gap-2">
                       <div class="d-flex flex-wrap align-items-center gap-2">
+                        <a href="{{ url_for('historias.control_pdf', id=ctrl.id) }}" target="_blank" class="btn btn-sm btn-danger rounded-pill fw-bold shadow-2xs" title="Ver y descargar documento oficial en PDF">
+                          <i class="bi bi-file-earmark-pdf-fill me-1"></i>Control PDF
+                        </a>
                         {% if ctrl.enlace_whatsapp %}
                         <a href="{{ ctrl.enlace_whatsapp }}" target="_blank" class="btn btn-sm btn-success fw-bold rounded-pill">
                           <i class="bi bi-whatsapp me-1"></i> Enviar Control por WhatsApp
@@ -747,6 +750,9 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-shield-check text-success me-1"></i> Carnet de Vacunación</h5>
               <div class="d-flex gap-2">
+                <a href="{{ url_for('historias.carnet_vacunacion_pdf', mascota_id=mascota.id) }}" target="_blank" class="btn btn-sm btn-outline-danger fw-bold rounded-pill" title="Ver y descargar Carnet Oficial en PDF">
+                  <i class="bi bi-file-earmark-pdf-fill me-1"></i>Carnet PDF
+                </a>
                 {% if mascota.vacunas and mascota.tutor.whatsapp_efectivo %}
                   {% set msg_vacunas = "Hola " ~ mascota.tutor.nombre_completo ~ ", te compartimos el estado del carnet de vacunación de " ~ mascota.nombre ~ ":" %}
                   <a href="{{ mascota.tutor.enlace_whatsapp(msg_vacunas) }}" target="_blank" class="btn btn-sm btn-success fw-bold rounded-pill">
@@ -1329,7 +1335,10 @@
                       <small class="text-muted"><i class="bi bi-calendar-event me-1"></i>{{ r.fecha_remision.strftime('%d/%m/%Y %I:%M %p') }}</small>
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                      {% if r.enlace_whatsapp %}
+                        <a href="{{ url_for('historias.remision_pdf', id=r.id) }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold shadow-2xs" title="Ver y descargar orden oficial en PDF">
+                          <i class="bi bi-file-earmark-pdf-fill me-1"></i>Remisión PDF
+                        </a>
+                        {% if r.enlace_whatsapp %}
                       <a href="{{ r.enlace_whatsapp }}" target="_blank" class="btn btn-sm btn-success rounded-pill px-3 fw-bold shadow-2xs" style="background-color: #25D366; border-color: #25D366;" title="Enviar orden de remisión por WhatsApp">
                         <i class="bi bi-whatsapp me-1"></i>WhatsApp
                       </a>

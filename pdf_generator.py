@@ -82,16 +82,17 @@ def _obtener_logo_img(width=18*mm, height=17*mm):
     return None
 
 
-def _obtener_firma_flowable(nombre_o_base64: str, width=42*mm, height=18*mm):
+def _obtener_firma_flowable(nombre_o_base64: str, width=46 * mm, height=18 * mm):
     """Retorna un elemento Image de ReportLab para la firma digital si existe."""
     if not nombre_o_base64:
         return None
     try:
+        img = None
         if str(nombre_o_base64).startswith("data:image"):
             import base64
             _, b64 = nombre_o_base64.split(",", 1)
             raw = base64.b64decode(b64)
-            return RLImage(io.BytesIO(raw), width=width, height=height)
+            img = RLImage(io.BytesIO(raw), width=width, height=height)
         else:
             base_dir = os.path.dirname(os.path.abspath(__file__))
             rutas = [
@@ -100,7 +101,11 @@ def _obtener_firma_flowable(nombre_o_base64: str, width=42*mm, height=18*mm):
             ]
             for r in rutas:
                 if os.path.exists(r):
-                    return RLImage(r, width=width, height=height)
+                    img = RLImage(r, width=width, height=height)
+                    break
+        if img:
+            img.hAlign = 'CENTER'
+        return img
     except Exception:
         pass
     return None
@@ -124,45 +129,112 @@ def _obtener_foto_spa_flowable(nombre: str, width=50 * mm, height=45 * mm):
     return None
 
 
+def _formatear_medicamentos_html(texto: str) -> str:
+    """Convierte texto de medicamentos o fórmulas en HTML estilizado para párrafos de ReportLab."""
+    if not texto:
+        return "Sin medicamentos prescritos."
+    lineas = [l.strip() for l in texto.split("\n") if l.strip()]
+    html_out = []
+    for l in lineas:
+        if l.startswith(("1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9.", "•", "-")):
+            html_out.append(f"<font color='#0F172A' size=9><b>{l}</b></font>")
+        elif l.upper().startswith("USO:") or l.upper().startswith("POSOLOGIA:") or l.upper().startswith("DOSIS:") or l.upper().startswith("INDICACIONES:"):
+            partes = l.split(":", 1)
+            etiqueta = partes[0].strip()
+            valor = partes[1].strip() if len(partes) > 1 else ""
+            html_out.append(f"&nbsp;&nbsp;<font color='#BE123C' size=8><b>{etiqueta}:</b></font> <font color='#334155' size=8.5>{valor}</font>")
+        else:
+            html_out.append(f"&nbsp;&nbsp;<font color='#475569' size=8.5>{l}</font>")
+    return "<br/>".join(html_out)
+
+
+def _crear_bloque_firma_medica(vet, clinica, estilos, ancho_bloque=75 * mm):
+    """Crea un bloque de firma digital y sello profesional perfectamente alineado y centrado."""
+    nombre_vet = vet.nombre if vet else clinica.get("doctora_nombre", "Dra. Daniela Pulido")
+    titulo_vet = getattr(vet, "titulo_profesional", None) or clinica.get("doctora_titulo", "Médica veterinaria")
+    tp_vet = getattr(vet, "tarjeta_profesional", None) or clinica.get("doctora_tp", "53214")
+    esp_vet = getattr(vet, "especialidad", None) or clinica.get("doctora_especialidad", "Dpl. Dermatología de pequeñas especies")
+    firma_vet = getattr(vet, "firma_digital", None) or clinica.get("doctora_firma", "")
+
+    firma_img = _obtener_firma_flowable(firma_vet, width=46 * mm, height=18 * mm)
+
+    lineas = [
+        f"<b>{nombre_vet}</b>",
+        f"<font color='#334155'>{titulo_vet} · T.P. {tp_vet}</font>",
+    ]
+    if esp_vet:
+        lineas.append(f"<font color='#BE123C' size=7><b>{esp_vet}</b></font>")
+    lineas.append(f"<font size=6.5 color='#64748B'>{clinica['nombre']} · {clinica['subtitulo']}</font>")
+
+    p_sello = Paragraph("<br/>".join(lineas), estilos['PiePagina'])
+
+    filas = []
+    if firma_img:
+        filas.append([firma_img])
+    else:
+        filas.append([Spacer(1, 14 * mm)])
+    
+    filas.append([p_sello])
+
+    t_sello = Table(filas, colWidths=[ancho_bloque])
+    t_sello.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LINEABOVE', (0, 1), (0, 1), 1, colors.HexColor("#334155")),  # Línea nítida centrada encima del sello
+        ('TOPPADDING', (0, 1), (0, 1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+    ]))
+
+    t_wrap = Table([["", t_sello]], colWidths=[188 * mm - ancho_bloque, ancho_bloque])
+    t_wrap.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    return KeepTogether(t_wrap)
 
 
 def _crear_estilos():
     estilos = getSampleStyleSheet()
-    
+
     estilos.add(ParagraphStyle(
         'TituloClinica',
         parent=estilos['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=15,
-        leading=18,
+        fontSize=14,
+        leading=17,
         textColor=COLOR_PRIMARIO,
     ))
-    
+
     estilos.add(ParagraphStyle(
         'SubtituloClinica',
         parent=estilos['Normal'],
         fontName='Helvetica',
-        fontSize=8.5,
-        leading=11,
-        textColor=COLOR_TEXTO,
+        fontSize=8,
+        leading=10.5,
+        textColor=colors.HexColor("#64748B"),
     ))
-    
+
     estilos.add(ParagraphStyle(
         'DocumentoFolio',
         parent=estilos['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=11,
-        leading=14,
+        fontSize=10.5,
+        leading=13.5,
         textColor=COLOR_OSCURO,
-        alignment=2, # Derecha
+        alignment=2,  # Derecha
     ))
 
     estilos.add(ParagraphStyle(
         'SeccionHeader',
         parent=estilos['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=10,
-        leading=13,
+        fontSize=9.5,
+        leading=12.5,
         textColor=COLOR_OSCURO,
     ))
 
@@ -180,7 +252,7 @@ def _crear_estilos():
         parent=estilos['Normal'],
         fontName='Helvetica',
         fontSize=8.5,
-        leading=11.5,
+        leading=12,
         textColor=COLOR_TEXTO,
     ))
 
@@ -189,16 +261,16 @@ def _crear_estilos():
         parent=estilos['Normal'],
         fontName='Helvetica-Bold',
         fontSize=8.5,
-        leading=11.5,
+        leading=12,
         textColor=COLOR_OSCURO,
     ))
 
     estilos.add(ParagraphStyle(
         'TextoReceta',
         parent=estilos['Normal'],
-        fontName='Courier',
-        fontSize=9,
-        leading=12,
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=12.5,
         textColor=COLOR_OSCURO,
     ))
 
@@ -218,17 +290,17 @@ def _crear_estilos():
         fontSize=8.5,
         leading=11.5,
         textColor=COLOR_OSCURO,
-        alignment=1, # Centro
+        alignment=1,  # Centro
     ))
 
     estilos.add(ParagraphStyle(
         'PiePagina',
         parent=estilos['Normal'],
-        fontName='Helvetica-Oblique',
+        fontName='Helvetica',
         fontSize=7.5,
-        leading=9.5,
-        textColor=colors.HexColor("#64748B"),
-        alignment=1, # Centro
+        leading=10,
+        textColor=colors.HexColor("#475569"),
+        alignment=1,  # Centro
     ))
 
     return estilos
@@ -504,38 +576,7 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
     # 7. FIRMA MÉDICA & PIE DE PÁGINA
     # =========================================================================
     historia.append(Spacer(1, 10))
-    firma_img = _obtener_firma_flowable(firma_vet, width=42 * mm, height=18 * mm)
-    lineas_sello = [
-        f"<b>{nombre_vet}</b>",
-        f"{titulo_vet} · T.P. {tp_vet}",
-    ]
-    if esp_vet:
-        lineas_sello.append(f"<font color='#BE123C' size=7><b>{esp_vet}</b></font>")
-    lineas_sello.append(f"<font size=7 color='#64748B'>{clinica['nombre']} · {clinica['subtitulo']}</font>")
-    sello_html = "<br/>".join(lineas_sello)
-
-    if firma_img:
-        firma_col = [
-            firma_img,
-            Paragraph(f"______________________________________<br/>{sello_html}", estilos['PiePagina'])
-        ]
-    else:
-        firma_col = [
-            Paragraph(f"______________________________________<br/>{sello_html}", estilos['PiePagina'])
-        ]
-
-    firma_data = [
-        [
-            "",
-            firma_col
-        ]
-    ]
-    t_firma = Table(firma_data, colWidths=[100 * mm, 88 * mm])
-    t_firma.setStyle(TableStyle([
-        ('ALIGN', (0,0), (-1,-1), 'RIGHT'),
-        ('VALIGN', (0,0), (-1,-1), 'BOTTOM'),
-    ]))
-    historia.append(KeepTogether(t_firma))
+    historia.append(_crear_bloque_firma_medica(vet, clinica, estilos, ancho_bloque=75 * mm))
 
     # Construir PDF
     doc.build(historia)
@@ -815,39 +856,8 @@ def generar_pdf_receta(consulta, db_session=None) -> io.BytesIO:
         historia.append(Spacer(1, 10))
 
     # 4. Firma
-    historia.append(Spacer(1, 15))
-    firma_img = _obtener_firma_flowable(firma_vet, width=42 * mm, height=18 * mm)
-    lineas_sello = [
-        f"<b>{nombre_vet}</b>",
-        f"{titulo_vet} · T.P. {tp_vet}",
-    ]
-    if esp_vet:
-        lineas_sello.append(f"<font color='#BE123C' size=7><b>{esp_vet}</b></font>")
-    lineas_sello.append(f"<font size=7 color='#64748B'>{clinica['nombre']} · {clinica['subtitulo']}</font>")
-    sello_html = "<br/>".join(lineas_sello)
-
-    if firma_img:
-        firma_col = [
-            firma_img,
-            Paragraph(f"______________________________________<br/>{sello_html}", estilos['PiePagina'])
-        ]
-    else:
-        firma_col = [
-            Paragraph(f"______________________________________<br/>{sello_html}", estilos['PiePagina'])
-        ]
-
-    firma_data = [
-        [
-            "",
-            firma_col
-        ]
-    ]
-    t_firma = Table(firma_data, colWidths=[94 * mm, 90 * mm])
-    t_firma.setStyle(TableStyle([
-        ('ALIGN', (0,0), (-1,-1), 'RIGHT'),
-        ('VALIGN', (0,0), (-1,-1), 'BOTTOM'),
-    ]))
-    historia.append(KeepTogether(t_firma))
+    historia.append(Spacer(1, 12))
+    historia.append(_crear_bloque_firma_medica(vet, clinica, estilos, ancho_bloque=75 * mm))
 
     doc.build(historia)
     buffer.seek(0)
@@ -1327,4 +1337,716 @@ def generar_pdf_certificado_salud(cert, db_session=None) -> io.BytesIO:
     doc.build(historia)
     buffer.seek(0)
     return buffer
+
+
+def generar_pdf_control(control, db_session=None) -> io.BytesIO:
+    """Genera el Informe Oficial de Control Médico y Evolución Clínica en PDF con diseño Sandía VetCare."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=14 * mm,
+        leftMargin=14 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
+    )
+
+    estilos = _crear_estilos()
+    historia = []
+    clinica = _obtener_datos_clinica(db_session)
+    mascota = control.mascota
+    tutor = control.tutor or (mascota.tutor if mascota else None)
+    vet = control.veterinario
+
+    # =========================================================================
+    # 1. ENCABEZADO OFICIAL
+    # =========================================================================
+    fecha_str = control.fecha_hora.strftime("%d/%m/%Y %H:%M") if hasattr(control.fecha_hora, "strftime") else str(control.fecha_hora)
+    folio_titulo = f"CONTROL #{control.id:04d}"
+
+    logo_img = _obtener_logo_img(width=18 * mm, height=17 * mm)
+    if logo_img:
+        header_data = [
+            [
+                logo_img,
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>INFORME DE CONTROL MÉDICO</b><br/><font color='#E53935' size=10.5><b>{folio_titulo}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[20 * mm, 90 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('RIGHTPADDING', (0,0), (0,0), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ]))
+    else:
+        header_data = [
+            [
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>INFORME DE CONTROL MÉDICO</b><br/><font color='#E53935' size=10.5><b>{folio_titulo}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[110 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+    historia.append(t_header)
+    historia.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_PRIMARIO, spaceAfter=7))
+
+    # =========================================================================
+    # 2. CUADRO DE INFORMACIÓN PACIENTE, TUTOR Y MÉDICO
+    # =========================================================================
+    nombre_mascota = mascota.nombre if mascota else "Paciente"
+    especie_raza = f"{mascota.especie.capitalize() if mascota else ''} · {mascota.raza.nombre if mascota and mascota.raza else 'Mestizo'}"
+    sexo_edad = f"{mascota.sexo.capitalize() if mascota and mascota.sexo else 'N/R'} · {mascota.edad_formateada if mascota and hasattr(mascota, 'edad_formateada') else 'N/R'}"
+    nombre_tutor = tutor.nombre_completo if tutor else "N/A"
+    tel_tutor = (tutor.whatsapp_efectivo or tutor.telefono if tutor else None) or "N/A"
+    doc_tutor = f" · Doc: {tutor.documento_texto}" if tutor and hasattr(tutor, "documento_texto") and tutor.documento_texto else ""
+    nombre_vet = vet.nombre if vet else clinica.get("doctora_nombre", "Dra. Daniela Pulido")
+
+    info_data = [
+        [
+            Paragraph(f"<b>PACIENTE:</b> <font color='#E53935'><b>{nombre_mascota}</b></font>", estilos['TextoNormal']),
+            Paragraph(f"<b>TUTOR:</b> <b>{nombre_tutor}</b>", estilos['TextoNormal']),
+        ],
+        [
+            Paragraph(f"<b>Especie/Raza:</b> {especie_raza}", estilos['TextoNormal']),
+            Paragraph(f"<b>Contacto:</b> {tel_tutor}{doc_tutor}", estilos['TextoNormal']),
+        ],
+        [
+            Paragraph(f"<b>Sexo/Edad:</b> {sexo_edad}", estilos['TextoNormal']),
+            Paragraph(f"<b>Médico Tratante:</b> {nombre_vet}", estilos['TextoNormal']),
+        ]
+    ]
+    t_info = Table(info_data, colWidths=[94 * mm, 94 * mm])
+    t_info.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_GRIS_FONDO),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    historia.append(t_info)
+    historia.append(Spacer(1, 6))
+
+    # =========================================================================
+    # 3. CONSTANTES DEL CONTROL (PESO Y TEMPERATURA)
+    # =========================================================================
+    v_peso = f"{control.peso_kg} kg" if control.peso_kg else "—"
+    v_temp = f"{control.temperatura_c} °C" if control.temperatura_c else "—"
+    vitales_data = [
+        ["Peso Registrado", "Temperatura Corporal", "Tipo / Motivo de Control"],
+        [v_peso, v_temp, control.motivo or "Control de Seguimiento Clínico"]
+    ]
+    t_vitales = Table(vitales_data, colWidths=[48 * mm, 48 * mm, 92 * mm])
+    t_vitales.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), COLOR_OSCURO),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 7.5),
+        ('ALIGN', (0,0), (1,-1), 'CENTER'),
+        ('ALIGN', (2,0), (2,-1), 'LEFT'),
+        ('BACKGROUND', (0,1), (-1,1), COLOR_GRIS_FONDO),
+        ('FONTNAME', (0,1), (-1,1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,1), (-1,1), 8),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+        ('PADDING', (0,0), (-1,-1), 3.5),
+    ]))
+    historia.append(t_vitales)
+    historia.append(Spacer(1, 6))
+
+    # =========================================================================
+    # 4. EVOLUCIÓN CLÍNICA & AVANCES
+    # =========================================================================
+    historia.append(Paragraph("<font color='#0284C7'><b>●</b></font> <b>EVOLUCIÓN CLÍNICA & RESPUESTA AL TRATAMIENTO</b>", estilos['SeccionHeader']))
+    historia.append(Spacer(1, 2))
+    avances_txt = (control.avances or "Sin evolución registrada.").replace("\n", "<br/>")
+    t_avances = Table([[Paragraph(f"<b>Avances / Hallazgos en Recontrol:</b><br/>{avances_txt}", estilos['TextoNormal'])]], colWidths=[188 * mm])
+    t_avances.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F0F9FF")),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#BAE6FD")),
+        ('PADDING', (0,0), (-1,-1), 4.5),
+    ]))
+    historia.append(t_avances)
+    historia.append(Spacer(1, 6))
+
+    # =========================================================================
+    # 5. DIAGNÓSTICO
+    # =========================================================================
+    historia.append(Paragraph("<font color='#D97706'><b>●</b></font> <b>DIAGNÓSTICO & SEGUIMIENTO</b>", estilos['SeccionHeader']))
+    historia.append(Spacer(1, 2))
+    diag_txt = control.diagnostico or "Seguimiento y control médico."
+    t_diag = Table([[Paragraph(f"<b>DIAGNÓSTICO:</b> {diag_txt}", estilos['TextoNormal'])]], colWidths=[188 * mm])
+    t_diag.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#FFFBEB")),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#FDE68A")),
+        ('PADDING', (0,0), (-1,-1), 4.5),
+    ]))
+    historia.append(t_diag)
+    historia.append(Spacer(1, 6))
+
+    # =========================================================================
+    # 6. PLAN TERAPÉUTICO Y MEDICACIÓN (Rx)
+    # =========================================================================
+    historia.append(Paragraph("<font color='#475569'><b>●</b></font> <b>PLAN TERAPÉUTICO & RECOMENDACIONES</b>", estilos['SeccionHeader']))
+    historia.append(Spacer(1, 2))
+    plan_txt = (control.plan_terapeutico or "Continuar manejo clínico prescrito.").replace("\n", "<br/>")
+    t_plan = Table([[Paragraph(f"<b>Plan Terapéutico:</b><br/>{plan_txt}", estilos['TextoNormal'])]], colWidths=[188 * mm])
+    t_plan.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_GRIS_FONDO),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+        ('PADDING', (0,0), (-1,-1), 4.5),
+    ]))
+    historia.append(t_plan)
+    historia.append(Spacer(1, 6))
+
+    # Medicamentos / Fórmula si existen
+    if control.medicamento:
+        med_html = _formatear_medicamentos_html(control.medicamento)
+        receta_data = [
+            [
+                Paragraph("<b><font color='#E53935' size=11>Rx</font> FÓRMULA MÉDICA & POSOLOGÍA PRESCRITA</b>", estilos['TextoNegrita'])
+            ],
+            [
+                Paragraph(med_html, estilos['TextoReceta'])
+            ]
+        ]
+        t_receta = Table(receta_data, colWidths=[188 * mm])
+        t_receta.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#FEE2E2")),
+            ('BACKGROUND', (0,1), (-1,1), colors.HexColor("#FFF1F2")),
+            ('BOX', (0,0), (-1,-1), 1.2, COLOR_PRIMARIO),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#FECACA")),
+            ('PADDING', (0,0), (-1,-1), 4.5),
+        ]))
+        historia.append(t_receta)
+        historia.append(Spacer(1, 6))
+
+    # Próximo control / Observaciones
+    prox_items = []
+    if control.fecha_proximo_control:
+        f_prox = control.fecha_proximo_control.strftime("%d/%m/%Y %I:%M %p") if hasattr(control.fecha_proximo_control, "strftime") else str(control.fecha_proximo_control)
+        prox_items.append(f"🗓️ <b>PRÓXIMO RECONTROL PROGRAMADO:</b> <font color='#E53935'><b>{f_prox}</b></font>")
+    if control.observaciones:
+        prox_items.append(f"<b>Observaciones:</b> {control.observaciones}")
+
+    if prox_items:
+        t_prox = Table([[Paragraph("<br/>".join(prox_items), estilos['TextoNormal'])]], colWidths=[188 * mm])
+        t_prox.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F1F5F9")),
+            ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#CBD5E1")),
+            ('PADDING', (0,0), (-1,-1), 4),
+        ]))
+        historia.append(t_prox)
+        historia.append(Spacer(1, 6))
+
+    # =========================================================================
+    # 7. FIRMA MÉDICA Y SELLO
+    # =========================================================================
+    historia.append(Spacer(1, 6))
+    historia.append(_crear_bloque_firma_medica(vet, clinica, estilos, ancho_bloque=75 * mm))
+
+    doc.build(historia)
+    buffer.seek(0)
+    return buffer
+
+
+def generar_pdf_remision(remision, db_session=None) -> io.BytesIO:
+    """Genera la Orden Oficial de Remisión Clínica / Derivación a Especialista en PDF."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=14 * mm,
+        leftMargin=14 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
+    )
+
+    estilos = _crear_estilos()
+    historia = []
+    clinica = _obtener_datos_clinica(db_session)
+    mascota = remision.mascota
+    tutor = remision.tutor or (mascota.tutor if mascota else None)
+    vet = remision.veterinario
+
+    # 1. Header
+    fecha_str = remision.fecha_remision.strftime("%d/%m/%Y %H:%M") if hasattr(remision.fecha_remision, "strftime") else str(remision.fecha_remision)
+    folio_titulo = f"REMISIÓN #{remision.id:04d}"
+
+    logo_img = _obtener_logo_img(width=18 * mm, height=17 * mm)
+    if logo_img:
+        header_data = [
+            [
+                logo_img,
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>ORDEN DE REMISIÓN MÉDICA</b><br/><font color='#E53935' size=10.5><b>{folio_titulo}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[20 * mm, 90 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('RIGHTPADDING', (0,0), (0,0), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ]))
+    else:
+        header_data = [
+            [
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>ORDEN DE REMISIÓN MÉDICA</b><br/><font color='#E53935' size=10.5><b>{folio_titulo}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[110 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+    historia.append(t_header)
+    historia.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_PRIMARIO, spaceAfter=7))
+
+    # 2. Datos Paciente y Tutor
+    nombre_mascota = mascota.nombre if mascota else "Paciente"
+    especie_raza = f"{mascota.especie.capitalize() if mascota else ''} · {mascota.raza.nombre if mascota and mascota.raza else 'Mestizo'}"
+    sexo_edad = f"{mascota.sexo.capitalize() if mascota and mascota.sexo else 'N/R'} · {mascota.edad_formateada if mascota and hasattr(mascota, 'edad_formateada') else 'N/R'}"
+    nombre_tutor = tutor.nombre_completo if tutor else "N/A"
+    tel_tutor = (tutor.whatsapp_efectivo or tutor.telefono if tutor else None) or "N/A"
+    doc_tutor = f" · Doc: {tutor.documento_texto}" if tutor and hasattr(tutor, "documento_texto") and tutor.documento_texto else ""
+    nombre_vet = vet.nombre if vet else clinica.get("doctora_nombre", "Dra. Daniela Pulido")
+
+    info_data = [
+        [
+            Paragraph(f"<b>PACIENTE:</b> <font color='#E53935'><b>{nombre_mascota}</b></font>", estilos['TextoNormal']),
+            Paragraph(f"<b>TUTOR:</b> <b>{nombre_tutor}</b>", estilos['TextoNormal']),
+        ],
+        [
+            Paragraph(f"<b>Especie/Raza:</b> {especie_raza}", estilos['TextoNormal']),
+            Paragraph(f"<b>Contacto:</b> {tel_tutor}{doc_tutor}", estilos['TextoNormal']),
+        ],
+        [
+            Paragraph(f"<b>Sexo/Edad:</b> {sexo_edad}", estilos['TextoNormal']),
+            Paragraph(f"<b>Médico Remitente:</b> {nombre_vet}", estilos['TextoNormal']),
+        ]
+    ]
+    t_info = Table(info_data, colWidths=[94 * mm, 94 * mm])
+    t_info.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_GRIS_FONDO),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    historia.append(t_info)
+    historia.append(Spacer(1, 6))
+
+    # 3. Destino de la Derivación
+    dest_lineas = [f"<b>Especialidad Requerida:</b> <font color='#E53935'><b>{remision.especialidad_destino}</b></font>"]
+    if remision.centro_medico_destino:
+        dest_lineas.append(f"<b>Centro / Especialista:</b> {remision.centro_medico_destino}")
+    if remision.telefono_destino:
+        dest_lineas.append(f"<b>Teléfono de Contacto:</b> {remision.telefono_destino}")
+    if remision.direccion_destino:
+        dest_lineas.append(f"<b>Dirección:</b> {remision.direccion_destino}")
+
+    t_dest = Table([[Paragraph("<br/>".join(dest_lineas), estilos['TextoNormal'])]], colWidths=[188 * mm])
+    t_dest.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#EFF6FF")),
+        ('BOX', (0,0), (-1,-1), 1.2, colors.HexColor("#93C5FD")),
+        ('PADDING', (0,0), (-1,-1), 5),
+    ]))
+    historia.append(t_dest)
+    historia.append(Spacer(1, 6))
+
+    # 4. Motivo de la Remisión
+    historia.append(Paragraph("<font color='#E53935'><b>●</b></font> <b>MOTIVO DE LA REMISIÓN & RESUMEN CLÍNICO</b>", estilos['SeccionHeader']))
+    historia.append(Spacer(1, 2))
+    motivo_txt = (remision.motivo_remision or "Derivación para valoración por especialista.").replace("\n", "<br/>")
+    t_motivo = Table([[Paragraph(motivo_txt, estilos['TextoNormal'])]], colWidths=[188 * mm])
+    t_motivo.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_GRIS_FONDO),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+        ('PADDING', (0,0), (-1,-1), 5),
+    ]))
+    historia.append(t_motivo)
+    historia.append(Spacer(1, 6))
+
+    # 5. Hallazgos y Antecedentes
+    if remision.observaciones_clinicas or remision.antecedentes_enfermedades or remision.antecedentes_cirugias:
+        historia.append(Paragraph("<font color='#0284C7'><b>●</b></font> <b>ANTECEDENTES & OBSERVACIONES</b>", estilos['SeccionHeader']))
+        historia.append(Spacer(1, 2))
+        ant_items = []
+        if remision.observaciones_clinicas:
+            ant_items.append(f"<b>Hallazgos Clínicos:</b> {remision.observaciones_clinicas}")
+        if remision.antecedentes_enfermedades:
+            ant_items.append(f"<b>Enfermedades / Alergias:</b> {remision.antecedentes_enfermedades}")
+        if remision.antecedentes_cirugias:
+            ant_items.append(f"<b>Cirugías Previas:</b> {remision.antecedentes_cirugias}")
+        if remision.dieta_marca_tipo:
+            ant_items.append(f"<b>Dieta / Alimentación:</b> {remision.dieta_marca_tipo}")
+
+        t_ant = Table([[Paragraph("<br/>".join(ant_items), estilos['TextoNormal'])]], colWidths=[188 * mm])
+        t_ant.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F8FAFC")),
+            ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+            ('PADDING', (0,0), (-1,-1), 4.5),
+        ]))
+        historia.append(t_ant)
+        historia.append(Spacer(1, 6))
+
+    # 6. Estatus Preventivo
+    prev_lineas = []
+    desp_int = f"{remision.desparasitacion_interna_producto or 'N/A'}" + (f" ({remision.desparasitacion_interna_fecha.strftime('%d/%m/%Y')})" if remision.desparasitacion_interna_fecha else "")
+    prev_lineas.append(f"<b>Desparasitación Interna:</b> {desp_int}")
+    if remision.desparasitacion_externa_producto:
+        prev_lineas.append(f"<b>Externa:</b> {remision.desparasitacion_externa_producto}")
+    vac_txt = "Al día" if remision.vacunacion_al_dia else "Incompleta / Pendiente"
+    if remision.vacunacion_ultima_fecha:
+        vac_txt += f" (Última: {remision.vacunacion_ultima_fecha.strftime('%d/%m/%Y')})"
+    prev_lineas.append(f"<b>Vacunación:</b> {vac_txt}")
+
+    t_prev = Table([[Paragraph(" · ".join(prev_lineas), estilos['TextoPequeno'])]], colWidths=[188 * mm])
+    t_prev.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F0FDF4")),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#BBF7D0")),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    historia.append(t_prev)
+    historia.append(Spacer(1, 8))
+
+    # 7. Firma
+    historia.append(_crear_bloque_firma_medica(vet, clinica, estilos, ancho_bloque=75 * mm))
+
+    doc.build(historia)
+    buffer.seek(0)
+    return buffer
+
+
+def generar_pdf_carnet_vacunacion(mascota, db_session=None) -> io.BytesIO:
+    """Genera el Carnet Oficial de Vacunación & Desparasitación de la Mascota en PDF."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=14 * mm,
+        leftMargin=14 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
+    )
+
+    estilos = _crear_estilos()
+    historia = []
+    clinica = _obtener_datos_clinica(db_session)
+    tutor = mascota.tutor
+
+    # 1. Header
+    logo_img = _obtener_logo_img(width=18 * mm, height=17 * mm)
+    if logo_img:
+        header_data = [
+            [
+                logo_img,
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>CARNET DE VACUNACIÓN</b><br/><font color='#E53935' size=10.5><b>PLAN PREVENTIVO</b></font><br/><font size=8 color='#64748B'>Expedición: {datetime.now().strftime('%d/%m/%Y')}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[20 * mm, 90 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('RIGHTPADDING', (0,0), (0,0), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ]))
+    else:
+        header_data = [
+            [
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>CARNET DE VACUNACIÓN</b><br/><font color='#E53935' size=10.5><b>PLAN PREVENTIVO</b></font><br/><font size=8 color='#64748B'>Expedición: {datetime.now().strftime('%d/%m/%Y')}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[110 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+    historia.append(t_header)
+    historia.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_PRIMARIO, spaceAfter=7))
+
+    # 2. Datos Paciente y Tutor
+    nombre_mascota = mascota.nombre
+    especie_raza = f"{mascota.especie.capitalize()} · {mascota.raza.nombre if mascota.raza else 'Mestizo'}"
+    sexo_edad = f"{mascota.sexo.capitalize()} · {mascota.edad_formateada if hasattr(mascota, 'edad_formateada') else 'N/R'}"
+    microchip = f" · Chip: {mascota.microchip}" if mascota.microchip else ""
+    nombre_tutor = tutor.nombre_completo if tutor else "N/A"
+    tel_tutor = (tutor.whatsapp_efectivo or tutor.telefono if tutor else None) or "N/A"
+    doc_tutor = f" · Doc: {tutor.documento_texto}" if tutor and hasattr(tutor, "documento_texto") and tutor.documento_texto else ""
+
+    info_data = [
+        [
+            Paragraph(f"<b>PACIENTE:</b> <font color='#E53935'><b>{nombre_mascota}</b></font>", estilos['TextoNormal']),
+            Paragraph(f"<b>TUTOR:</b> <b>{nombre_tutor}</b>", estilos['TextoNormal']),
+        ],
+        [
+            Paragraph(f"<b>Especie/Raza:</b> {especie_raza}", estilos['TextoNormal']),
+            Paragraph(f"<b>Contacto:</b> {tel_tutor}{doc_tutor}", estilos['TextoNormal']),
+        ],
+        [
+            Paragraph(f"<b>Sexo/Edad:</b> {sexo_edad}{microchip}", estilos['TextoNormal']),
+            Paragraph(f"<b>Clínica:</b> {clinica['nombre']}", estilos['TextoNormal']),
+        ]
+    ]
+    t_info = Table(info_data, colWidths=[94 * mm, 94 * mm])
+    t_info.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_GRIS_FONDO),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    historia.append(t_info)
+    historia.append(Spacer(1, 8))
+
+    # 3. Historial de Vacunación
+    historia.append(Paragraph("<font color='#E53935'><b>💉</b></font> <b>HISTORIAL DE VACUNAS APLICADAS</b>", estilos['SeccionHeader']))
+    historia.append(Spacer(1, 2))
+
+    vacunas_lista = getattr(mascota, 'vacunas', []) or []
+    if vacunas_lista:
+        vac_rows = [["Vacuna / Biológico", "Lote / Lab.", "Aplicación", "Próxima Dosis", "Estado"]]
+        for v in vacunas_lista:
+            f_apl = v.fecha_aplicacion.strftime("%d/%m/%Y") if hasattr(v.fecha_aplicacion, "strftime") else str(v.fecha_aplicacion)
+            f_prox = v.fecha_proxima.strftime("%d/%m/%Y") if v.fecha_proxima and hasattr(v.fecha_proxima, "strftime") else "—"
+            est = v.estado_vencimiento
+            if est == 'al_dia':
+                est_txt = "<font color='#166534'><b>AL DÍA</b></font>"
+            elif est == 'proxima_vencer':
+                est_txt = "<font color='#D97706'><b>PRÓXIMA</b></font>"
+            else:
+                est_txt = "<font color='#B91C1C'><b>VENCIDA</b></font>"
+            
+            lote_lab = f"{v.lote or ''} {v.laboratorio or ''}".strip() or "—"
+            vac_rows.append([
+                Paragraph(f"<b>{v.nombre_vacuna}</b>", estilos['TextoNormal']),
+                Paragraph(lote_lab, estilos['TextoPequeno']),
+                Paragraph(f_apl, estilos['TextoNormal']),
+                Paragraph(f"<b>{f_prox}</b>", estilos['TextoNormal']),
+                Paragraph(est_txt, estilos['TextoCentrado']),
+            ])
+
+        t_vac = Table(vac_rows, colWidths=[55 * mm, 38 * mm, 30 * mm, 35 * mm, 30 * mm])
+        t_vac.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), COLOR_OSCURO),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 7.5),
+            ('ALIGN', (2,0), (3,-1), 'CENTER'),
+            ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+            ('PADDING', (0,0), (-1,-1), 3.5),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ]))
+        historia.append(t_vac)
+    else:
+        historia.append(Paragraph("<i>Sin registros de vacunas en el sistema.</i>", estilos['TextoPequeno']))
+
+    historia.append(Spacer(1, 8))
+
+    # 4. Historial de Desparasitaciones
+    historia.append(Paragraph("<font color='#059669'><b>💊</b></font> <b>HISTORIAL DE DESPARASITACIÓN</b>", estilos['SeccionHeader']))
+    historia.append(Spacer(1, 2))
+
+    desp_lista = getattr(mascota, 'desparasitaciones', []) or []
+    if desp_lista:
+        desp_rows = [["Producto", "Tipo / Dosis", "Peso", "Fecha Aplicación", "Próxima Dosis"]]
+        for d in desp_lista:
+            f_apl = d.fecha_aplicacion.strftime("%d/%m/%Y") if hasattr(d.fecha_aplicacion, "strftime") else str(d.fecha_aplicacion)
+            f_prox = d.fecha_proxima.strftime("%d/%m/%Y") if d.fecha_proxima and hasattr(d.fecha_proxima, "strftime") else "—"
+            p_kg = f"{d.peso_kg} kg" if d.peso_kg else "—"
+            tipo_dosis = f"{d.tipo.capitalize()} {d.dosis or ''}".strip()
+            desp_rows.append([
+                Paragraph(f"<b>{d.producto}</b>", estilos['TextoNormal']),
+                Paragraph(tipo_dosis, estilos['TextoNormal']),
+                Paragraph(p_kg, estilos['TextoNormal']),
+                Paragraph(f_apl, estilos['TextoNormal']),
+                Paragraph(f"<b>{f_prox}</b>", estilos['TextoNormal']),
+            ])
+
+        t_desp = Table(desp_rows, colWidths=[55 * mm, 45 * mm, 25 * mm, 32 * mm, 31 * mm])
+        t_desp.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1E293B")),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 7.5),
+            ('ALIGN', (2,0), (4,-1), 'CENTER'),
+            ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+            ('PADDING', (0,0), (-1,-1), 3.5),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ]))
+        historia.append(t_desp)
+    else:
+        historia.append(Paragraph("<i>Sin registros de desparasitación en el sistema.</i>", estilos['TextoPequeno']))
+
+    historia.append(Spacer(1, 10))
+    historia.append(_crear_bloque_firma_medica(None, clinica, estilos, ancho_bloque=75 * mm))
+
+    doc.build(historia)
+    buffer.seek(0)
+    return buffer
+
+
+def generar_pdf_consentimiento(doc_consentimiento, db_session=None) -> io.BytesIO:
+    """Genera el Documento Oficial de Consentimiento Informado con firmas digitales en PDF."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=14 * mm,
+        leftMargin=14 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
+    )
+
+    estilos = _crear_estilos()
+    historia = []
+    clinica = _obtener_datos_clinica(db_session)
+    mascota = doc_consentimiento.mascota
+    tutor = doc_consentimiento.tutor or (mascota.tutor if mascota else None)
+    vet = doc_consentimiento.veterinario
+    firma = doc_consentimiento.firma
+
+    # 1. Header
+    fecha_str = doc_consentimiento.creado_en.strftime("%d/%m/%Y %H:%M") if hasattr(doc_consentimiento.creado_en, "strftime") else str(doc_consentimiento.creado_en)
+    folio_titulo = f"CONSENTIMIENTO #{doc_consentimiento.id:04d}"
+
+    logo_img = _obtener_logo_img(width=18 * mm, height=17 * mm)
+    if logo_img:
+        header_data = [
+            [
+                logo_img,
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>CONSENTIMIENTO INFORMADO</b><br/><font color='#E53935' size=10.5><b>{folio_titulo}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[20 * mm, 90 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('RIGHTPADDING', (0,0), (0,0), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ]))
+    else:
+        header_data = [
+            [
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>CONSENTIMIENTO INFORMADO</b><br/><font color='#E53935' size=10.5><b>{folio_titulo}</b></font><br/><font size=8 color='#64748B'>Fecha: {fecha_str}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[110 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+    historia.append(t_header)
+    historia.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_PRIMARIO, spaceAfter=7))
+
+    # 2. Título y Estado
+    estado_badge = "<font color='#166534'><b>FIRMADO DIGITALMENTE</b></font>" if doc_consentimiento.esta_firmado else "<font color='#B91C1C'><b>PENDIENTE DE FIRMA</b></font>"
+    historia.append(Paragraph(f"<b>{doc_consentimiento.titulo.upper()}</b> &nbsp;·&nbsp; {estado_badge}", estilos['SeccionHeader']))
+    historia.append(Spacer(1, 4))
+
+    # 3. Contenido del Consentimiento
+    parrafos_cuerpo = [p.strip() for p in doc_consentimiento.contenido_final.split("\n\n") if p.strip()]
+    cuerpo_data = []
+    for p in parrafos_cuerpo:
+        cuerpo_data.append([Paragraph(p.replace("\n", "<br/>"), estilos['TextoNormal'])])
+
+    t_cuerpo = Table(cuerpo_data, colWidths=[188 * mm])
+    t_cuerpo.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F8FAFC")),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#F1F5F9")),
+        ('PADDING', (0,0), (-1,-1), 4.5),
+    ]))
+    historia.append(t_cuerpo)
+    historia.append(Spacer(1, 8))
+
+    # 4. Firmas Duales (Tutor y Veterinario)
+    firma_tutor_img = _obtener_firma_flowable(firma.trazo_firma_png if firma else None, width=46 * mm, height=18 * mm)
+    nombre_firmante = firma.nombre_firmante if firma else (tutor.nombre_completo if tutor else "Tutor Legal")
+    doc_firmante = firma.documento_firmante if firma else (tutor.documento_texto if hasattr(tutor, "documento_texto") and tutor.documento_texto else "")
+
+    lineas_tutor = [
+        f"<b>{nombre_firmante}</b>",
+        f"<font color='#334155'>CC/Doc: {doc_firmante}</font>",
+        f"<font size=6.5 color='#64748B'>Tutor / Responsable Legal</font>",
+    ]
+    p_sello_tutor = Paragraph("<br/>".join(lineas_tutor), estilos['PiePagina'])
+
+    filas_tutor = []
+    if firma_tutor_img:
+        filas_tutor.append([firma_tutor_img])
+    else:
+        filas_tutor.append([Spacer(1, 14 * mm)])
+    filas_tutor.append([p_sello_tutor])
+
+    t_sello_tutor = Table(filas_tutor, colWidths=[80 * mm])
+    t_sello_tutor.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('LINEABOVE', (0,1), (0,1), 1, colors.HexColor("#334155")),
+        ('TOPPADDING', (0,1), (0,1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 1),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+    ]))
+
+    # Bloque Veterinario
+    nombre_vet = vet.nombre if vet else clinica.get("doctora_nombre", "Dra. Daniela Pulido")
+    titulo_vet = getattr(vet, "titulo_profesional", None) or clinica.get("doctora_titulo", "Médica veterinaria")
+    tp_vet = getattr(vet, "tarjeta_profesional", None) or clinica.get("doctora_tp", "53214")
+    firma_vet_img = _obtener_firma_flowable(getattr(vet, "firma_digital", None) or clinica.get("doctora_firma", ""), width=46 * mm, height=18 * mm)
+
+    lineas_vet = [
+        f"<b>{nombre_vet}</b>",
+        f"<font color='#334155'>{titulo_vet} · T.P. {tp_vet}</font>",
+        f"<font size=6.5 color='#64748B'>{clinica['nombre']}</font>",
+    ]
+    p_sello_vet = Paragraph("<br/>".join(lineas_vet), estilos['PiePagina'])
+
+    filas_vet = []
+    if firma_vet_img:
+        filas_vet.append([firma_vet_img])
+    else:
+        filas_vet.append([Spacer(1, 14 * mm)])
+    filas_vet.append([p_sello_vet])
+
+    t_sello_vet = Table(filas_vet, colWidths=[80 * mm])
+    t_sello_vet.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('LINEABOVE', (0,1), (0,1), 1, colors.HexColor("#334155")),
+        ('TOPPADDING', (0,1), (0,1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 1),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+    ]))
+
+    t_firmas_dual = Table([[t_sello_tutor, "", t_sello_vet]], colWidths=[85 * mm, 18 * mm, 85 * mm])
+    t_firmas_dual.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'BOTTOM'),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+    ]))
+    historia.append(KeepTogether(t_firmas_dual))
+
+    # 5. Hash de Integridad
+    hash_txt = doc_consentimiento.calcular_hash_integridad() if hasattr(doc_consentimiento, "calcular_hash_integridad") else ""
+    if hash_txt:
+        historia.append(Spacer(1, 4))
+        historia.append(Paragraph(f"<font size=6.5 color='#94A3B8'>Certificación e Integridad Criptográfica SHA-256: {hash_txt} · Sandía VetCare</font>", estilos['PiePagina']))
+
+    doc.build(historia)
+    buffer.seek(0)
+    return buffer
+
 

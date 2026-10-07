@@ -1842,9 +1842,9 @@ class VacunaMascota(BaseModel):
 
     @property
     def enlace_whatsapp(self) -> str | None:
-        if not self.tutor or not self.tutor.telefono:
+        if not self.tutor or not self.tutor.whatsapp_efectivo:
             return None
-        return enlace_whatsapp(self.tutor.telefono, self.mensaje_whatsapp)
+        return enlace_whatsapp(self.tutor.whatsapp_efectivo, self.mensaje_whatsapp)
 
     def __repr__(self):
         return f"<VacunaMascota {self.id} mascota={self.mascota_id} vacuna={self.nombre_vacuna!r}>"
@@ -2046,9 +2046,9 @@ class Cita(BaseModel):
 
     @property
     def enlace_whatsapp(self) -> str | None:
-        if not self.tutor or not self.tutor.telefono:
+        if not self.tutor or not self.tutor.whatsapp_efectivo:
             return None
-        return enlace_whatsapp(self.tutor.telefono, self.mensaje_whatsapp)
+        return enlace_whatsapp(self.tutor.whatsapp_efectivo, self.mensaje_whatsapp)
 
     def __repr__(self):
         return f"<Cita {self.id} {self.tipo} {self.fecha_hora}>"

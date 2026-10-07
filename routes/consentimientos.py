@@ -407,6 +407,41 @@ def documento_publico(id: int):
     )
 
 
+@bp_consentimientos.route("/<int:id>/pdf", methods=["GET"])
+def consentimiento_pdf(id: int):
+    """Genera y descarga el archivo PDF oficial del consentimiento informado."""
+    from flask import send_file
+    from pdf_generator import generar_pdf_consentimiento
+
+    doc = db.session.execute(
+        select(ConsentimientoEmitido)
+        .where(ConsentimientoEmitido.id == id)
+        .options(
+            selectinload(ConsentimientoEmitido.mascota).selectinload(Mascota.raza),
+            selectinload(ConsentimientoEmitido.tutor),
+            selectinload(ConsentimientoEmitido.veterinario),
+            selectinload(ConsentimientoEmitido.firma),
+        )
+    ).scalar_one_or_none()
+
+    if not doc:
+        flash("El consentimiento informado no existe.", "danger")
+        return redirect(url_for("consentimientos.lista"))
+
+    pdf_buffer = generar_pdf_consentimiento(doc, db.session)
+    nombre_archivo = f"Consentimiento_{doc.mascota.nombre if doc.mascota else 'Paciente'}_{doc.id:04d}.pdf"
+    response = send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=nombre_archivo,
+    )
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
 @bp_consentimientos.route("/<int:id>/anular", methods=["POST"])
 @login_required
 @clinico_required
