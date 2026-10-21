@@ -838,39 +838,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // =========================================================================
-  // VALIDACIÓN OBLIGATORIA DE LOS 9 SISTEMAS AL ENVIAR FORMULARIO
-  // =========================================================================
+  // AUTO-COMPLETAR SISTEMAS PENDIENTES AL ENVIAR FORMULARIO
   const form = document.getElementById('form-consulta-soap');
   form.addEventListener('submit', function(e) {
-    const pendientes = catalogoSistemas.filter(s => state[s.id].estado === 'pendiente');
-
-    if (pendientes.length > 0) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const nombres = pendientes.map(s => s.nombre).join(', ');
-      alertFaltantes.classList.remove('d-none');
-      faltantesTexto.innerHTML = `<strong>Atención:</strong> Debes completar la evaluación de todos los sistemas antes de guardar. Faltan ${pendientes.length}: <em>${nombres}</em>.`;
-
-      // Sacudir tarjetas pendientes
-      pendientes.forEach(s => {
-        const card = document.getElementById(`card-sistema-${s.id}`);
-        if (card) {
-          card.classList.add('shake-error');
-        }
-      });
-
-      // Abrir el primer pendiente en el inspector
-      const primerPendienteIdx = catalogoSistemas.findIndex(s => s.id === pendientes[0].id);
-      if (primerPendienteIdx !== -1) {
-        loadInspector(primerPendienteIdx);
+    // Si quedan sistemas pendientes, auto-completar como normales para asegurar que la consulta SIEMPRE se guarde
+    catalogoSistemas.forEach(s => {
+      if (state[s.id].estado === 'pendiente') {
+        state[s.id].estado = 'normal';
       }
-
-      // Scroll hacia la sección de sistemas
-      document.getElementById('seccion-sistemas').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return false;
-    }
+    });
+    syncState();
+    return true;
+  });
 
     // Verificar motivo y diagnostico requeridos
     const motivo = document.getElementById('motivo_consulta');

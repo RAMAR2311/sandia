@@ -42,6 +42,16 @@ MODULOS = [
         "esencial": True,
     },
     {
+        "clave": "controles",
+        "nombre": "Controles Médicos",
+        "descripcion": "Evolución y seguimientos clínicos de la semana",
+        "icono": "bi-clipboard2-pulse-fill",
+        "endpoint": "historias.controles_semana",
+        "roles": ("admin", "veterinario", "auxiliar", "recepcion"),
+        "en_barra": False,
+        "esencial": True,
+    },
+    {
         "clave": "mascotas",
         "nombre": "Mascotas",
         "descripcion": "Fichas, historia y curva de peso",

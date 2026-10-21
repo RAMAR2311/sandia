@@ -1649,6 +1649,7 @@ body.pagina-login { background: var(--sandia-crema) radial-gradient(circle at 20
 /* Iconos temáticos por módulo */
 .menu-lateral__icono--inicio { background: #FEE2E2; color: #DC2626; }
 .menu-lateral__icono--historias { background: #E0F2FE; color: #0284C7; }
+.menu-lateral__icono--controles { background: #CCFBF1; color: #0F766E; }
 .menu-lateral__icono--mascotas { background: #FCE7F3; color: #DB2777; }
 .menu-lateral__icono--tutores { background: #E0E7FF; color: #4F46E5; }
 .menu-lateral__icono--agenda { background: #FEE2E2; color: #DC2626; }

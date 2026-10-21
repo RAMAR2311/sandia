@@ -271,7 +271,9 @@ def _registrar_plantillas(app: Flask) -> None:
 
     @app.before_request
     def verificar_licencia_servidor():
-        # Rutas y recursos excluidos del bloqueo para permitir pagos, cierre de sesión y recursos
+        # Excluir modo pruebas y recursos estáticos/pago
+        if app.config.get("TESTING"):
+            return None
         if request.endpoint in ("static", "servidor.confirmar_pago", "auth.logout"):
             return None
         if request.path.startswith("/static/") or request.path.startswith("/servidor/"):

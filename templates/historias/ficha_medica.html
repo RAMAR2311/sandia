@@ -582,9 +582,20 @@
               {% endfor %}
             </div>
             {% else %}
-            <div class="text-center py-5">
+            {% if mascota.controles %}
+            <div class="alert alert-info rounded-4 border-0 shadow-xs p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
+              <div>
+                <i class="bi bi-info-circle-fill text-info fs-5 me-2"></i>
+                <span>Este paciente cuenta con <strong>{{ mascota.controles|length }} control(es) médico(s) / evolución</strong> registrado(s).</span>
+              </div>
+              <button type="button" class="btn btn-sm btn-info text-white rounded-pill px-3 fw-bold" onclick="document.getElementById('controles-tab').click();">
+                Ver Controles Médicos <i class="bi bi-arrow-right ms-1"></i>
+              </button>
+            </div>
+            {% endif %}
+            <div class="text-center py-4">
               <div class="display-4 text-muted mb-2"><i class="bi bi-journal-x"></i></div>
-              <h5 class="fw-bold">Sin consultas registradas</h5>
+              <h5 class="fw-bold">Sin consultas SOAP registradas</h5>
               <p class="text-muted small mb-3">Aún no se ha realizado ninguna consulta médica (SOAP) para {{ mascota.nombre }}.</p>
               <a href="{{ url_for('historias.consulta_nueva', mascota_id=mascota.id) }}" class="btn btn-sandia px-4">
                 <i class="bi bi-plus-circle me-1"></i> Crear primera consulta

@@ -1,7 +1,7 @@
 import io
 import json
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 import pandas as pd
@@ -15,7 +15,7 @@ from pdf_generator import (
     generar_pdf_remision,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import or_, select
+from sqlalchemy import case, desc, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from forms import (
@@ -86,34 +86,167 @@ POR_PAGINA = 9
 def lista():
     pagina = request.args.get("page", 1, type=int)
     q = (request.args.get("q") or "").strip()
+    orden = request.args.get("orden", "recientes").strip()
+    vista = request.args.get("vista", "pacientes").strip()  # 'pacientes' o 'atenciones'
     normalizado = normalizar_texto(q)
+
+    # Subconsultas para obtener la fecha de última actividad médica (Consulta SOAP o Control Médico)
+    subq_consulta = (
+        select(ConsultaMedica.mascota_id, func.max(ConsultaMedica.fecha_hora).label("max_c"))
+        .group_by(ConsultaMedica.mascota_id)
+        .subquery()
+    )
+    subq_control = (
+        select(ControlMedico.mascota_id, func.max(ControlMedico.fecha_hora).label("max_ctl"))
+        .group_by(ControlMedico.mascota_id)
+        .subquery()
+    )
+
+    ultima_fecha = case(
+        (subq_control.c.max_ctl.is_not(None) & subq_consulta.c.max_c.is_not(None),
+         case((subq_control.c.max_ctl > subq_consulta.c.max_c, subq_control.c.max_ctl), else_=subq_consulta.c.max_c)),
+        (subq_control.c.max_ctl.is_not(None), subq_control.c.max_ctl),
+        (subq_consulta.c.max_c.is_not(None), subq_consulta.c.max_c),
+        else_=Mascota.fecha_registro
+    )
 
     consulta = (
         select(Mascota)
         .filter(Mascota.activo.is_(True))
+        .outerjoin(subq_consulta, Mascota.id == subq_consulta.c.mascota_id)
+        .outerjoin(subq_control, Mascota.id == subq_control.c.mascota_id)
         .options(
             selectinload(Mascota.tutor),
             selectinload(Mascota.raza),
-            selectinload(Mascota.consultas),
+            selectinload(Mascota.consultas).selectinload(ConsultaMedica.veterinario),
+            selectinload(Mascota.controles).selectinload(ControlMedico.veterinario),
             selectinload(Mascota.vacunas),
             selectinload(Mascota.registros_peso),
         )
-        .order_by(Mascota.nombre.asc())
     )
 
+    if orden == "alfabetico":
+        consulta = consulta.order_by(Mascota.nombre.asc())
+    else:
+        consulta = consulta.order_by(desc(ultima_fecha), desc(Mascota.id))
+
     if normalizado:
-        consulta = consulta.join(Tutor).filter(
+        subq_c_match = select(ConsultaMedica.mascota_id).where(
+            or_(
+                ConsultaMedica.motivo_consulta.ilike(f"%{normalizado}%"),
+                ConsultaMedica.diagnostico.ilike(f"%{normalizado}%"),
+            )
+        )
+        subq_ctl_match = select(ControlMedico.mascota_id).where(
+            or_(
+                ControlMedico.motivo.ilike(f"%{normalizado}%"),
+                ControlMedico.diagnostico.ilike(f"%{normalizado}%"),
+            )
+        )
+        consulta = consulta.outerjoin(Tutor, Mascota.tutor_id == Tutor.id).filter(
             or_(
                 Mascota.nombre_busqueda.ilike(f"%{normalizado}%"),
                 Tutor.nombre_busqueda.ilike(f"%{normalizado}%"),
                 Tutor.numero_documento.ilike(f"%{normalizado}%"),
                 Mascota.microchip.ilike(f"%{normalizado}%"),
+                Mascota.id.in_(subq_c_match),
+                Mascota.id.in_(subq_ctl_match),
             )
         )
 
     paginacion = db.paginate(consulta, page=pagina, per_page=POR_PAGINA, error_out=False)
     mascotas = paginacion.items
-    return render_template("historias/lista.html", mascotas=mascotas, pagina=paginacion, q=q)
+
+    # Totales globales reales para los KPIs
+    total_pacientes = db.session.execute(select(func.count(Mascota.id)).filter(Mascota.activo.is_(True))).scalar() or 0
+    total_consultas = db.session.execute(select(func.count(ConsultaMedica.id))).scalar() or 0
+    total_controles = db.session.execute(select(func.count(ControlMedico.id))).scalar() or 0
+    kpis = {
+        "total_pacientes": total_pacientes,
+        "total_consultas": total_consultas,
+        "total_controles": total_controles,
+        "total_historias": total_consultas + total_controles,
+    }
+
+    # Atenciones clínicas recientes (Consultas SOAP y Controles) unificadas y ordenadas por fecha reciente
+    ultimas_consultas = db.session.execute(
+        select(ConsultaMedica)
+        .options(
+            selectinload(ConsultaMedica.mascota),
+            selectinload(ConsultaMedica.tutor),
+            selectinload(ConsultaMedica.veterinario)
+        )
+        .order_by(ConsultaMedica.fecha_hora.desc())
+        .limit(25)
+    ).scalars().all()
+
+    ultimos_controles = db.session.execute(
+        select(ControlMedico)
+        .options(
+            selectinload(ControlMedico.mascota),
+            selectinload(ControlMedico.tutor),
+            selectinload(ControlMedico.veterinario)
+        )
+        .order_by(ControlMedico.fecha_hora.desc())
+        .limit(25)
+    ).scalars().all()
+
+    atenciones_recientes = []
+    for c in ultimas_consultas:
+        atenciones_recientes.append({
+            "id": c.id,
+            "tipo": "soap",
+            "tipo_etiqueta": "Consulta SOAP",
+            "badge_color": "danger",
+            "icono": "bi-journal-medical",
+            "fecha": c.fecha_hora,
+            "mascota": c.mascota,
+            "tutor": c.tutor,
+            "veterinario": c.veterinario,
+            "motivo": c.motivo_consulta,
+            "diagnostico": c.diagnostico,
+            "peso_kg": c.peso_kg,
+            "temperatura_c": c.temperatura_c,
+            "url_detalle": url_for("historias.consulta_detalle", id=c.id),
+            "url_editar": url_for("historias.consulta_editar", id=c.id),
+            "url_pdf": url_for("historias.consulta_pdf", id=c.id),
+            "url_whatsapp": getattr(c, "enlace_whatsapp", None),
+        })
+
+    for ctrl in ultimos_controles:
+        atenciones_recientes.append({
+            "id": ctrl.id,
+            "tipo": "control",
+            "tipo_etiqueta": "Control Clínico",
+            "badge_color": "info",
+            "icono": "bi-clipboard2-check",
+            "fecha": ctrl.fecha_hora,
+            "mascota": ctrl.mascota,
+            "tutor": ctrl.tutor,
+            "veterinario": ctrl.veterinario,
+            "motivo": ctrl.motivo or "Revisión y evolución",
+            "diagnostico": ctrl.diagnostico or ctrl.avances,
+            "peso_kg": ctrl.peso_kg,
+            "temperatura_c": ctrl.temperatura_c,
+            "url_detalle": url_for("historias.ficha_medica", mascota_id=ctrl.mascota_id, tab="controles"),
+            "url_editar": url_for("historias.control_editar", id=ctrl.id),
+            "url_pdf": url_for("historias.control_pdf", id=ctrl.id),
+            "url_whatsapp": getattr(ctrl, "enlace_whatsapp", None),
+        })
+
+    atenciones_recientes.sort(key=lambda x: _normalizar_para_orden(x["fecha"]), reverse=True)
+    atenciones_recientes = atenciones_recientes[:30]
+
+    return render_template(
+        "historias/lista.html",
+        mascotas=mascotas,
+        pagina=paginacion,
+        q=q,
+        orden=orden,
+        vista=vista,
+        kpis=kpis,
+        atenciones_recientes=atenciones_recientes,
+    )
 
 
 def _normalizar_para_orden(dt):
@@ -579,28 +712,18 @@ def consulta_nueva(mascota_id: int):
             form.vacunacion_fecha.data = v.fecha_aplicacion
 
     if form.validate_on_submit():
-        # Validar si el examen de sistemas viene en formato JSON estructurado
+        # Procesar examen de sistemas en formato JSON si fue provisto
         examen_raw = form.examen_sistemas.data.strip() if form.examen_sistemas.data else ""
         if examen_raw.startswith("{"):
             try:
                 s_data = json.loads(examen_raw)
                 s_dict = s_data.get("sistemas", {}) if isinstance(s_data, dict) else {}
-                faltantes = []
+                # Completar cualquier sistema no evaluado como normal para no bloquear el guardado clínico
                 for sist in SISTEMAS_MEDICOS_CATALOGO:
-                    item = s_dict.get(sist["id"])
-                    if not item or item.get("estado") not in ("normal", "anormal"):
-                        faltantes.append(sist["nombre"])
-                if faltantes:
-                    flash(
-                        f"Debes completar la evaluación de todos los sistemas. Faltan {len(faltantes)}: {', '.join(faltantes)}.",
-                        "danger",
-                    )
-                    return render_template(
-                        "historias/form_consulta.html",
-                        form=form,
-                        mascota=mascota,
-                        catalogo_sistemas=SISTEMAS_MEDICOS_CATALOGO,
-                    )
+                    if sist["id"] not in s_dict or s_dict[sist["id"]].get("estado") not in ("normal", "anormal"):
+                        s_dict[sist["id"]] = {"estado": "normal", "observacion": ""}
+                s_data["sistemas"] = s_dict
+                form.examen_sistemas.data = json.dumps(s_data)
             except json.JSONDecodeError:
                 pass
 
@@ -715,28 +838,17 @@ def consulta_editar(id: int):
             form.fecha_proximo_control.data = ultimo_control.fecha_proximo_control or ultimo_control.fecha_hora
 
     if form.validate_on_submit():
+        # Procesar examen de sistemas en formato JSON al editar
         examen_raw = form.examen_sistemas.data.strip() if form.examen_sistemas.data else ""
         if examen_raw.startswith("{"):
             try:
                 s_data = json.loads(examen_raw)
                 s_dict = s_data.get("sistemas", {}) if isinstance(s_data, dict) else {}
-                faltantes = []
                 for sist in SISTEMAS_MEDICOS_CATALOGO:
-                    item = s_dict.get(sist["id"])
-                    if not item or item.get("estado") not in ("normal", "anormal"):
-                        faltantes.append(sist["nombre"])
-                if faltantes:
-                    flash(
-                        f"Debes completar la evaluación de todos los sistemas. Faltan {len(faltantes)}: {', '.join(faltantes)}.",
-                        "danger",
-                    )
-                    return render_template(
-                        "historias/form_consulta.html",
-                        form=form,
-                        mascota=mascota,
-                        consulta=consulta,
-                        catalogo_sistemas=SISTEMAS_MEDICOS_CATALOGO,
-                    )
+                    if sist["id"] not in s_dict or s_dict[sist["id"]].get("estado") not in ("normal", "anormal"):
+                        s_dict[sist["id"]] = {"estado": "normal", "observacion": ""}
+                s_data["sistemas"] = s_dict
+                form.examen_sistemas.data = json.dumps(s_data)
             except json.JSONDecodeError:
                 pass
 
@@ -1022,6 +1134,85 @@ def control_eliminar(id: int):
 
     next_url = request.form.get("next")
     return redirect(next_url or url_for("historias.ficha_medica", mascota_id=mascota_id, tab="controles"))
+
+
+@bp.route("/controles-semana", methods=["GET"])
+@login_required
+@clinico_required
+def controles_semana():
+    """Vista especializada para visualizar y auditar los controles médicos realizados en la última semana o periodo."""
+    dias = request.args.get("dias", 7, type=int)
+    if dias not in (7, 15, 30, 90):
+        dias = 7
+
+    ahora = obtener_hora_bogota()
+    fecha_inicio = ahora - timedelta(days=dias)
+    q = (request.args.get("q") or "").strip()
+    normalizado = normalizar_texto(q)
+
+    stmt = (
+        select(ControlMedico)
+        .options(
+            selectinload(ControlMedico.mascota).selectinload(Mascota.tutor),
+            selectinload(ControlMedico.mascota).selectinload(Mascota.raza),
+            selectinload(ControlMedico.tutor),
+            selectinload(ControlMedico.veterinario),
+            selectinload(ControlMedico.consulta_origen),
+        )
+        .filter(ControlMedico.fecha_hora >= fecha_inicio)
+        .order_by(ControlMedico.fecha_hora.desc())
+    )
+
+    if normalizado:
+        stmt = stmt.join(Mascota, ControlMedico.mascota_id == Mascota.id).outerjoin(Tutor, Mascota.tutor_id == Tutor.id).filter(
+            or_(
+                Mascota.nombre.ilike(f"%{normalizado}%"),
+                Mascota.numero_historia.ilike(f"%{normalizado}%"),
+                Tutor.nombre.ilike(f"%{normalizado}%"),
+                Tutor.apellido.ilike(f"%{normalizado}%"),
+                Tutor.documento.ilike(f"%{normalizado}%"),
+                ControlMedico.motivo.ilike(f"%{normalizado}%"),
+                ControlMedico.diagnostico.ilike(f"%{normalizado}%"),
+                ControlMedico.avances.ilike(f"%{normalizado}%"),
+            )
+        )
+
+    controles = db.session.execute(stmt).scalars().all()
+
+    # Contadores y métricas rápidas
+    total_periodo = len(controles)
+    con_proximo = sum(1 for c in controles if c.fecha_proximo_control is not None)
+    
+    # Próximos controles programados para los próximos 7 días a partir de hoy
+    fecha_limite_prox = ahora + timedelta(days=7)
+    proximos_controles = db.session.execute(
+        select(ControlMedico)
+        .options(
+            selectinload(ControlMedico.mascota),
+            selectinload(ControlMedico.tutor),
+            selectinload(ControlMedico.veterinario),
+        )
+        .filter(
+            ControlMedico.fecha_proximo_control.is_not(None),
+            ControlMedico.fecha_proximo_control >= ahora - timedelta(hours=2),
+            ControlMedico.fecha_proximo_control <= fecha_limite_prox,
+        )
+        .order_by(ControlMedico.fecha_proximo_control.asc())
+        .limit(10)
+    ).scalars().all()
+
+    form_csrf = SoloCsrfForm()
+
+    return render_template(
+        "historias/controles_semana.html",
+        controles=controles,
+        dias=dias,
+        q=q,
+        total_periodo=total_periodo,
+        con_proximo=con_proximo,
+        proximos_controles=proximos_controles,
+        form_csrf=form_csrf,
+    )
 
 
 @bp.route("/control/<int:id>/pdf", methods=["GET"])
