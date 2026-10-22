@@ -214,7 +214,7 @@
                   <i class="bi {% if it.tipo == 'soap' %}bi-file-medical-fill{% else %}bi-heart-pulse-fill{% endif %}"></i>
                 </span>
                 <div>
-                  <a href="{{ url_for('historias.ficha_medica', mascota_id=it.mascota_id, tab=('soap' if it.tipo == 'soap' else 'controles')) }}" class="fw-bold text-dark text-decoration-none hover-primary">
+                  <a href="{{ url_for('historias.ficha_medica', mascota_id=(it.mascota_id or (it.mascota.id if it.mascota else 0)), tab=('soap' if it.tipo == 'soap' else 'controles')) }}" class="fw-bold text-dark text-decoration-none hover-primary">
                     {{ it.mascota.nombre if it.mascota else 'Paciente' }}
                   </a>
                   <div class="text-muted small">
@@ -291,7 +291,7 @@
             <td class="text-end pe-4 text-nowrap">
               <div class="d-inline-flex align-items-center gap-1">
                 <div class="btn-group btn-group-sm">
-                  <a href="{{ url_for('historias.ficha_medica', mascota_id=it.mascota_id, tab=('soap' if it.tipo == 'soap' else 'controles')) }}" class="btn btn-outline-secondary rounded-start-pill" title="Ver en la ficha médica">
+                  <a href="{{ url_for('historias.ficha_medica', mascota_id=(it.mascota_id or (it.mascota.id if it.mascota else 0)), tab=('soap' if it.tipo == 'soap' else 'controles')) }}" class="btn btn-outline-secondary rounded-start-pill" title="Ver en la ficha médica">
                     <i class="bi bi-eye-fill"></i> Ver
                   </a>
                   {% if it.tipo == 'control' %}
