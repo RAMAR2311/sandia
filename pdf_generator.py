@@ -399,12 +399,46 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
         ('PADDING', (0,0), (-1,-1), 4),
     ]))
     historia.append(t_info)
-    historia.append(Spacer(1, 10))
+    historia.append(Spacer(1, 8))
 
     # =========================================================================
-    # 3. OBJETIVO: CONSTANTES VITALES Y EXAMEN FÍSICO
+    # 3. SECCIÓN S: SUBJETIVO (Motivo & Anamnesis)
     # =========================================================================
-    historia.append(Paragraph("<b>CONSTANTES VITALES & EXAMEN FÍSICO</b>", estilos['SeccionHeader']))
+    historia.append(Paragraph("<b>S · SUBJETIVO (Motivo de Consulta & Anamnesis)</b>", estilos['SeccionHeader']))
+    historia.append(Spacer(1, 2))
+    
+    anamnesis_texto = consulta.anamnesis or "Sin antecedentes previos reportados por el tutor."
+    subjetivo_data = [
+        [Paragraph(f"<b>Motivo de Consulta:</b> {consulta.motivo_consulta}", estilos['TextoNormal'])],
+        [Paragraph(f"<b>Anamnesis / Historia Previa:</b> {anamnesis_texto}", estilos['TextoNormal'])],
+    ]
+
+    preventivo_items = []
+    if consulta.alimentacion:
+        preventivo_items.append(f"<b>Dieta/Alimentación:</b> {consulta.alimentacion}")
+    if consulta.desparasitacion_producto or consulta.desparasitacion_fecha:
+        f_desp = consulta.desparasitacion_fecha.strftime("%d/%m/%Y") if consulta.desparasitacion_fecha else ""
+        preventivo_items.append(f"<b>Última Desparasitación:</b> {consulta.desparasitacion_producto or ''} {'(' + f_desp + ')' if f_desp else ''}".strip())
+    if consulta.vacunacion_producto or consulta.vacunacion_fecha:
+        f_vac = consulta.vacunacion_fecha.strftime("%d/%m/%Y") if consulta.vacunacion_fecha else ""
+        preventivo_items.append(f"<b>Última Vacuna:</b> {consulta.vacunacion_producto or ''} {'(' + f_vac + ')' if f_vac else ''}".strip())
+    
+    if preventivo_items:
+        subjetivo_data.append([Paragraph(" · ".join(preventivo_items), estilos['TextoPequeno'])])
+
+    t_subjetivo = Table(subjetivo_data, colWidths=[188 * mm])
+    t_subjetivo.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F0F9FF")),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#BAE6FD")),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    historia.append(t_subjetivo)
+    historia.append(Spacer(1, 8))
+
+    # =========================================================================
+    # 4. SECCIÓN O: OBJETIVO (Constantes Vitales + Examen por Sistemas)
+    # =========================================================================
+    historia.append(Paragraph("<b>O · OBJETIVO (Constantes Fisiológicas & Examen Físico)</b>", estilos['SeccionHeader']))
     historia.append(Spacer(1, 2))
 
     # Constantes vitales en barra horizontal
@@ -439,7 +473,7 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
         ('PADDING', (0,0), (-1,-1), 3),
     ]))
     historia.append(t_vitales)
-    historia.append(Spacer(1, 6))
+    historia.append(Spacer(1, 4))
 
     # Examen por Sistemas (9 Sistemas)
     sistemas = consulta.sistemas_evaluados
@@ -475,36 +509,73 @@ def generar_pdf_consulta(consulta, db_session=None) -> io.BytesIO:
     elif consulta.examen_sistemas:
         historia.append(Paragraph(f"<b>Hallazgos por sistemas:</b> {consulta.examen_sistemas}", estilos['TextoNormal']))
     
-    historia.append(Spacer(1, 10))
+    historia.append(Spacer(1, 8))
 
     # =========================================================================
-    # 4. FÓRMULA MÉDICA (Rx)
+    # 5. SECCIÓN A: AVALÚO (Diagnóstico)
     # =========================================================================
-    historia.append(Paragraph("<b><font color='#E53935' size=11>Rx</font> FÓRMULA MÉDICA & PRESCRIPCIÓN AL TUTOR</b>", estilos['SeccionHeader']))
+    historia.append(Paragraph("<b>A · AVALÚO (Diagnóstico Presuntivo)</b>", estilos['SeccionHeader']))
     historia.append(Spacer(1, 2))
+    diag_txt = consulta.diagnostico or "Sin diagnóstico presuntivo registrado."
+    diag_data = [[Paragraph(f"<b>DIAGNÓSTICO:</b> {diag_txt}", estilos['TextoNormal'])]]
+    t_diag = Table(diag_data, colWidths=[188 * mm])
+    t_diag.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#FEF3C7")),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#FCD34D")),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    historia.append(t_diag)
+    historia.append(Spacer(1, 8))
 
+    # =========================================================================
+    # 6. SECCIÓN P: PLAN & FÓRMULA MÉDICA (Rx)
+    # =========================================================================
+    historia.append(Paragraph("<b>P · PLAN TERAPÉUTICO & PRESCRIPCIÓN MÉDICA</b>", estilos['SeccionHeader']))
+    historia.append(Spacer(1, 2))
+    
+    plan_txt = (consulta.plan_tratamiento or "Sin plan de tratamiento registrado.").replace("\n", "<br/>")
+    plan_data = [
+        [Paragraph(f"<b>Indicaciones Clínicas & Procedimientos:</b><br/>{plan_txt}", estilos['TextoNormal'])]
+    ]
+    t_plan = Table(plan_data, colWidths=[188 * mm])
+    t_plan.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_GRIS_FONDO),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    historia.append(t_plan)
+    historia.append(Spacer(1, 6))
+
+    # Receta Médica formal si existe
     if consulta.receta_medica:
         receta_txt = consulta.receta_medica.replace("\n", "<br/>")
-    else:
-        receta_txt = "<i>Sin prescripción farmacológica registrada en esta consulta.</i>"
-
-    receta_data = [
-        [
-            Paragraph(receta_txt, estilos['TextoReceta'])
+        receta_data = [
+            [
+                Paragraph("<b><font color='#E53935' size=11>Rx</font> FÓRMULA MÉDICA & PRESCRIPCIÓN AL TUTOR</b>", estilos['TextoNegrita'])
+            ],
+            [
+                Paragraph(receta_txt, estilos['TextoReceta'])
+            ]
         ]
-    ]
-    t_receta = Table(receta_data, colWidths=[188 * mm])
-    t_receta.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#FFF1F2")),
-        ('BOX', (0,0), (-1,-1), 1.5, COLOR_PRIMARIO),
-        ('PADDING', (0,0), (-1,-1), 6),
-    ]))
-    historia.append(t_receta)
-    historia.append(Spacer(1, 14))
+        t_receta = Table(receta_data, colWidths=[188 * mm])
+        t_receta.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#FEE2E2")),
+            ('BACKGROUND', (0,1), (-1,1), colors.HexColor("#FFF1F2")),
+            ('BOX', (0,0), (-1,-1), 1.5, COLOR_PRIMARIO),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#FECACA")),
+            ('PADDING', (0,0), (-1,-1), 5),
+        ]))
+        historia.append(t_receta)
+        historia.append(Spacer(1, 6))
+
+    if consulta.observaciones:
+        historia.append(Paragraph(f"<b>Observaciones / Próximo Recontrol:</b> {consulta.observaciones}", estilos['TextoNormal']))
+        historia.append(Spacer(1, 6))
 
     # =========================================================================
-    # 5. FIRMA DE LA DOCTORA & SELLO PROFESIONAL
+    # 7. FIRMA MÉDICA & PIE DE PÁGINA
     # =========================================================================
+    historia.append(Spacer(1, 10))
     historia.append(_crear_bloque_firma_medica(vet, clinica, estilos, ancho_bloque=75 * mm))
 
     # Construir PDF
