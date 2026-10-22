@@ -350,7 +350,7 @@
             <div class="timeline-soap">
               {% for ev in eventos_generales %}
               <div class="timeline-soap-item">
-                <div class="timeline-soap-badge" style="background-color: var(--bs-{{ ev.badge_color }}, #E53935);">
+                <div class="timeline-soap-badge bg-{{ ev.badge_color|default('danger') }}">
                   <i class="bi {{ ev.icono }} text-white"></i>
                 </div>
                 <div class="card border-0 shadow-xs rounded-3 bg-light">
