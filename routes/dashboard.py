@@ -43,8 +43,8 @@ MODULOS = [
     },
     {
         "clave": "controles",
-        "nombre": "Controles Médicos",
-        "descripcion": "Evolución y seguimientos clínicos de la semana",
+        "nombre": "Consultas y Controles",
+        "descripcion": "Atenciones recientes, consultas SOAP y controles médicos",
         "icono": "bi-clipboard2-pulse-fill",
         "endpoint": "historias.controles_semana",
         "roles": ("admin", "veterinario", "auxiliar", "recepcion"),

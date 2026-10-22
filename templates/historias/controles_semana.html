@@ -3,27 +3,36 @@
 {% block titulo %}Controles Médicos Recientes · {{ clinica.nombre if clinica and clinica.nombre else 'Sandía' }}{% endblock %}
 
 {% block contenido %}
-<!-- Hero Banner Controles Médicos -->
+<!-- Hero Banner Consultas & Controles Médicos -->
 <div class="hero-historias" style="background: linear-gradient(135deg, #0f172a 0%, #115e59 100%);">
   <div class="row align-items-center g-3">
-    <div class="col-12 col-lg-7">
+    <div class="col-12 col-lg-6">
       <span class="badge bg-teal bg-opacity-25 text-white border border-info border-opacity-50 mb-2 px-3 py-1 rounded-pill" style="background: rgba(20, 184, 166, 0.25);">
-        <i class="bi bi-clipboard2-pulse-fill me-1"></i> Seguimiento & Evolución Clínica
+        <i class="bi bi-clipboard2-pulse-fill me-1"></i> Consultas Médicas & Seguimiento Clínico
       </span>
-      <h1 class="h2 fw-bold text-white mb-1">Controles Médicos Realizados</h1>
+      <h1 class="h2 fw-bold text-white mb-1">Consultas y Controles Médicos</h1>
       <p class="small mb-0" style="color: #ccfbf1;">
-        Auditoría y revisión rápida de re-evaluaciones médicas, ajustes de tratamiento, peso y evolución de pacientes.
+        Auditoría y cronología de atenciones clínicas: Consultas SOAP, re-evaluaciones, ajustes de tratamiento y controles.
       </p>
     </div>
-    <div class="col-12 col-lg-5">
-      <div class="hero-historias__kpis justify-content-lg-end">
+    <div class="col-12 col-lg-6">
+      <div class="hero-historias__kpis justify-content-lg-end flex-wrap">
         <div class="hero-historias__kpi" style="background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.2);">
-          <div class="hero-historias__kpi-icono bg-info bg-opacity-25 text-white">
-            <i class="bi bi-clipboard-check-fill"></i>
+          <div class="hero-historias__kpi-icono bg-danger bg-opacity-25 text-white">
+            <i class="bi bi-journal-medical"></i>
           </div>
           <div>
-            <div class="hero-historias__kpi-valor text-white">{{ total_periodo }}</div>
-            <div class="hero-historias__kpi-label" style="color: #99f6e4;">En {{ dias }} días</div>
+            <div class="hero-historias__kpi-valor text-white">{{ total_consultas }}</div>
+            <div class="hero-historias__kpi-label" style="color: #fecdd3;">Consultas SOAP</div>
+          </div>
+        </div>
+        <div class="hero-historias__kpi" style="background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.2);">
+          <div class="hero-historias__kpi-icono bg-info bg-opacity-25 text-white">
+            <i class="bi bi-clipboard2-check-fill"></i>
+          </div>
+          <div>
+            <div class="hero-historias__kpi-valor text-white">{{ total_controles }}</div>
+            <div class="hero-historias__kpi-label" style="color: #ccfbf1;">Controles</div>
           </div>
         </div>
         <div class="hero-historias__kpi" style="background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.2);">
@@ -32,7 +41,7 @@
           </div>
           <div>
             <div class="hero-historias__kpi-valor text-white">{{ con_proximo }}</div>
-            <div class="hero-historias__kpi-label" style="color: #99f6e4;">Con cita agendada</div>
+            <div class="hero-historias__kpi-label" style="color: #fef08a;">Con cita agendada</div>
           </div>
         </div>
       </div>
@@ -41,46 +50,59 @@
 </div>
 
 <div class="container-fluid px-0 mt-4">
-  <!-- Barra de Filtros y Rango de Días -->
+  <!-- Barra de Filtros, Selector de Tipo y Rango de Días -->
   <div class="card border-0 shadow-sm rounded-4 mb-4">
     <div class="card-body p-3 p-md-4">
-      <form method="get" action="{{ url_for('historias.controles_semana') }}" class="row g-2 align-items-center">
+      <form method="get" action="{{ url_for('historias.controles_semana') }}" class="row g-3 align-items-center">
+        <!-- Selector Tipo (Píldoras) -->
+        <div class="col-12 col-lg-4">
+          <div class="btn-group w-100 shadow-2xs" role="group" aria-label="Tipo de registro">
+            <a href="{{ url_for('historias.controles_semana', dias=dias, q=q, tipo='todos') }}" class="btn btn-sm {% if tipo == 'todos' %}btn-primary fw-bold text-white{% else %}btn-outline-secondary{% endif %}">
+              <i class="bi bi-grid-fill me-1"></i> Todos ({{ total_periodo }})
+            </a>
+            <a href="{{ url_for('historias.controles_semana', dias=dias, q=q, tipo='consultas') }}" class="btn btn-sm {% if tipo == 'consultas' %}btn-danger fw-bold text-white{% else %}btn-outline-secondary{% endif %}">
+              <i class="bi bi-journal-medical me-1"></i> Consultas ({{ total_consultas }})
+            </a>
+            <a href="{{ url_for('historias.controles_semana', dias=dias, q=q, tipo='controles') }}" class="btn btn-sm {% if tipo == 'controles' %}btn-info fw-bold text-white{% else %}btn-outline-secondary{% endif %}">
+              <i class="bi bi-clipboard2-check me-1"></i> Controles ({{ total_controles }})
+            </a>
+          </div>
+        </div>
+
         <!-- Buscador -->
-        <div class="col-12 col-md-5">
+        <div class="col-12 col-md-6 col-lg-4">
           <div class="input-group">
+            <input type="hidden" name="tipo" value="{{ tipo }}">
             <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
-            <input type="text" name="q" value="{{ q }}" class="form-control bg-light border-start-0 ps-0" placeholder="Buscar paciente, tutor, motivo o diagnóstico...">
+            <input type="text" name="q" value="{{ q }}" class="form-control bg-light border-start-0 ps-0" placeholder="Buscar paciente, tutor, motivo...">
           </div>
         </div>
 
         <!-- Selector de periodo -->
-        <div class="col-6 col-md-4">
+        <div class="col-8 col-md-4 col-lg-3">
           <div class="btn-group w-100" role="group" aria-label="Rango de días">
-            <a href="{{ url_for('historias.controles_semana', dias=7, q=q) }}" class="btn btn-sm {% if dias == 7 %}btn-dark fw-bold{% else %}btn-outline-secondary{% endif %}">
-              Últimos 7 días
+            <a href="{{ url_for('historias.controles_semana', dias=7, q=q, tipo=tipo) }}" class="btn btn-sm {% if dias == 7 %}btn-dark fw-bold{% else %}btn-outline-secondary{% endif %}">
+              7 d
             </a>
-            <a href="{{ url_for('historias.controles_semana', dias=15, q=q) }}" class="btn btn-sm {% if dias == 15 %}btn-dark fw-bold{% else %}btn-outline-secondary{% endif %}">
-              15 días
+            <a href="{{ url_for('historias.controles_semana', dias=15, q=q, tipo=tipo) }}" class="btn btn-sm {% if dias == 15 %}btn-dark fw-bold{% else %}btn-outline-secondary{% endif %}">
+              15 d
             </a>
-            <a href="{{ url_for('historias.controles_semana', dias=30, q=q) }}" class="btn btn-sm {% if dias == 30 %}btn-dark fw-bold{% else %}btn-outline-secondary{% endif %}">
-              30 días
+            <a href="{{ url_for('historias.controles_semana', dias=30, q=q, tipo=tipo) }}" class="btn btn-sm {% if dias == 30 %}btn-dark fw-bold{% else %}btn-outline-secondary{% endif %}">
+              30 d
             </a>
           </div>
         </div>
 
         <!-- Botones de Acción -->
-        <div class="col-6 col-md-3 d-flex gap-2 justify-content-end">
-          <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold rounded-pill">
-            <i class="bi bi-funnel-fill me-1"></i> Filtrar
+        <div class="col-4 col-md-2 col-lg-1 d-flex gap-1 justify-content-end">
+          <button type="submit" class="btn btn-primary btn-sm px-2 fw-bold rounded-pill" title="Aplicar filtro">
+            <i class="bi bi-funnel-fill"></i>
           </button>
           {% if q %}
-          <a href="{{ url_for('historias.controles_semana', dias=dias) }}" class="btn btn-outline-secondary btn-sm rounded-pill" title="Limpiar búsqueda">
+          <a href="{{ url_for('historias.controles_semana', dias=dias, tipo=tipo) }}" class="btn btn-outline-secondary btn-sm rounded-pill" title="Limpiar búsqueda">
             <i class="bi bi-x-circle"></i>
           </a>
           {% endif %}
-          <a href="{{ url_for('historias.lista') }}" class="btn btn-outline-dark btn-sm rounded-pill" title="Ir a Historias Clínicas">
-            <i class="bi bi-journal-medical me-1"></i> Historias
-          </a>
         </div>
       </form>
     </div>
@@ -127,56 +149,77 @@
   </div>
   {% endif %}
 
-  <!-- Lista Principal de Controles Médicos -->
+  <!-- Lista Principal de Consultas y Controles Médicos -->
   <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
     <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
       <div>
         <h5 class="fw-bold text-dark mb-0">
-          <i class="bi bi-clipboard2-check text-info me-2"></i>Controles Realizados ({{ total_periodo }})
+          <i class="bi bi-clipboard2-check text-primary me-2"></i>
+          {% if tipo == 'consultas' %}
+            Consultas Médicas SOAP ({{ total_consultas }})
+          {% elif tipo == 'controles' %}
+            Controles Realizados ({{ total_controles }})
+          {% else %}
+            Consultas y Controles ({{ total_periodo }})
+          {% endif %}
         </h5>
-        <small class="text-muted">Mostrando registros médicos de seguimiento ordenados cronológicamente</small>
+        <small class="text-muted">Mostrando registros médicos ordenados cronológicamente</small>
       </div>
       <span class="badge bg-light text-secondary border rounded-pill px-3 py-1">
         Periodo: Últimos {{ dias }} días
       </span>
     </div>
 
-    {% if controles %}
+    {% if items %}
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light text-secondary small text-uppercase fw-semibold">
           <tr>
             <th class="ps-4" style="width: 140px;">Fecha y Hora</th>
+            <th>Tipo</th>
             <th>Paciente</th>
             <th>Tutor</th>
-            <th>Motivo & Evolución</th>
+            <th>Motivo & Detalle</th>
             <th>Constantes</th>
             <th>Veterinario</th>
-            <th class="text-end pe-4" style="min-width: 180px;">Acciones</th>
+            <th class="text-end pe-4" style="min-width: 200px;">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {% for ctrl in controles %}
+          {% for it in items %}
           <tr>
             <!-- Fecha -->
             <td class="ps-4">
-              <div class="fw-bold text-dark small">{{ ctrl.fecha_hora.strftime('%d/%m/%Y') }}</div>
-              <div class="text-muted small">{{ ctrl.fecha_hora.strftime('%I:%M %p') }}</div>
+              <div class="fw-bold text-dark small">{{ it.fecha_hora.strftime('%d/%m/%Y') }}</div>
+              <div class="text-muted small">{{ it.fecha_hora.strftime('%I:%M %p') }}</div>
+            </td>
+
+            <!-- Tipo Badge -->
+            <td>
+              {% if it.tipo == 'soap' %}
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill fw-semibold" style="font-size: 0.72rem;">
+                <i class="bi bi-journal-medical me-1"></i>SOAP
+              </span>
+              {% else %}
+              <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill fw-semibold" style="font-size: 0.72rem;">
+                <i class="bi bi-clipboard2-check me-1"></i>Control
+              </span>
+              {% endif %}
             </td>
 
             <!-- Paciente -->
             <td>
               <div class="d-flex align-items-center gap-2">
-                <span class="avatar-sandia avatar-sandia--sm avatar-sandia--morado flex-shrink-0">
-                  <i class="bi bi-heart-pulse-fill"></i>
+                <span class="avatar-sandia avatar-sandia--sm {% if it.tipo == 'soap' %}avatar-sandia--rojo{% else %}avatar-sandia--morado{% endif %} flex-shrink-0">
+                  <i class="bi {% if it.tipo == 'soap' %}bi-file-medical-fill{% else %}bi-heart-pulse-fill{% endif %}"></i>
                 </span>
                 <div>
-                  <a href="{{ url_for('historias.ficha_medica', mascota_id=ctrl.mascota_id, tab='controles') }}" class="fw-bold text-dark text-decoration-none hover-primary">
-                    {{ ctrl.mascota.nombre if ctrl.mascota else 'Paciente' }}
+                  <a href="{{ url_for('historias.ficha_medica', mascota_id=it.mascota_id, tab=('soap' if it.tipo == 'soap' else 'controles')) }}" class="fw-bold text-dark text-decoration-none hover-primary">
+                    {{ it.mascota.nombre if it.mascota else 'Paciente' }}
                   </a>
                   <div class="text-muted small">
-                    {{ ctrl.mascota.especie.capitalize() if ctrl.mascota and ctrl.mascota.especie else '' }}
-                    {% if ctrl.mascota and ctrl.mascota.raza %} · {{ ctrl.mascota.raza.nombre }}{% endif %}
+                    {{ it.mascota.especie.capitalize() if it.mascota and it.mascota.especie else '' }}
+                    {% if it.mascota and it.mascota.raza %} · {{ it.mascota.raza.nombre }}{% endif %}
                   </div>
                 </div>
               </div>
@@ -184,36 +227,35 @@
 
             <!-- Tutor -->
             <td>
-              {% if ctrl.tutor %}
-              <div class="small fw-semibold text-dark">{{ ctrl.tutor.nombre_completo }}</div>
-              {% if ctrl.tutor.telefono %}
-              <small class="text-muted">{{ ctrl.tutor.telefono }}</small>
+              {% if it.tutor %}
+              <div class="small fw-semibold text-dark">{{ it.tutor.nombre_completo }}</div>
+              {% if it.tutor.telefono %}
+              <small class="text-muted">{{ it.tutor.telefono }}</small>
               {% endif %}
               {% else %}
               <span class="text-muted small">Sin tutor</span>
               {% endif %}
             </td>
 
-            <!-- Motivo & Avances -->
-            <td style="max-width: 320px;">
-              <div class="fw-bold text-dark text-truncate" title="{{ ctrl.motivo or 'Control y evolución' }}">
-                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill me-1" style="font-size: 0.7rem;">Control</span>
-                {{ ctrl.motivo or 'Revisión médica de evolución' }}
+            <!-- Motivo & Avances / Diagnóstico -->
+            <td style="max-width: 300px;">
+              <div class="fw-bold text-dark text-truncate" title="{{ it.motivo or 'Consulta / Control' }}">
+                {{ it.motivo or ('Consulta médica general' if it.tipo == 'soap' else 'Revisión médica de evolución') }}
               </div>
-              {% if ctrl.avances %}
-              <div class="small text-secondary text-truncate" title="{{ ctrl.avances }}">
-                <i class="bi bi-activity text-teal me-1"></i>{{ ctrl.avances }}
-              </div>
-              {% endif %}
-              {% if ctrl.diagnostico %}
-              <div class="small text-muted text-truncate" title="{{ ctrl.diagnostico }}">
-                <strong>Dx:</strong> {{ ctrl.diagnostico }}
+              {% if it.avances %}
+              <div class="small text-secondary text-truncate" title="{{ it.avances }}">
+                <i class="bi bi-activity text-teal me-1"></i>{{ it.avances }}
               </div>
               {% endif %}
-              {% if ctrl.fecha_proximo_control %}
+              {% if it.diagnostico %}
+              <div class="small text-muted text-truncate" title="{{ it.diagnostico }}">
+                <strong>Dx:</strong> {{ it.diagnostico }}
+              </div>
+              {% endif %}
+              {% if it.fecha_proximo_control %}
               <div class="mt-1">
                 <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.68rem;">
-                  <i class="bi bi-calendar-event me-1"></i>Próximo: {{ ctrl.fecha_proximo_control.strftime('%d/%m/%Y') }}
+                  <i class="bi bi-calendar-event me-1"></i>Próximo: {{ it.fecha_proximo_control.strftime('%d/%m/%Y') }}
                 </span>
               </div>
               {% endif %}
@@ -222,17 +264,17 @@
             <!-- Constantes (Peso / Temp) -->
             <td>
               <div class="d-flex flex-column gap-1 small">
-                {% if ctrl.peso_kg %}
+                {% if it.peso_kg %}
                 <span class="badge bg-light text-dark border">
-                  <i class="bi bi-speedometer2 text-primary me-1"></i>{{ ctrl.peso_kg }} kg
+                  <i class="bi bi-speedometer2 text-primary me-1"></i>{{ it.peso_kg }} kg
                 </span>
                 {% endif %}
-                {% if ctrl.temperatura_c %}
+                {% if it.temperatura_c %}
                 <span class="badge bg-light text-dark border">
-                  <i class="bi bi-thermometer-half text-danger me-1"></i>{{ ctrl.temperatura_c }} °C
+                  <i class="bi bi-thermometer-half text-danger me-1"></i>{{ it.temperatura_c }} °C
                 </span>
                 {% endif %}
-                {% if not ctrl.peso_kg and not ctrl.temperatura_c %}
+                {% if not it.peso_kg and not it.temperatura_c %}
                 <span class="text-muted small">-</span>
                 {% endif %}
               </div>
@@ -241,27 +283,58 @@
             <!-- Veterinario -->
             <td>
               <span class="badge bg-light text-dark border rounded-pill small">
-                <i class="bi bi-person-badge me-1"></i>{{ ctrl.veterinario.nombre if ctrl.veterinario else 'Veterinario/a' }}
+                <i class="bi bi-person-badge me-1"></i>{{ it.veterinario.nombre if it.veterinario else 'Veterinario/a' }}
               </span>
             </td>
 
             <!-- Acciones -->
             <td class="text-end pe-4 text-nowrap">
-              <div class="btn-group btn-group-sm">
-                <a href="{{ url_for('historias.ficha_medica', mascota_id=ctrl.mascota_id, tab='controles') }}" class="btn btn-outline-secondary rounded-start-pill" title="Ver control en la ficha médica">
-                  <i class="bi bi-eye-fill"></i> Ver
-                </a>
-                <a href="{{ url_for('historias.control_pdf', id=ctrl.id) }}" target="_blank" class="btn btn-outline-danger" title="Descargar documento PDF oficial">
-                  <i class="bi bi-file-earmark-pdf-fill"></i> PDF
-                </a>
-                {% if ctrl.enlace_whatsapp %}
-                <a href="{{ ctrl.enlace_whatsapp }}" target="_blank" class="btn btn-outline-success" title="Compartir control por WhatsApp">
-                  <i class="bi bi-whatsapp"></i>
-                </a>
+              <div class="d-inline-flex align-items-center gap-1">
+                <div class="btn-group btn-group-sm">
+                  <a href="{{ url_for('historias.ficha_medica', mascota_id=it.mascota_id, tab=('soap' if it.tipo == 'soap' else 'controles')) }}" class="btn btn-outline-secondary rounded-start-pill" title="Ver en la ficha médica">
+                    <i class="bi bi-eye-fill"></i> Ver
+                  </a>
+                  {% if it.tipo == 'control' %}
+                    <a href="{{ url_for('historias.control_pdf', id=it.id) }}" target="_blank" class="btn btn-outline-danger" title="Descargar PDF del control">
+                      <i class="bi bi-file-earmark-pdf-fill"></i> PDF
+                    </a>
+                  {% else %}
+                    <a href="{{ url_for('historias.consulta_pdf', id=it.id) }}" target="_blank" class="btn btn-outline-danger" title="Descargar PDF de la consulta SOAP">
+                      <i class="bi bi-file-earmark-pdf-fill"></i> PDF
+                    </a>
+                  {% endif %}
+                  {% if it.enlace_whatsapp %}
+                  <a href="{{ it.enlace_whatsapp }}" target="_blank" class="btn btn-outline-success" title="Compartir por WhatsApp">
+                    <i class="bi bi-whatsapp"></i>
+                  </a>
+                  {% endif %}
+                  {% if it.tipo == 'control' %}
+                    <a href="{{ url_for('historias.control_editar', id=it.id) }}" class="btn btn-outline-secondary rounded-end-pill" title="Editar este control">
+                      <i class="bi bi-pencil-square"></i>
+                    </a>
+                  {% else %}
+                    <a href="{{ url_for('historias.consulta_editar', id=it.id) }}" class="btn btn-outline-secondary rounded-end-pill" title="Editar esta consulta SOAP">
+                      <i class="bi bi-pencil-square"></i>
+                    </a>
+                  {% endif %}
+                </div>
+
+                <!-- Eliminar -->
+                {% if it.tipo == 'control' %}
+                <form action="{{ url_for('historias.control_eliminar', id=it.id) }}" method="post" class="d-inline" onsubmit="return confirm('¿Seguro que deseas eliminar este control clínico permanentemente?');">
+                  {{ form_csrf.csrf_token }}
+                  <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2" title="Eliminar control">
+                    <i class="bi bi-trash-fill"></i>
+                  </button>
+                </form>
+                {% else %}
+                <form action="{{ url_for('historias.consulta_eliminar', id=it.id) }}" method="post" class="d-inline" onsubmit="return confirm('¿Seguro que deseas eliminar esta consulta SOAP permanentemente?');">
+                  {{ form_csrf.csrf_token }}
+                  <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-2" title="Eliminar consulta SOAP">
+                    <i class="bi bi-trash-fill"></i>
+                  </button>
+                </form>
                 {% endif %}
-                <a href="{{ url_for('historias.control_editar', id=ctrl.id) }}" class="btn btn-outline-secondary rounded-end-pill" title="Editar este control">
-                  <i class="bi bi-pencil-square"></i>
-                </a>
               </div>
             </td>
           </tr>
@@ -276,20 +349,20 @@
           <i class="bi bi-clipboard2-x fs-2"></i>
         </span>
       </div>
-      <h6 class="fw-bold text-dark">No se encontraron controles médicos en los últimos {{ dias }} días</h6>
+      <h6 class="fw-bold text-dark">No se encontraron registros en los últimos {{ dias }} días</h6>
       <p class="small text-secondary mb-3">
         {% if q %}
-        No hay controles que coincidan con la búsqueda "{{ q }}".
+        No hay registros que coincidan con la búsqueda "{{ q }}".
         {% else %}
-        Aún no se han registrado controles de evolución médica durante este periodo.
+        Aún no se han registrado consultas o controles durante este periodo seleccionado.
         {% endif %}
       </p>
       {% if q %}
-      <a href="{{ url_for('historias.controles_semana', dias=dias) }}" class="btn btn-sm btn-outline-secondary rounded-pill">
+      <a href="{{ url_for('historias.controles_semana', dias=dias, tipo=tipo) }}" class="btn btn-sm btn-outline-secondary rounded-pill">
         <i class="bi bi-arrow-counterclockwise me-1"></i> Restablecer búsqueda
       </a>
       {% else %}
-      <a href="{{ url_for('historias.controles_semana', dias=30) }}" class="btn btn-sm btn-primary rounded-pill">
+      <a href="{{ url_for('historias.controles_semana', dias=30, tipo=tipo) }}" class="btn btn-sm btn-primary rounded-pill">
         <i class="bi bi-calendar3 me-1"></i> Ver últimos 30 días
       </a>
       {% endif %}

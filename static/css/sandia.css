@@ -1170,7 +1170,6 @@ body.pagina-login { background: var(--sandia-crema) radial-gradient(circle at 20
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
   border-color: #FCD98B !important;
 }
-}
 .tarjeta-paciente-v2__header[data-especie="felino"] {
   background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
 }

@@ -447,6 +447,25 @@
                             <i class="bi bi-pencil-square me-1"></i> Editar
                           </a>
                         {% endif %}
+                        {% if current_user.rol in ('admin', 'veterinario') %}
+                          {% if ev.tipo == 'soap' %}
+                            <form method="post" action="{{ url_for('historias.consulta_eliminar', id=ev.objeto.id) }}" class="d-inline m-0" onsubmit="return confirm('¿Confirmas que deseas eliminar esta Consulta Médica SOAP #{{ ev.objeto.id }} de {{ mascota.nombre }}?')">
+                              {{ form_csrf.csrf_token }}
+                              <input type="hidden" name="next" value="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='general') }}">
+                              <button type="submit" class="btn btn-xs btn-outline-danger fw-bold rounded-pill px-2.5 py-1" style="font-size: 0.78rem;" title="Eliminar Consulta SOAP">
+                                <i class="bi bi-trash me-1"></i> Eliminar
+                              </button>
+                            </form>
+                          {% elif ev.tipo == 'control' %}
+                            <form method="post" action="{{ url_for('historias.control_eliminar', id=ev.objeto.id) }}" class="d-inline m-0" onsubmit="return confirm('¿Confirmas que deseas eliminar este Control Médico #{{ ev.objeto.id }} de {{ mascota.nombre }}?')">
+                              {{ form_csrf.csrf_token }}
+                              <input type="hidden" name="next" value="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='general') }}">
+                              <button type="submit" class="btn btn-xs btn-outline-danger fw-bold rounded-pill px-2.5 py-1" style="font-size: 0.78rem;" title="Eliminar Control Médico">
+                                <i class="bi bi-trash me-1"></i> Eliminar
+                              </button>
+                            </form>
+                          {% endif %}
+                        {% endif %}
                       </div>
 
                       {% if ev.url_detalle %}
@@ -571,6 +590,15 @@
                         <a href="{{ url_for('historias.consulta_editar', id=c.id) }}" class="btn btn-sm btn-outline-secondary fw-bold rounded-pill" title="Editar consulta SOAP">
                           <i class="bi bi-pencil-square me-1"></i> Editar
                         </a>
+                        {% if current_user.rol in ('admin', 'veterinario') %}
+                        <form method="post" action="{{ url_for('historias.consulta_eliminar', id=c.id) }}" class="d-inline m-0" onsubmit="return confirm('¿Confirmas que deseas eliminar esta Consulta Médica SOAP #{{ c.id }} de {{ mascota.nombre }}?')">
+                          {{ form_csrf.csrf_token }}
+                          <input type="hidden" name="next" value="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='soap') }}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger fw-bold rounded-pill" title="Eliminar consulta SOAP">
+                            <i class="bi bi-trash me-1"></i> Eliminar
+                          </button>
+                        </form>
+                        {% endif %}
                       </div>
                       <a href="{{ url_for('historias.consulta_detalle', id=c.id) }}" class="btn btn-sm btn-outline-primary fw-bold rounded-pill">
                         Ver detalle completo <i class="bi bi-chevron-right ms-1"></i>
@@ -1454,6 +1482,15 @@
 <script src="{{ static_url('js/grafica_peso.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+  // Asegurar que si viene el parámetro tab (o hash) se active la pestaña correspondiente en Bootstrap
+  const params = new URLSearchParams(window.location.search);
+  const tabParam = params.get('tab') || window.location.hash.replace('#', '') || 'general';
+  const targetTabBtn = document.getElementById(tabParam + '-tab') || document.querySelector(`[data-bs-target="#${tabParam}"]`);
+  if (targetTabBtn && window.bootstrap && bootstrap.Tab) {
+    const tabInst = bootstrap.Tab.getOrCreateInstance(targetTabBtn);
+    tabInst.show();
+  }
+
   // Manejo de visualización dinámica de detalles de remisión
   const botonesDetalle = document.querySelectorAll(".btn-ver-detalle-remision");
   const modalDetalleEl = document.getElementById("modalDetalleRemision");

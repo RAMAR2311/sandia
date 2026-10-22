@@ -546,11 +546,11 @@ class ConsultaMedicaForm(FlaskForm):
     vacunacion_fecha = DateField("Fecha Vacunación", validators=[Optional()])
 
     # Constantes vitales / Examen físico
-    peso_kg = DecimalField("Peso actual (kg)", places=2, validators=[Optional(), NumberRange(min=Decimal("0.01"), max=Decimal("300.00"))])
-    temperatura_c = DecimalField("Temperatura (°C)", places=1, validators=[Optional(), NumberRange(min=Decimal("30.0"), max=Decimal("45.0"))])
-    frecuencia_cardiaca = IntegerField("FC (lpm)", validators=[Optional(), NumberRange(min=20, max=300)])
-    frecuencia_respiratoria = StringField("FR (rpm / Jadeo)", validators=[Optional(), Length(max=50)])
-    tllc_segundos = IntegerField("TLLC (segundos)", validators=[Optional(), NumberRange(min=1, max=10)])
+    peso_kg = DecimalField("Peso actual (kg)", places=2, validators=[Optional(), NumberRange(min=Decimal("0.01"), max=Decimal("300.00"), message="El peso debe estar entre 0.01 y 300.00 kg.")])
+    temperatura_c = DecimalField("Temperatura (°C)", places=1, validators=[Optional(), NumberRange(min=Decimal("30.0"), max=Decimal("45.0"), message="La temperatura debe ser un valor válido entre 30.0 °C y 45.0 °C.")])
+    frecuencia_cardiaca = IntegerField("FC (lpm)", validators=[Optional(), NumberRange(min=20, max=300, message="La frecuencia cardíaca debe estar entre 20 y 300 lpm.")])
+    frecuencia_respiratoria = StringField("FR (rpm / Jadeo)", validators=[Optional(), Length(max=50, message="La frecuencia respiratoria no puede superar 50 caracteres.")])
+    tllc_segundos = IntegerField("TLLC (segundos)", validators=[Optional(), NumberRange(min=1, max=10, message="El TLLC debe estar entre 1 y 10 segundos.")])
     mucosas = SelectField("Mucosas", choices=[("", "-- Seleccionar --"), ("rosadas", "Rosadas (Normal)"), ("palidas", "Pálidas"), ("ictericas", "Ictéricas"), ("cianoticas", "Cianóticas"), ("congestivas", "Congestivas")], validators=[Optional()])
     condicion_corporal = SelectField("Condición Corporal", choices=[("", "-- Seleccionar --"), ("1/5", "1/5 - Muy delgado"), ("2/5", "2/5 - Delgado"), ("3/5", "3/5 - Ideal"), ("4/5", "4/5 - Sobrepeso"), ("5/5", "5/5 - Obeso")], validators=[Optional()])
     examen_sistemas = TextAreaField("Examen por sistemas (Objetivo - O)", validators=[Optional(), Length(max=2000)])

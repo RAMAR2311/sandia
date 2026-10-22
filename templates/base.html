@@ -354,7 +354,7 @@
         <div class="alert alert-{{ clase }} alert-dismissible fade show d-flex align-items-start gap-2" role="alert"
              {% if clase in ('success', 'info') %}data-autocierre{% endif %}>
           <i class="bi {{ {'success': 'bi-check-circle-fill', 'danger': 'bi-exclamation-octagon-fill', 'warning': 'bi-exclamation-triangle-fill'}.get(clase, 'bi-info-circle-fill') }} mt-1"></i>
-          <div class="flex-grow-1">{{ mensaje }}</div>
+          <div class="flex-grow-1">{{ mensaje|safe }}</div>
           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
         </div>
       {% endfor %}
