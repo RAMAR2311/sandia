@@ -13,7 +13,7 @@ from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, KeepTogether, HRFlowable
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, KeepTogether, HRFlowable, PageBreak
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm, mm
@@ -1458,51 +1458,8 @@ def generar_pdf_control(control, db_session=None) -> io.BytesIO:
     historia.append(Spacer(1, 6))
 
     # =========================================================================
-    # 4. EVOLUCIÓN CLÍNICA & AVANCES
+    # 4. MEDICACIÓN Y POSOLOGÍA (Rx)
     # =========================================================================
-    historia.append(Paragraph("<font color='#0284C7'><b>●</b></font> <b>EVOLUCIÓN CLÍNICA & RESPUESTA AL TRATAMIENTO</b>", estilos['SeccionHeader']))
-    historia.append(Spacer(1, 2))
-    avances_txt = (control.avances or "Sin evolución registrada.").replace("\n", "<br/>")
-    t_avances = Table([[Paragraph(f"<b>Avances / Hallazgos en Recontrol:</b><br/>{avances_txt}", estilos['TextoNormal'])]], colWidths=[188 * mm])
-    t_avances.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F0F9FF")),
-        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#BAE6FD")),
-        ('PADDING', (0,0), (-1,-1), 4.5),
-    ]))
-    historia.append(t_avances)
-    historia.append(Spacer(1, 6))
-
-    # =========================================================================
-    # 5. DIAGNÓSTICO
-    # =========================================================================
-    historia.append(Paragraph("<font color='#D97706'><b>●</b></font> <b>DIAGNÓSTICO & SEGUIMIENTO</b>", estilos['SeccionHeader']))
-    historia.append(Spacer(1, 2))
-    diag_txt = control.diagnostico or "Seguimiento y control médico."
-    t_diag = Table([[Paragraph(f"<b>DIAGNÓSTICO:</b> {diag_txt}", estilos['TextoNormal'])]], colWidths=[188 * mm])
-    t_diag.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#FFFBEB")),
-        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#FDE68A")),
-        ('PADDING', (0,0), (-1,-1), 4.5),
-    ]))
-    historia.append(t_diag)
-    historia.append(Spacer(1, 6))
-
-    # =========================================================================
-    # 6. PLAN TERAPÉUTICO Y MEDICACIÓN (Rx)
-    # =========================================================================
-    historia.append(Paragraph("<font color='#475569'><b>●</b></font> <b>PLAN TERAPÉUTICO & RECOMENDACIONES</b>", estilos['SeccionHeader']))
-    historia.append(Spacer(1, 2))
-    plan_txt = (control.plan_terapeutico or "Continuar manejo clínico prescrito.").replace("\n", "<br/>")
-    t_plan = Table([[Paragraph(f"<b>Plan Terapéutico:</b><br/>{plan_txt}", estilos['TextoNormal'])]], colWidths=[188 * mm])
-    t_plan.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), COLOR_GRIS_FONDO),
-        ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
-        ('PADDING', (0,0), (-1,-1), 4.5),
-    ]))
-    historia.append(t_plan)
-    historia.append(Spacer(1, 6))
-
-    # Medicamentos / Fórmula si existen
     if control.medicamento:
         med_html = _formatear_medicamentos_html(control.medicamento)
         receta_data = [
@@ -2048,5 +2005,430 @@ def generar_pdf_consentimiento(doc_consentimiento, db_session=None) -> io.BytesI
     doc.build(historia)
     buffer.seek(0)
     return buffer
+
+
+def generar_pdf_expediente_completo(mascota, db_session=None, hospitalizaciones=None, cirugias=None, examenes=None, remisiones=None) -> io.BytesIO:
+    """Genera el Expediente Médico Integral e Historia Clínica Completa de la Mascota en PDF.
+    
+    Diseñado para remisiones clínicas oficiales, traslados entre centros veterinarios y archivo legal:
+    1. Encabezado institucional con sello oficial y datos fiscales de la clínica.
+    2. Identificación completa del Paciente, Tutor y Médico Tratante.
+    3. Antecedentes clínicos (Alergias, condiciones preexistentes, dieta, cirugías previas).
+    4. Plan preventivo oficial (Esquema completo de vacunación y desparasitación).
+    5. Consultas médicas SOAP cronológicas completas con diagnósticos, planes terapéuticos y evolución.
+    6. Controles médicos clínicos y seguimiento de evolución.
+    7. Exámenes de laboratorio, ecografías, rayos X y ayudas diagnósticas.
+    8. Procedimientos quirúrgicos y registros anestésicos.
+    9. Hospitalizaciones y estancias clínicas.
+    10. Remisiones clínicas emitidas.
+    11. Cierre legal con firma digital y credenciales profesionales del médico veterinario.
+    """
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=14 * mm,
+        leftMargin=14 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
+    )
+
+    estilos = _crear_estilos()
+    historia = []
+    clinica = _obtener_datos_clinica(db_session)
+    tutor = mascota.tutor
+
+    # Obtener médico de referencia si tiene consultas
+    vet_referencia = None
+    if getattr(mascota, "consultas", None):
+        for c in mascota.consultas:
+            if getattr(c, "veterinario", None):
+                vet_referencia = c.veterinario
+                break
+
+    # =========================================================================
+    # 1. ENCABEZADO OFICIAL
+    # =========================================================================
+    fecha_emision = datetime.now().strftime("%d/%m/%Y %I:%M %p")
+    folio_exp = f"EXP-{mascota.id:05d}"
+    logo_img = _obtener_logo_img(width=18 * mm, height=17 * mm)
+
+    if logo_img:
+        header_data = [
+            [
+                logo_img,
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>HISTORIA CLÍNICA INTEGRAL</b><br/><font color='#E53935' size=10.5><b>EXPEDIENTE #{folio_exp}</b></font><br/><font size=7.5 color='#64748B'>Emisión: {fecha_emision}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[20 * mm, 90 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('RIGHTPADDING', (0,0), (0,0), 6),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ]))
+    else:
+        header_data = [
+            [
+                Paragraph(f"<b>{clinica['nombre'].upper()}</b><br/><font size=8>{clinica['subtitulo']}</font><br/><font size=7 color='#64748B'>NIT: {clinica['nit']} · Tel: {clinica['telefono']}<br/>{clinica['direccion']} · {clinica['ciudad']}</font>", estilos['TituloClinica']),
+                Paragraph(f"<b>HISTORIA CLÍNICA INTEGRAL</b><br/><font color='#E53935' size=10.5><b>EXPEDIENTE #{folio_exp}</b></font><br/><font size=7.5 color='#64748B'>Emisión: {fecha_emision}</font>", estilos['DocumentoFolio'])
+            ]
+        ]
+        t_header = Table(header_data, colWidths=[110 * mm, 78 * mm])
+        t_header.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+    historia.append(t_header)
+    historia.append(HRFlowable(width="100%", thickness=1.8, color=COLOR_PRIMARIO, spaceAfter=6))
+
+    # =========================================================================
+    # 2. CUADRO DE IDENTIFICACIÓN: PACIENTE Y TUTOR
+    # =========================================================================
+    nombre_mascota = mascota.nombre
+    especie_raza = f"{mascota.especie.capitalize()} · {mascota.raza.nombre if mascota.raza else 'Mestizo'}"
+    sexo_edad = f"{mascota.sexo.capitalize()} · {mascota.edad_formateada if hasattr(mascota, 'edad_formateada') else 'N/R'}"
+    peso_act = f"{mascota.peso_actual.peso_kg} kg" if mascota.peso_actual else "—"
+    chip = f" · Chip: {mascota.microchip}" if mascota.microchip else ""
+    esteril = "Sí" if mascota.esterilizado else "No"
+    nombre_tutor = tutor.nombre_completo if tutor else "N/A"
+    tel_tutor = (tutor.whatsapp_efectivo or tutor.telefono if tutor else None) or "N/A"
+    doc_tutor = f" · Doc: {tutor.documento_texto}" if tutor and hasattr(tutor, "documento_texto") and tutor.documento_texto else ""
+    dir_tutor = f"{tutor.direccion or ''} {tutor.barrio or ''}".strip() if tutor else "N/A"
+
+    info_data = [
+        [
+            Paragraph(f"<b>PACIENTE:</b> <font color='#E53935'><b>{nombre_mascota}</b></font> (Esterilizado: {esteril})", estilos['TextoNormal']),
+            Paragraph(f"<b>TUTOR:</b> <b>{nombre_tutor}</b>", estilos['TextoNormal']),
+        ],
+        [
+            Paragraph(f"<b>Especie/Raza:</b> {especie_raza}", estilos['TextoNormal']),
+            Paragraph(f"<b>Contacto:</b> {tel_tutor}{doc_tutor}", estilos['TextoNormal']),
+        ],
+        [
+            Paragraph(f"<b>Sexo/Edad/Peso:</b> {sexo_edad} · <b>{peso_act}</b>{chip}", estilos['TextoNormal']),
+            Paragraph(f"<b>Dirección Tutor:</b> {dir_tutor or 'Bogotá D.C.'}", estilos['TextoNormal']),
+        ]
+    ]
+    t_info = Table(info_data, colWidths=[94 * mm, 94 * mm])
+    t_info.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), COLOR_GRIS_FONDO),
+        ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+        ('PADDING', (0,0), (-1,-1), 3.5),
+    ]))
+    historia.append(t_info)
+    historia.append(Spacer(1, 5))
+
+    # =========================================================================
+    # 3. ANTECEDENTES Y ALERTAS MÉDICAS
+    # =========================================================================
+    alergias_txt = mascota.alergias or "No reportadas"
+    cond_txt = mascota.condiciones_preexistentes or "Ninguna registrada"
+    dieta_txt = mascota.alimentacion or "No especificada"
+
+    ant_data = [
+        [
+            Paragraph(f"<font color='#B91C1C'><b>⚠️ Alergias Conocidas:</b></font> {alergias_txt}", estilos['TextoNormal']),
+            Paragraph(f"<b>Condiciones Preexistentes:</b> {cond_txt}", estilos['TextoNormal']),
+        ],
+        [
+            Paragraph(f"<b>Dieta / Alimentación habitual:</b> {dieta_txt}", estilos['TextoNormal']),
+            Paragraph(f"<b>Señas particulares:</b> {mascota.senas_particulares or 'Ninguna'}", estilos['TextoNormal']),
+        ]
+    ]
+    t_ant = Table(ant_data, colWidths=[94 * mm, 94 * mm])
+    t_ant.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#FEF2F2")),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#FECACA")),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#FCA5A5")),
+        ('PADDING', (0,0), (-1,-1), 3.5),
+    ]))
+    historia.append(t_ant)
+    historia.append(Spacer(1, 6))
+
+    # =========================================================================
+    # 4. PLAN PREVENTIVO: VACUNAS & DESPARASITACIONES
+    # =========================================================================
+    vacunas = getattr(mascota, "vacunas", []) or []
+    desparasitaciones = getattr(mascota, "desparasitaciones", []) or []
+
+    if vacunas or desparasitaciones:
+        historia.append(Paragraph("<font color='#16A34A'><b>●</b></font> <b>ESTATUS PREVENTIVO · VACUNACIÓN Y DESPARASITACIÓN</b>", estilos['SeccionHeader']))
+        historia.append(Spacer(1, 2))
+
+        prev_filas = []
+        if vacunas:
+            for v in vacunas[:6]:
+                f_apl = v.fecha_aplicacion.strftime("%d/%m/%Y") if hasattr(v.fecha_aplicacion, "strftime") else str(v.fecha_aplicacion)
+                f_px = v.fecha_proxima.strftime("%d/%m/%Y") if v.fecha_proxima and hasattr(v.fecha_proxima, "strftime") else "—"
+                prev_filas.append([
+                    Paragraph(f"💉 <b>Vacuna:</b> {v.nombre_vacuna} ({v.lote or 'Sin lote'})", estilos['TextoNormal']),
+                    Paragraph(f"Aplicada: <b>{f_apl}</b> · Próx: <b>{f_px}</b>", estilos['TextoNormal']),
+                ])
+        if desparasitaciones:
+            for d in desparasitaciones[:4]:
+                f_apl = d.fecha_aplicacion.strftime("%d/%m/%Y") if hasattr(d.fecha_aplicacion, "strftime") else str(d.fecha_aplicacion)
+                f_px = d.fecha_proxima.strftime("%d/%m/%Y") if d.fecha_proxima and hasattr(d.fecha_proxima, "strftime") else "—"
+                prev_filas.append([
+                    Paragraph(f"💊 <b>Desparasitación:</b> {d.producto} ({d.tipo or 'Interna'})", estilos['TextoNormal']),
+                    Paragraph(f"Aplicada: <b>{f_apl}</b> · Próx: <b>{f_px}</b>", estilos['TextoNormal']),
+                ])
+
+        t_prev_box = Table(prev_filas, colWidths=[98 * mm, 90 * mm])
+        t_prev_box.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F0FDF4")),
+            ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#BBF7D0")),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#DCFCE7")),
+            ('PADDING', (0,0), (-1,-1), 2.5),
+        ]))
+        historia.append(t_prev_box)
+        historia.append(Spacer(1, 6))
+
+    # =========================================================================
+    # 5. HISTORIAL DE CONSULTAS MÉDICAS (SOAP)
+    # =========================================================================
+    consultas = getattr(mascota, "consultas", []) or []
+    if consultas:
+        historia.append(Paragraph("<font color='#E53935'><b>●</b></font> <b>HISTORIAL DE CONSULTAS MÉDICAS GENERALES (SOAP)</b>", estilos['SeccionHeader']))
+        historia.append(Spacer(1, 3))
+
+        for c in consultas:
+            f_c = c.fecha_hora.strftime("%d/%m/%Y %I:%M %p") if hasattr(c.fecha_hora, "strftime") else str(c.fecha_hora)
+            v_nom = f"Dr/a. {c.veterinario.nombre}" if c.veterinario else clinica.get("doctora_nombre", "Dra. Daniela Pulido")
+            
+            # Constantes vitales
+            v_peso = f"{c.peso_kg} kg" if c.peso_kg else "—"
+            v_temp = f"{c.temperatura_c} °C" if c.temperatura_c else "—"
+            v_fc = f"{c.frecuencia_cardiaca} lpm" if c.frecuencia_cardiaca else "—"
+            v_fr = f"{c.frecuencia_respiratoria} rpm" if c.frecuencia_respiratoria else "—"
+            v_muc = c.mucosas.capitalize() if c.mucosas else "—"
+
+            c_filas = [
+                [
+                    Paragraph(f"<b>CONSULTA #{c.id:04d} · {f_c}</b> · Atendido por: <b>{v_nom}</b>", estilos['TextoNegrita']),
+                    Paragraph(f"Peso: <b>{v_peso}</b> | T: <b>{v_temp}</b> | FC: <b>{v_fc}</b> | FR: <b>{v_fr}</b> | Muc: <b>{v_muc}</b>", estilos['TextoPequeno'])
+                ],
+                [
+                    Paragraph(f"<b>Motivo / S:</b> {c.motivo_consulta}<br/><b>Anamnesis:</b> {c.anamnesis or 'No registrada'}", estilos['TextoNormal']),
+                    Paragraph(f"<b>Diagnóstico / A:</b> <font color='#991B1B'><b>{c.diagnostico or 'En evaluación'}</b></font>", estilos['TextoNormal'])
+                ],
+            ]
+
+            # Plan terapéutico y medicación
+            plan_line = f"<b>Plan Terapéutico / P:</b> {c.plan_tratamiento or 'Continuar manejo'}"
+            if getattr(c, "receta_medica", None):
+                plan_line += f"<br/><font color='#BE123C'><b>Rx Prescripción:</b></font><br/>{_formatear_medicamentos_html(c.receta_medica)}"
+            c_filas.append([Paragraph(plan_line, estilos['TextoNormal']), ""])
+
+            t_c = Table(c_filas, colWidths=[108 * mm, 80 * mm])
+            t_c.setStyle(TableStyle([
+                ('SPAN', (0,2), (1,2)),
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#F1F5F9")),
+                ('BACKGROUND', (0,1), (-1,-1), colors.white),
+                ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#CBD5E1")),
+                ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#E2E8F0")),
+                ('PADDING', (0,0), (-1,-1), 3.5),
+            ]))
+            historia.append(KeepTogether(t_c))
+            historia.append(Spacer(1, 4.5))
+
+    # =========================================================================
+    # 6. HISTORIAL DE CONTROLES MÉDICOS
+    # =========================================================================
+    controles = getattr(mascota, "controles", []) or []
+    if controles:
+        historia.append(Paragraph("<font color='#0284C7'><b>●</b></font> <b>HISTORIAL DE CONTROLES MÉDICOS & REEVALUACIONES</b>", estilos['SeccionHeader']))
+        historia.append(Spacer(1, 3))
+
+        for ctrl in controles:
+            f_ctrl = ctrl.fecha_hora.strftime("%d/%m/%Y %I:%M %p") if hasattr(ctrl.fecha_hora, "strftime") else str(ctrl.fecha_hora)
+            v_nom = f"Dr/a. {ctrl.veterinario.nombre}" if ctrl.veterinario else clinica.get("doctora_nombre", "Dra. Daniela Pulido")
+            v_peso = f"{ctrl.peso_kg} kg" if ctrl.peso_kg else "—"
+            v_temp = f"{ctrl.temperatura_c} °C" if ctrl.temperatura_c else "—"
+
+            ctrl_filas = [
+                [
+                    Paragraph(f"<b>CONTROL #{ctrl.id:04d} · {f_ctrl}</b> · {ctrl.motivo or 'Control Clínico'}", estilos['TextoNegrita']),
+                    Paragraph(f"Médico: <b>{v_nom}</b> | Peso: <b>{v_peso}</b> | Temp: <b>{v_temp}</b>", estilos['TextoPequeno'])
+                ],
+                [
+                    Paragraph(f"<b>Evolución / Avances:</b> {ctrl.avances}<br/><b>Diagnóstico:</b> {ctrl.diagnostico or 'Seguimiento'}", estilos['TextoNormal']),
+                    Paragraph(f"<b>Plan Terapéutico:</b> {ctrl.plan_terapeutico or 'Sin cambios'}", estilos['TextoNormal'])
+                ]
+            ]
+            if ctrl.medicamento:
+                ctrl_filas.append([Paragraph(f"<font color='#BE123C'><b>Rx Prescripción:</b></font><br/>{_formatear_medicamentos_html(ctrl.medicamento)}", estilos['TextoNormal']), ""])
+
+            t_ctrl = Table(ctrl_filas, colWidths=[108 * mm, 80 * mm])
+            t_ctrl.setStyle(TableStyle([
+                ('SPAN', (0,2), (1,2)) if len(ctrl_filas) > 2 else ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#EFF6FF")),
+                ('BACKGROUND', (0,1), (-1,-1), colors.white),
+                ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#BFDBFE")),
+                ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#DBEAFE")),
+                ('PADDING', (0,0), (-1,-1), 3.5),
+            ]))
+            historia.append(KeepTogether(t_ctrl))
+            historia.append(Spacer(1, 4.5))
+
+    # =========================================================================
+    # 7. AYUDAS DIAGNÓSTICAS & EXÁMENES (Laboratorio, Rayos X, Ecografías)
+    # =========================================================================
+    examenes_lista = examenes or getattr(mascota, "examenes", []) or []
+    if examenes_lista:
+        historia.append(Paragraph("<font color='#6366F1'><b>●</b></font> <b>AYUDAS DIAGNÓSTICAS, LABORATORIOS & IMÁGENES</b>", estilos['SeccionHeader']))
+        historia.append(Spacer(1, 3))
+
+        ex_filas = [["Fecha", "Categoría / Examen", "Laboratorio / Origen", "Resultado / Interpretación"]]
+        for ex in examenes_lista:
+            f_ex = ex.fecha_toma.strftime("%d/%m/%Y") if hasattr(ex.fecha_toma, "strftime") else str(ex.fecha_toma)
+            cat = ex.categoria.capitalize() if ex.categoria else "Laboratorio"
+            ex_filas.append([
+                Paragraph(f_ex, estilos['TextoNormal']),
+                Paragraph(f"<b>{ex.tipo_examen}</b><br/><font size=7 color='#64748B'>{cat}</font>", estilos['TextoNormal']),
+                Paragraph(ex.laboratorio_externo or "Interno / Sandía", estilos['TextoPequeno']),
+                Paragraph(ex.interpretacion or "Sin interpretación registrada.", estilos['TextoNormal']),
+            ])
+
+        t_ex = Table(ex_filas, colWidths=[24 * mm, 54 * mm, 36 * mm, 74 * mm])
+        t_ex.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), COLOR_OSCURO),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 7.5),
+            ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+            ('PADDING', (0,0), (-1,-1), 3),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ]))
+        historia.append(KeepTogether(t_ex))
+        historia.append(Spacer(1, 5))
+
+    # =========================================================================
+    # 8. CIRUGÍAS & PROCEDIMIENTOS QUIRÚRGICOS
+    # =========================================================================
+    cirugias_lista = cirugias or getattr(mascota, "cirugias", []) or []
+    if cirugias_lista:
+        historia.append(Paragraph("<font color='#BE123C'><b>●</b></font> <b>PROCEDIMIENTOS QUIRÚRGICOS & CIRUGÍAS REALIZADAS</b>", estilos['SeccionHeader']))
+        historia.append(Spacer(1, 3))
+
+        for cir in cirugias_lista:
+            f_cir = cir.fecha.strftime("%d/%m/%Y") if hasattr(cir.fecha, "strftime") else str(cir.fecha)
+            v_cir = f"Dr/a. {cir.veterinario.nombre}" if cir.veterinario else clinica.get("doctora_nombre", "Dra. Daniela Pulido")
+
+            cir_filas = [
+                [
+                    Paragraph(f"<b>CIRUGÍA: {cir.tipo_procedimiento}</b> · Fecha: <b>{f_cir}</b>", estilos['TextoNegrita']),
+                    Paragraph(f"Cirujano: <b>{v_cir}</b>", estilos['TextoNormal'])
+                ],
+                [
+                    Paragraph(f"<b>Protocolo Anestésico:</b> {cir.protocolo_anestesico or 'Estándar'}<br/><b>Notas Quirúrgicas:</b> {cir.notas_postquirurgicas or cir.notas_prequirurgicas or 'Sin complicaciones'}", estilos['TextoNormal']),
+                    ""
+                ]
+            ]
+            t_cir = Table(cir_filas, colWidths=[130 * mm, 58 * mm])
+            t_cir.setStyle(TableStyle([
+                ('SPAN', (0,1), (1,1)),
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#FFF1F2")),
+                ('BACKGROUND', (0,1), (-1,-1), colors.white),
+                ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#FECDD3")),
+                ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#FFE4E6")),
+                ('PADDING', (0,0), (-1,-1), 3.5),
+            ]))
+            historia.append(KeepTogether(t_cir))
+            historia.append(Spacer(1, 4.5))
+
+    # =========================================================================
+    # 9. HOSPITALIZACIONES
+    # =========================================================================
+    hosp_lista = hospitalizaciones or getattr(mascota, "hospitalizaciones", []) or []
+    if hosp_lista:
+        historia.append(Paragraph("<font color='#475569'><b>●</b></font> <b>ESTANCIAS CLÍNICAS & HOSPITALIZACIONES</b>", estilos['SeccionHeader']))
+        historia.append(Spacer(1, 3))
+
+        hosp_filas = [["Ingreso", "Egreso", "Días", "Motivo de Ingreso", "Diagnóstico / Estado"]]
+        for h in hosp_lista:
+            f_in = h.fecha_ingreso.strftime("%d/%m/%Y") if hasattr(h.fecha_ingreso, "strftime") else str(h.fecha_ingreso)
+            f_eg = h.fecha_egreso.strftime("%d/%m/%Y") if h.fecha_egreso and hasattr(h.fecha_egreso, "strftime") else "En curso"
+            hosp_filas.append([
+                Paragraph(f_in, estilos['TextoNormal']),
+                Paragraph(f_eg, estilos['TextoNormal']),
+                Paragraph(str(h.dias_hospitalizado), estilos['TextoCentrado']),
+                Paragraph(h.motivo or "Ingreso clínico", estilos['TextoNormal']),
+                Paragraph(f"<b>{h.estado_etiqueta}</b><br/>{h.diagnostico or ''}", estilos['TextoPequeno']),
+            ])
+
+        t_hosp = Table(hosp_filas, colWidths=[24 * mm, 24 * mm, 16 * mm, 62 * mm, 62 * mm])
+        t_hosp.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#334155")),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 7.5),
+            ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+            ('PADDING', (0,0), (-1,-1), 3),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ]))
+        historia.append(KeepTogether(t_hosp))
+        historia.append(Spacer(1, 5))
+
+    # =========================================================================
+    # 10. REMISIONES CLÍNICAS EMITIDAS
+    # =========================================================================
+    rem_lista = remisiones or getattr(mascota, "remisiones", []) or []
+    if rem_lista:
+        historia.append(Paragraph("<font color='#D97706'><b>●</b></font> <b>REMISIÓN MÉDICA & DERIVACIONES</b>", estilos['SeccionHeader']))
+        historia.append(Spacer(1, 3))
+
+        rem_filas = [["Fecha", "Especialidad Requerida", "Centro / Especialista Destino", "Motivo de Derivación"]]
+        for r in rem_lista:
+            f_r = r.fecha_remision.strftime("%d/%m/%Y") if hasattr(r.fecha_remision, "strftime") else str(r.fecha_remision)
+            rem_filas.append([
+                Paragraph(f_r, estilos['TextoNormal']),
+                Paragraph(f"<b>{r.especialidad_destino}</b>", estilos['TextoNormal']),
+                Paragraph(r.centro_medico_destino or "Especialista Externo", estilos['TextoNormal']),
+                Paragraph(r.motivo_remision or "Derivación médica", estilos['TextoNormal']),
+            ])
+
+        t_rem = Table(rem_filas, colWidths=[24 * mm, 50 * mm, 50 * mm, 64 * mm])
+        t_rem.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#D97706")),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 7.5),
+            ('BOX', (0,0), (-1,-1), 1, COLOR_GRIS_BORDE),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, COLOR_GRIS_BORDE),
+            ('PADDING', (0,0), (-1,-1), 3),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ]))
+        historia.append(KeepTogether(t_rem))
+        historia.append(Spacer(1, 6))
+
+    # =========================================================================
+    # 11. DECLARACIÓN LEGAL Y FIRMA DEL MÉDICO VETERINARIO
+    # =========================================================================
+    historia.append(Spacer(1, 8))
+    declaracion_txt = (
+        "El presente documento constituye copia fidedigna del expediente clínico consolidado y actos médicos "
+        f"practicados al paciente {nombre_mascota} en las instalaciones de {clinica['nombre']}. Documento emitido con fines "
+        "médicos-legales, interconsulta, remisión clínica o archivo oficial del tutor."
+    )
+    t_legal = Table([[Paragraph(declaracion_txt, estilos['PiePagina'])]], colWidths=[188 * mm])
+    t_legal.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F8FAFC")),
+        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor("#CBD5E1")),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    historia.append(t_legal)
+    historia.append(Spacer(1, 8))
+
+    historia.append(_crear_bloque_firma_medica(vet_referencia, clinica, estilos, ancho_bloque=80 * mm))
+
+    doc.build(historia)
+    buffer.seek(0)
+    return buffer
+
 
 

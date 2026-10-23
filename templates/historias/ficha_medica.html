@@ -10,7 +10,11 @@
     </a>
     <h1 class="h3 fw-bold mb-0 text-dark">Expediente Médico de {{ mascota.nombre }}</h1>
   </div>
-  <div>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('historias.expediente_pdf', mascota_id=mascota.id) }}" target="_blank" class="btn btn-sm btn-danger rounded-pill px-3 py-1.5 fw-bold shadow-sm d-inline-flex align-items-center gap-1.5" title="Descargar la historia clínica completa en PDF oficial para remisiones o archivo">
+      <i class="bi bi-file-earmark-pdf-fill fs-6"></i>
+      <span>Descargar Todo el Expediente</span>
+    </a>
     <span class="badge bg-secondary-subtle text-secondary border px-3 py-2 rounded-pill fw-bold">
       <i class="bi bi-person-heart me-1"></i> Tutor: {{ mascota.tutor.nombre_completo }}
     </span>
@@ -334,6 +338,9 @@
                 <p class="text-muted small mb-0 mt-1">Línea de tiempo médica unificada: lo último registrado para {{ mascota.nombre }} en primer lugar.</p>
               </div>
               <div class="d-flex align-items-center gap-2">
+                <a href="{{ url_for('historias.expediente_pdf', mascota_id=mascota.id) }}" target="_blank" class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3 shadow-xs" title="Exportar toda la historia clínica en PDF">
+                  <i class="bi bi-file-earmark-pdf me-1"></i> Expediente Completo
+                </a>
                 {% if mascota.consultas and mascota.tutor.whatsapp_efectivo %}
                   {% set ult_c = mascota.consultas[0] %}
                   <a href="{{ ult_c.enlace_whatsapp }}" target="_blank" class="btn btn-sm btn-success fw-bold rounded-pill shadow-xs">
@@ -356,12 +363,31 @@
                 <div class="card border-0 shadow-xs rounded-3 bg-light">
                   <div class="card-header bg-white border-bottom-0 d-flex flex-wrap justify-content-between align-items-center py-2 px-3 gap-2">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                      <span class="fw-bold text-dark">
+                      <span class="fw-bold text-dark d-inline-flex align-items-center gap-1">
                         <i class="bi bi-calendar-event me-1 text-{{ ev.badge_color }}"></i>
                         {% if ev.fecha %}
                           {{ ev.fecha|fecha_hora if (ev.tipo in ['soap', 'control', 'peso', 'consentimiento']) else ev.fecha|fecha }}
                         {% else %}
                           Sin fecha
+                        {% endif %}
+                        {% if ev.tipo == 'examen' %}
+                          <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0 ms-1 btn-editar-fecha-examen fw-bold shadow-2xs" 
+                                  data-id="{{ ev.objeto.id }}" 
+                                  data-nombre="{{ ev.objeto.tipo_examen }}" 
+                                  data-fecha="{{ ev.objeto.fecha_toma|fecha_iso }}"
+                                  style="font-size: 0.72rem; line-height: 1.5;"
+                                  title="Editar fecha de este examen">
+                            <i class="bi bi-pencil-square me-1"></i>Cambiar fecha
+                          </button>
+                        {% elif ev.tipo == 'soap' %}
+                          <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0 ms-1 btn-editar-fecha-consulta fw-bold shadow-2xs" 
+                                  data-id="{{ ev.objeto.id }}" 
+                                  data-motivo="{{ ev.objeto.motivo_consulta }}" 
+                                  data-fecha="{{ ev.objeto.fecha_hora|fecha_hora_iso }}"
+                                  style="font-size: 0.72rem; line-height: 1.5;"
+                                  title="Editar fecha y hora de esta consulta médica">
+                            <i class="bi bi-pencil-square me-1"></i>Cambiar fecha
+                          </button>
                         {% endif %}
                       </span>
                       <span class="badge bg-{{ ev.badge_color }}-subtle text-{{ ev.badge_color }} border border-{{ ev.badge_color }}-subtle rounded-pill">
@@ -447,6 +473,23 @@
                             <i class="bi bi-pencil-square me-1"></i> Editar
                           </a>
                         {% endif %}
+                        {% if ev.tipo == 'examen' %}
+                          <button type="button" class="btn btn-xs btn-outline-primary fw-bold rounded-pill px-2.5 py-1 btn-editar-fecha-examen" 
+                                  data-id="{{ ev.objeto.id }}" 
+                                  data-nombre="{{ ev.objeto.tipo_examen }}" 
+                                  data-fecha="{{ ev.objeto.fecha_toma|fecha_iso }}"
+                                  style="font-size: 0.78rem;">
+                            <i class="bi bi-calendar-check me-1"></i> Cambiar Fecha
+                          </button>
+                        {% elif ev.tipo == 'soap' %}
+                          <button type="button" class="btn btn-xs btn-outline-danger fw-bold rounded-pill px-2.5 py-1 btn-editar-fecha-consulta" 
+                                  data-id="{{ ev.objeto.id }}" 
+                                  data-motivo="{{ ev.objeto.motivo_consulta }}" 
+                                  data-fecha="{{ ev.objeto.fecha_hora|fecha_hora_iso }}"
+                                  style="font-size: 0.78rem;" title="Cambiar fecha y hora de la consulta">
+                            <i class="bi bi-calendar-check me-1"></i> Cambiar Fecha
+                          </button>
+                        {% endif %}
                         {% if current_user.rol in ('admin', 'veterinario') %}
                           {% if ev.tipo == 'soap' %}
                             <form method="post" action="{{ url_for('historias.consulta_eliminar', id=ev.objeto.id) }}" class="d-inline m-0" onsubmit="return confirm('¿Confirmas que deseas eliminar esta Consulta Médica SOAP #{{ ev.objeto.id }} de {{ mascota.nombre }}?')">
@@ -461,6 +504,13 @@
                               {{ form_csrf.csrf_token }}
                               <input type="hidden" name="next" value="{{ url_for('historias.ficha_medica', mascota_id=mascota.id, tab='general') }}">
                               <button type="submit" class="btn btn-xs btn-outline-danger fw-bold rounded-pill px-2.5 py-1" style="font-size: 0.78rem;" title="Eliminar Control Médico">
+                                <i class="bi bi-trash me-1"></i> Eliminar
+                              </button>
+                            </form>
+                          {% elif ev.tipo == 'examen' %}
+                            <form method="post" action="{{ url_for('historias.examen_eliminar', id=ev.objeto.id) }}" class="d-inline m-0" onsubmit="return confirm('¿Confirmas que deseas eliminar este registro de examen {{ ev.objeto.tipo_examen }}?')">
+                              {{ form_csrf.csrf_token }}
+                              <button type="submit" class="btn btn-xs btn-outline-danger fw-bold rounded-pill px-2.5 py-1" style="font-size: 0.78rem;" title="Eliminar Examen">
                                 <i class="bi bi-trash me-1"></i> Eliminar
                               </button>
                             </form>
@@ -590,6 +640,13 @@
                         <a href="{{ url_for('historias.consulta_editar', id=c.id) }}" class="btn btn-sm btn-outline-secondary fw-bold rounded-pill" title="Editar consulta SOAP">
                           <i class="bi bi-pencil-square me-1"></i> Editar
                         </a>
+                        <button type="button" class="btn btn-sm btn-outline-danger fw-bold rounded-pill btn-editar-fecha-consulta"
+                                data-id="{{ c.id }}"
+                                data-motivo="{{ c.motivo_consulta }}"
+                                data-fecha="{{ c.fecha_hora|fecha_hora_iso }}"
+                                title="Cambiar fecha y hora de la consulta">
+                          <i class="bi bi-calendar-check me-1"></i> Cambiar Fecha
+                        </button>
                         {% if current_user.rol in ('admin', 'veterinario') %}
                         <form method="post" action="{{ url_for('historias.consulta_eliminar', id=c.id) }}" class="d-inline m-0" onsubmit="return confirm('¿Confirmas que deseas eliminar esta Consulta Médica SOAP #{{ c.id }} de {{ mascota.nombre }}?')">
                           {{ form_csrf.csrf_token }}
@@ -986,7 +1043,17 @@
                       <span class="badge bg-{{ e.color_categoria }} text-{{ 'dark' if e.color_categoria in ('warning', 'info') else 'white' }} px-2 py-1 rounded-pill small fw-bold">
                         <i class="bi {{ e.icono_categoria }} me-1"></i> {{ e.categoria_etiqueta }}
                       </span>
-                      <span class="text-muted small"><i class="bi bi-calendar-event me-1"></i>{{ e.fecha_toma|fecha }}</span>
+                      <span class="text-muted small d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-calendar-event me-1"></i>{{ e.fecha_toma|fecha }}
+                        <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0 ms-1 btn-editar-fecha-examen fw-bold shadow-2xs" 
+                                data-id="{{ e.id }}" 
+                                data-nombre="{{ e.tipo_examen }}" 
+                                data-fecha="{{ e.fecha_toma|fecha_iso }}"
+                                style="font-size: 0.72rem; line-height: 1.5;"
+                                title="Cambiar fecha de este examen">
+                          <i class="bi bi-pencil-square me-1"></i>Cambiar fecha
+                        </button>
+                      </span>
                     </div>
                     <span class="estado estado--{{ 'ok' if e.estado == 'con_resultado' else ('info' if e.estado == 'en_proceso' else 'pendiente') }} small">
                       {{ e.estado_etiqueta }}
@@ -1027,6 +1094,13 @@
                             </a>
                           {% endif %}
                         {% endif %}
+                        <button type="button" class="btn btn-outline-primary btn-sm fw-bold btn-editar-fecha-examen"
+                                data-id="{{ e.id }}" 
+                                data-nombre="{{ e.tipo_examen }}" 
+                                data-fecha="{{ e.fecha_toma|fecha_iso }}"
+                                title="Cambiar fecha de realización de este examen">
+                          <i class="bi bi-calendar-event me-1"></i> Fecha
+                        </button>
                         <a href="{{ url_for('historias.examen_detalle', id=e.id) }}" class="btn btn-light border btn-sm text-dark fw-bold">
                           <i class="bi bi-pencil-square me-1"></i> Detalle
                         </a>
@@ -1608,6 +1682,125 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     });
   }
+
+  // MODAL RÁPIDO PARA CAMBIAR FECHA DE EXAMEN
+  const modalEditarFecha = new bootstrap.Modal(document.getElementById('modalEditarFechaExamen'));
+  const formEditarFecha = document.getElementById('formEditarFechaExamen');
+  const inputFechaExamen = document.getElementById('inputFechaExamen');
+  const nombreExamenSpan = document.getElementById('nombreExamenModal');
+
+  document.querySelectorAll('.btn-editar-fecha-examen').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = this.getAttribute('data-id');
+      const nombre = this.getAttribute('data-nombre');
+      const fecha = this.getAttribute('data-fecha');
+
+      formEditarFecha.action = `/historias/examen/${id}/actualizar-fecha`;
+      nombreExamenSpan.textContent = nombre;
+      inputFechaExamen.value = fecha;
+      modalEditarFecha.show();
+    });
+  });
+
+  // MODAL RÁPIDO PARA CAMBIAR FECHA DE CONSULTA SOAP
+  const modalEditarFechaConsultaEl = document.getElementById('modalEditarFechaConsulta');
+  if (modalEditarFechaConsultaEl) {
+    const modalEditarFechaConsulta = new bootstrap.Modal(modalEditarFechaConsultaEl);
+    const formEditarFechaConsulta = document.getElementById('formEditarFechaConsulta');
+    const inputFechaConsulta = document.getElementById('inputFechaConsulta');
+    const motivoConsultaSpan = document.getElementById('motivoConsultaModal');
+
+    document.querySelectorAll('.btn-editar-fecha-consulta').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = this.getAttribute('data-id');
+        const motivo = this.getAttribute('data-motivo') || 'Consulta Médica';
+        const fecha = this.getAttribute('data-fecha');
+
+        formEditarFechaConsulta.action = `/historias/consulta/${id}/actualizar-fecha`;
+        motivoConsultaSpan.textContent = `Consulta #${id}: ${motivo}`;
+        inputFechaConsulta.value = fecha;
+        modalEditarFechaConsulta.show();
+      });
+    });
+  }
 });
 </script>
+
+<!-- Modal Rápido: Cambiar Fecha de Examen / Estudio -->
+<div class="modal fade" id="modalEditarFechaExamen" tabindex="-1" aria-labelledby="modalEditarFechaExamenLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="modalEditarFechaExamenLabel">
+          <i class="bi bi-calendar-check text-primary fs-5"></i>
+          <span>Modificar Fecha de Examen</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <form method="post" id="formEditarFechaExamen" action="">
+        <div class="modal-body pt-2 pb-3">
+          <p class="text-muted small mb-3">
+            Modifica la fecha de realización de <strong id="nombreExamenModal" class="text-dark"></strong>. Esta fecha se reflejará inmediatamente en el historial, la cronología médica y el PDF oficial.
+          </p>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ request.full_path }}">
+          
+          <div class="mb-3">
+            <label for="inputFechaExamen" class="form-label fw-bold small text-dark">
+              <i class="bi bi-calendar-event me-1 text-primary"></i>Nueva Fecha de Toma / Realización:
+            </label>
+            <input type="date" class="form-control form-control-lg rounded-3 border-2" id="inputFechaExamen" name="fecha_toma" required>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0 pt-0 d-flex gap-2">
+          <button type="button" class="btn btn-light rounded-pill px-3 fw-bold" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+            <i class="bi bi-check-circle me-1"></i> Guardar Fecha
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Rápido: Cambiar Fecha y Hora de Consulta Médica SOAP -->
+<div class="modal fade" id="modalEditarFechaConsulta" tabindex="-1" aria-labelledby="modalEditarFechaConsultaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="modalEditarFechaConsultaLabel">
+          <i class="bi bi-calendar-event text-danger fs-5"></i>
+          <span>Modificar Fecha de Consulta</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <form method="post" id="formEditarFechaConsulta" action="">
+        <div class="modal-body pt-2 pb-3">
+          <p class="text-muted small mb-3">
+            Ajusta la fecha y hora de <strong id="motivoConsultaModal" class="text-dark"></strong>. Se actualizará en el historial, la cronología, el PDF de la consulta y la fórmula médica.
+          </p>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ request.full_path }}">
+          
+          <div class="mb-3">
+            <label for="inputFechaConsulta" class="form-label fw-bold small text-dark">
+              <i class="bi bi-calendar-check me-1 text-danger"></i>Nueva Fecha y Hora de la Atención:
+            </label>
+            <input type="datetime-local" class="form-control form-control-lg rounded-3 border-2" id="inputFechaConsulta" name="fecha_hora" required>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0 pt-0 d-flex gap-2">
+          <button type="button" class="btn btn-light rounded-pill px-3 fw-bold" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+            <i class="bi bi-check-circle me-1"></i> Guardar Fecha
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}

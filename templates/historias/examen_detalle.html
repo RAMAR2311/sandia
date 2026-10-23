@@ -163,6 +163,13 @@
             </div>
 
             <div class="mb-3">
+              <label class="form-label fw-bold small text-dark" for="fecha_toma">
+                <i class="bi bi-calendar-event me-1 text-primary"></i>Fecha de Realización / Toma
+              </label>
+              {{ form_resultado.fecha_toma(class_="form-control", type="date") }}
+            </div>
+
+            <div class="mb-3">
               <label class="form-label fw-bold small text-dark" for="laboratorio_externo">Centro / Laboratorio Externo</label>
               {{ form_resultado.laboratorio_externo(class_="form-control", placeholder="Opcional") }}
             </div>

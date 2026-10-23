@@ -71,6 +71,25 @@
           <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">Paso 1 de 4</span>
         </div>
         <div class="card-body p-3 p-md-4">
+          <!-- Fecha y Hora de la Consulta -->
+          <div class="mb-3 p-3 bg-white rounded-3 border border-primary-subtle">
+            <div class="row align-items-center g-2">
+              <div class="col-12 col-md-5">
+                <label for="fecha_hora" class="form-label fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                  <i class="bi bi-calendar-event text-danger"></i>
+                  <span>Fecha y Hora de la Consulta:</span>
+                </label>
+                <div class="text-muted small">Puedes ajustar la fecha de atención si es una consulta retroactiva.</div>
+              </div>
+              <div class="col-12 col-md-7">
+                {{ form.fecha_hora(class="form-control fw-bold text-dark", style="font-size: 0.95rem;") }}
+                {% for error in form.fecha_hora.errors %}
+                  <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
           <!-- Motivo de Consulta -->
           <div class="mb-4">
             <label for="motivo_consulta" class="form-label fw-bold d-flex justify-content-between align-items-center">
@@ -904,52 +923,54 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // AUTO-COMPLETAR SISTEMAS PENDIENTES AL ENVIAR FORMULARIO
   const form = document.getElementById('form-consulta-soap');
-  form.addEventListener('submit', function(e) {
-    // Si quedan sistemas pendientes, auto-completar como normales para asegurar que la consulta SIEMPRE se guarde
-    catalogoSistemas.forEach(s => {
-      if (state[s.id].estado === 'pendiente') {
-        state[s.id].estado = 'normal';
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      // Si quedan sistemas pendientes, auto-completar como normales para asegurar que la consulta SIEMPRE se guarde
+      catalogoSistemas.forEach(s => {
+        if (state[s.id].estado === 'pendiente') {
+          state[s.id].estado = 'normal';
+        }
+      });
+      syncState();
+
+      // Validar campos obligatorios y mostrar mensaje amigable exacto
+      const faltantes = [];
+      const motivo = document.getElementById('motivo_consulta');
+      const diag = document.getElementById('diagnostico');
+      const plan = document.getElementById('plan_tratamiento');
+
+      if (!motivo || !motivo.value.trim()) {
+        faltantes.push('Motivo de consulta (Paso 1: S)');
+      }
+      if (!diag || !diag.value.trim()) {
+        faltantes.push('Avalúo / Diagnóstico (Paso 3: A)');
+      }
+      if (!plan || !plan.value.trim()) {
+        faltantes.push('Plan terapéutico (Paso 4: P)');
+      }
+
+      if (faltantes.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const mensaje = "⚠️ No se puede guardar la consulta médica porque faltan campos obligatorios:\n\n• " + faltantes.join("\n• ") + "\n\nPor favor diligéncialos para continuar.";
+        alert(mensaje);
+
+        // Foco en el primer campo faltante y scroll hacia él
+        if (!motivo.value.trim()) {
+          motivo.focus();
+          motivo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (!diag.value.trim()) {
+          diag.focus();
+          diag.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else if (!plan.value.trim()) {
+          plan.focus();
+          plan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return false;
       }
     });
-    syncState();
-
-    // Validar campos obligatorios y mostrar mensaje amigable exacto
-    const faltantes = [];
-    const motivo = document.getElementById('motivo_consulta');
-    const diag = document.getElementById('diagnostico');
-    const plan = document.getElementById('plan_tratamiento');
-
-    if (!motivo || !motivo.value.trim()) {
-      faltantes.push('Motivo de consulta (Paso 1: S)');
-    }
-    if (!diag || !diag.value.trim()) {
-      faltantes.push('Avalúo / Diagnóstico (Paso 3: A)');
-    }
-    if (!plan || !plan.value.trim()) {
-      faltantes.push('Plan terapéutico (Paso 4: P)');
-    }
-
-    if (faltantes.length > 0) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const mensaje = "⚠️ No se puede guardar la consulta médica porque faltan campos obligatorios:\n\n• " + faltantes.join("\n• ") + "\n\nPor favor diligéncialos para continuar.";
-      alert(mensaje);
-
-      // Foco en el primer campo faltante y scroll hacia él
-      if (!motivo.value.trim()) {
-        motivo.focus();
-        motivo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else if (!diag.value.trim()) {
-        diag.focus();
-        diag.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else if (!plan.value.trim()) {
-        plan.focus();
-        plan.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-      return false;
-    }
-  });
+  }
 
   // =========================================================================
   // CONTROL MÉDICO: SWITCH, CHIPS DE MOTIVO Y DÍAS RÁPIDOS

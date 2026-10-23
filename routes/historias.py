@@ -11,6 +11,7 @@ from pdf_generator import (
     generar_pdf_carnet_vacunacion,
     generar_pdf_consulta,
     generar_pdf_control,
+    generar_pdf_expediente_completo,
     generar_pdf_receta,
     generar_pdf_remision,
 )
@@ -316,7 +317,7 @@ def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes,
             "profesional": f"Dr/a. {e.solicitado_por.nombre}" if getattr(e, "solicitado_por", None) else "",
             "objeto": e,
             "url_detalle": url_for("historias.examen_detalle", id=e.id),
-            "url_editar": None,
+            "url_editar": url_for("historias.examen_detalle", id=e.id),
             "tab_destino": "examenes",
         })
 
@@ -728,11 +729,12 @@ def consulta_nueva(mascota_id: int):
                 pass
 
         try:
+            fecha_consulta = form.fecha_hora.data if form.fecha_hora.data else obtener_hora_bogota()
             consulta = ConsultaMedica(
                 mascota_id=mascota.id,
                 tutor_id=mascota.tutor_id,
                 veterinario_id=current_user.id,
-                fecha_hora=obtener_hora_bogota(),
+                fecha_hora=fecha_consulta,
                 motivo_consulta=form.motivo_consulta.data.strip(),
                 anamnesis=form.anamnesis.data.strip() if form.anamnesis.data else None,
                 alimentacion=(form.alimentacion.data or "").strip() or None,
@@ -861,6 +863,8 @@ def consulta_editar(id: int):
                 pass
 
         try:
+            if form.fecha_hora.data:
+                consulta.fecha_hora = form.fecha_hora.data
             consulta.motivo_consulta = form.motivo_consulta.data.strip()
             consulta.anamnesis = form.anamnesis.data.strip() if form.anamnesis.data else None
             consulta.alimentacion = (form.alimentacion.data or "").strip() or None
@@ -1483,6 +1487,78 @@ def receta_pdf_raw(id: int):
     return response
 
 
+@bp.route("/mascota/<int:mascota_id>/expediente/pdf", methods=["GET"])
+@login_required
+@clinico_required
+def expediente_pdf(mascota_id: int):
+    """Genera y descarga el documento oficial en PDF con el expediente médico integral de la mascota."""
+    mascota = db.session.execute(
+        select(Mascota)
+        .filter_by(id=mascota_id)
+        .options(
+            selectinload(Mascota.tutor),
+            selectinload(Mascota.raza),
+            selectinload(Mascota.consultas).selectinload(ConsultaMedica.veterinario),
+            selectinload(Mascota.controles).selectinload(ControlMedico.veterinario),
+            selectinload(Mascota.vacunas),
+            selectinload(Mascota.desparasitaciones),
+            selectinload(Mascota.registros_peso),
+        )
+    ).scalar_one_or_none()
+
+    if not mascota:
+        flash("La mascota no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    hospitalizaciones = db.session.execute(
+        select(Hospitalizacion)
+        .filter_by(mascota_id=mascota.id)
+        .order_by(Hospitalizacion.fecha_ingreso.desc())
+    ).scalars().all()
+
+    cirugias = db.session.execute(
+        select(Cirugia)
+        .filter_by(mascota_id=mascota.id)
+        .options(selectinload(Cirugia.veterinario))
+        .order_by(Cirugia.fecha.desc())
+    ).scalars().all()
+
+    examenes = db.session.execute(
+        select(ExamenLaboratorio)
+        .filter_by(mascota_id=mascota.id)
+        .order_by(ExamenLaboratorio.fecha_toma.desc())
+    ).scalars().all()
+
+    remisiones = db.session.execute(
+        select(RemisionInterna)
+        .filter_by(mascota_id=mascota.id)
+        .options(selectinload(RemisionInterna.veterinario))
+        .order_by(RemisionInterna.fecha_remision.desc())
+    ).scalars().all()
+
+    descargar = bool(request.args.get("descargar"))
+    pdf_buffer = generar_pdf_expediente_completo(
+        mascota,
+        db_session=db.session,
+        hospitalizaciones=hospitalizaciones,
+        cirugias=cirugias,
+        examenes=examenes,
+        remisiones=remisiones,
+    )
+
+    nombre_archivo = f"Expediente_Clinico_{mascota.nombre}_{mascota.id:04d}.pdf"
+    response = send_file(
+        pdf_buffer,
+        mimetype="application/pdf",
+        as_attachment=descargar,
+        download_name=nombre_archivo,
+    )
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
 
 @bp.route("/consulta/<int:id>/documento", methods=["GET"])
 def consulta_documento_publico(id: int):
@@ -1990,9 +2066,11 @@ def examen_detalle(id: int):
         flash("El examen no existe.", "danger")
         return redirect(url_for("historias.lista"))
 
+    fecha_toma_val = examen.fecha_toma.date() if hasattr(examen.fecha_toma, 'date') else examen.fecha_toma
     form_resultado = ResultadoExamenForm(
         categoria=examen.categoria,
         tipo_examen=examen.tipo_examen,
+        fecha_toma=fecha_toma_val,
         laboratorio_externo=examen.laboratorio_externo or "",
         estado=examen.estado,
         interpretacion=examen.interpretacion or "",
@@ -2024,6 +2102,11 @@ def examen_resultado(id: int):
                 examen.categoria = form.categoria.data
             if form.tipo_examen.data:
                 examen.tipo_examen = form.tipo_examen.data
+            if form.fecha_toma.data:
+                # Preservar la hora original si existe o fijar hora en Bogotá
+                f_date = form.fecha_toma.data
+                hora_orig = examen.fecha_toma.time() if hasattr(examen.fecha_toma, 'time') else datetime.now().time()
+                examen.fecha_toma = datetime.combine(f_date, hora_orig).replace(tzinfo=ZONA_BOGOTA)
             if form.laboratorio_externo.data is not None:
                 examen.laboratorio_externo = form.laboratorio_externo.data or None
             examen.interpretacion = form.interpretacion.data or None
@@ -2039,7 +2122,7 @@ def examen_resultado(id: int):
             else:
                 if nombre_archivo != anterior and anterior:
                     eliminar_documento("examenes", anterior)
-                flash("Resultado y comentarios actualizados exitosamente.", "success")
+                flash("Estudio y fecha actualizados exitosamente.", "success")
 
     return redirect(url_for("historias.examen_detalle", id=id))
 
@@ -2088,6 +2171,75 @@ def examen_eliminar(id: int):
         flash("No se pudo eliminar el examen.", "danger")
 
     return redirect(url_for("historias.ficha_medica", mascota_id=mascota_id))
+
+
+@bp.route("/examen/<int:id>/actualizar-fecha", methods=["POST"])
+@login_required
+@clinico_required
+def examen_actualizar_fecha(id: int):
+    """Actualiza la fecha de realización de un examen rápidamente desde la ficha médica."""
+    examen = db.session.get(ExamenLaboratorio, id)
+    if not examen:
+        flash("El examen no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    fecha_str = (request.form.get("fecha_toma") or "").strip()
+    next_url = request.form.get("next") or url_for("historias.ficha_medica", mascota_id=examen.mascota_id, tab="examenes")
+
+    if not fecha_str:
+        flash("Debes seleccionar una fecha válida.", "warning")
+        return redirect(next_url)
+
+    try:
+        f_date = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        hora_orig = examen.fecha_toma.time() if hasattr(examen.fecha_toma, 'time') else datetime.now().time()
+        examen.fecha_toma = datetime.combine(f_date, hora_orig).replace(tzinfo=ZONA_BOGOTA)
+        db.session.commit()
+        flash(f"Fecha del examen '{examen.tipo_examen}' actualizada a {f_date.strftime('%d/%m/%Y')}.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al actualizar fecha del examen %d", id)
+        flash("Ocurrió un error al actualizar la fecha del examen.", "danger")
+
+@bp.route("/consulta/<int:id>/actualizar-fecha", methods=["POST"])
+@login_required
+@clinico_required
+def consulta_actualizar_fecha(id: int):
+    """Actualiza la fecha y hora de una consulta médica SOAP rápidamente desde la ficha médica."""
+    consulta = db.session.get(ConsultaMedica, id)
+    if not consulta:
+        flash("La consulta médica no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    fecha_hora_str = (request.form.get("fecha_hora") or "").strip()
+    next_url = request.form.get("next") or url_for("historias.ficha_medica", mascota_id=consulta.mascota_id, tab="soap")
+
+    if not fecha_hora_str:
+        flash("Debes seleccionar una fecha y hora válida.", "warning")
+        return redirect(next_url)
+
+    try:
+        if len(fecha_hora_str) == 16:  # Formato YYYY-MM-DDTHH:MM
+            dt = datetime.strptime(fecha_hora_str, "%Y-%m-%dT%H:%M")
+        elif len(fecha_hora_str) == 10:  # Formato YYYY-MM-DD
+            d = datetime.strptime(fecha_hora_str, "%Y-%m-%d").date()
+            h = consulta.fecha_hora.time() if hasattr(consulta.fecha_hora, 'time') else datetime.now().time()
+            dt = datetime.combine(d, h)
+        else:
+            dt = datetime.fromisoformat(fecha_hora_str)
+
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=ZONA_BOGOTA)
+
+        consulta.fecha_hora = dt
+        db.session.commit()
+        flash(f"Fecha y hora de la consulta médica #{consulta.id} actualizada correctamente.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al actualizar fecha de la consulta %d", id)
+        flash("Ocurrió un error al actualizar la fecha y hora de la consulta.", "danger")
+
+    return redirect(next_url)
 
 
 # ---------------------------------------------------------------------------

@@ -222,6 +222,8 @@ def _registrar_plantillas(app: Flask) -> None:
     app.jinja_env.filters["hora"] = utils.formato_hora
     app.jinja_env.filters["fecha_larga"] = utils.fecha_larga
     app.jinja_env.filters["kg"] = utils.formato_kg
+    app.jinja_env.filters["fecha_iso"] = lambda v: v.strftime("%Y-%m-%d") if (v and hasattr(v, "strftime")) else (str(v) if v else "")
+    app.jinja_env.filters["fecha_hora_iso"] = lambda v: v.strftime("%Y-%m-%dT%H:%M") if (v and hasattr(v, "strftime")) else (str(v) if v else "")
 
     def foto_mascota(mascota, mini=True):
         """URL de la foto (o miniatura) de una mascota; ``None`` si no tiene."""

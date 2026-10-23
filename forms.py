@@ -537,6 +537,7 @@ class VincularVentaSpaForm(FlaskForm):
 
 
 class ConsultaMedicaForm(FlaskForm):
+    fecha_hora = DateTimeLocalField("Fecha y hora de la consulta", format="%Y-%m-%dT%H:%M", validators=[Optional()])
     motivo_consulta = StringField("Motivo de consulta", validators=[DataRequired("El motivo de consulta es obligatorio."), Length(max=255)])
     anamnesis = TextAreaField("Anamnesis / Historia previa (Subjetivo - S)", validators=[Optional(), Length(max=2000)])
     alimentacion = StringField("Alimentación / Dieta actual", validators=[Optional(), Length(max=255)])
@@ -779,6 +780,7 @@ class ExamenLaboratorioForm(FlaskForm):
 class ResultadoExamenForm(FlaskForm):
     categoria = SelectField("Categoría", choices=list(CATEGORIAS_EXAMEN.items()), validators=[Optional()])
     tipo_examen = StringField("Nombre del examen", validators=[Optional(), Length(max=150)])
+    fecha_toma = DateField("Fecha de realización / toma", validators=[Optional()])
     laboratorio_externo = StringField("Centro diagnóstico / Laboratorio externo", validators=[Optional(), Length(max=150)])
     archivo_resultado = FileField("Adjuntar o reemplazar archivo (PDF, JPG, PNG, WEBP)", validators=[Optional()])
     interpretacion = TextAreaField("Comentarios / Hallazgos / Interpretación clínica", validators=[Optional(), Length(max=3000)])
