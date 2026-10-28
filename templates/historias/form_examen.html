@@ -240,10 +240,10 @@
                     </div>
                   </div>
 
-                  <!-- Preview del archivo seleccionado -->
-                  <div id="dropzone-preview" class="d-none p-3">
-                    <div class="file-preview-card p-2.5 rounded-3 d-flex align-items-center gap-3">
-                      <div id="file-icon-preview" class="fs-2 text-primary">
+                  <!-- Preview del archivo seleccionado con visualizador en vivo -->
+                  <div id="dropzone-preview" class="d-none p-2.5">
+                    <div class="file-preview-card p-2.5 rounded-3 d-flex align-items-center gap-3 bg-light border mb-2">
+                      <div id="file-icon-preview" class="fs-2 text-primary flex-shrink-0">
                         <i class="bi bi-file-earmark-check-fill"></i>
                       </div>
                       <div class="text-start min-w-0 flex-grow-1">
@@ -253,6 +253,37 @@
                       <button type="button" class="btn btn-sm btn-ghost-danger rounded-circle p-1" onclick="event.stopPropagation(); quitarArchivoSeleccionado();" title="Quitar archivo">
                         <i class="bi bi-trash3"></i>
                       </button>
+                    </div>
+
+                    <!-- Contenedor Visualizador En Vivo (PDF / Imagen) -->
+                    <div id="contenedor-visor-en-vivo" class="rounded-3 overflow-hidden border bg-white shadow-2xs position-relative" style="display: none;">
+                      <div class="d-flex align-items-center justify-content-between px-2.5 py-1.5 bg-light border-bottom font-size-xs">
+                        <span class="fw-semibold text-secondary d-flex align-items-center gap-1">
+                          <i class="bi bi-eye-fill text-primary"></i> Previsualización del archivo
+                        </span>
+                        <div class="d-flex align-items-center gap-1">
+                          <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" id="btn-abrir-nueva-pestana" onclick="event.stopPropagation(); abrirPreviewEnPestana();" title="Abrir en pestaña nueva">
+                            <i class="bi bi-box-arrow-up-right"></i>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Preview Imagen (JPG, PNG, WEBP) -->
+                      <div id="preview-imagen-box" class="text-center p-2 bg-dark" style="display: none; min-height: 180px; max-height: 380px;">
+                        <img id="preview-img-tag" src="" alt="Previsualización" class="img-fluid rounded" style="max-height: 360px; object-fit: contain;">
+                      </div>
+
+                      <!-- Preview PDF -->
+                      <div id="preview-pdf-box" style="display: none; height: 350px;">
+                        <iframe id="preview-pdf-iframe" src="" class="w-100 h-100 border-0" title="Previsualización PDF"></iframe>
+                      </div>
+
+                      <!-- Preview Otros formatos (DOCX, DICOM) -->
+                      <div id="preview-otros-box" class="p-3 text-center bg-light" style="display: none;">
+                        <i class="bi bi-file-earmark-medical fs-1 text-primary mb-1 d-block"></i>
+                        <span class="small fw-semibold text-dark d-block" id="preview-otros-nombre">Archivo cargado</span>
+                        <span class="text-muted font-size-xs">Formato binario listo para guardarse en el historial médico.</span>
+                      </div>
                     </div>
                   </div>
 
@@ -634,7 +665,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
 
-  // Manejo de archivo adjunto y dropzone preview
+  // Manejo de archivo adjunto y dropzone preview en vivo
   const fileInput = document.getElementById("archivo_resultado");
   const dropzoneIdle = document.getElementById("dropzone-idle");
   const dropzonePreview = document.getElementById("dropzone-preview");
@@ -643,8 +674,35 @@ document.addEventListener("DOMContentLoaded", function() {
   const fileIconPreview = document.getElementById("file-icon-preview");
   const dropzoneContainer = document.getElementById("dropzone-container");
 
+  const contenedorVisor = document.getElementById("contenedor-visor-en-vivo");
+  const previewImagenBox = document.getElementById("preview-imagen-box");
+  const previewImgTag = document.getElementById("preview-img-tag");
+  const previewPdfBox = document.getElementById("preview-pdf-box");
+  const previewPdfIframe = document.getElementById("preview-pdf-iframe");
+  const previewOtrosBox = document.getElementById("preview-otros-box");
+  const previewOtrosNombre = document.getElementById("preview-otros-nombre");
+
+  let currentPreviewUrl = null;
+
+  window.abrirPreviewEnPestana = function() {
+    if (currentPreviewUrl) {
+      window.open(currentPreviewUrl, '_blank');
+    }
+  };
+
   window.quitarArchivoSeleccionado = function() {
     fileInput.value = "";
+    if (currentPreviewUrl) {
+      URL.revokeObjectURL(currentPreviewUrl);
+      currentPreviewUrl = null;
+    }
+    if (previewImgTag) previewImgTag.src = "";
+    if (previewPdfIframe) previewPdfIframe.src = "";
+    if (contenedorVisor) contenedorVisor.style.display = "none";
+    if (previewImagenBox) previewImagenBox.style.display = "none";
+    if (previewPdfBox) previewPdfBox.style.display = "none";
+    if (previewOtrosBox) previewOtrosBox.style.display = "none";
+
     dropzonePreview.classList.add("d-none");
     dropzoneIdle.classList.remove("d-none");
   };
@@ -655,13 +713,29 @@ document.addEventListener("DOMContentLoaded", function() {
       fileNamePreview.textContent = file.name;
       fileSizePreview.textContent = (file.size / (1024 * 1024)).toFixed(2) + " MB";
 
+      if (currentPreviewUrl) {
+        URL.revokeObjectURL(currentPreviewUrl);
+      }
+      currentPreviewUrl = URL.createObjectURL(file);
+
       const ext = file.name.split('.').pop().toLowerCase();
-      if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+      contenedorVisor.style.display = "block";
+      previewImagenBox.style.display = "none";
+      previewPdfBox.style.display = "none";
+      previewOtrosBox.style.display = "none";
+
+      if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(ext) || file.type.startsWith('image/')) {
         fileIconPreview.innerHTML = '<i class="bi bi-file-earmark-image-fill text-warning"></i>';
-      } else if (ext === 'pdf') {
+        previewImgTag.src = currentPreviewUrl;
+        previewImagenBox.style.display = "block";
+      } else if (ext === 'pdf' || file.type === 'application/pdf') {
         fileIconPreview.innerHTML = '<i class="bi bi-file-earmark-pdf-fill text-danger"></i>';
+        previewPdfIframe.src = currentPreviewUrl;
+        previewPdfBox.style.display = "block";
       } else {
         fileIconPreview.innerHTML = '<i class="bi bi-file-earmark-text-fill text-primary"></i>';
+        previewOtrosNombre.textContent = file.name;
+        previewOtrosBox.style.display = "block";
       }
 
       dropzoneIdle.classList.add("d-none");

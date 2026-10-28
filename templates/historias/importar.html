@@ -12,6 +12,30 @@
 <div class="row g-4 justify-content-center">
   <div class="col-12 col-lg-8">
     
+    {# BOTÓN DE PÁNICO: REVERTIR ÚLTIMA SUBIDA MASIVA #}
+    {% if current_user.rol == 'admin' %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-danger bg-opacity-10 border border-danger-subtle">
+      <div class="card-body p-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="width: 48px; height: 48px; font-size: 1.5rem;">
+            <i class="bi bi-shield-exclamation"></i>
+          </div>
+          <div>
+            <h5 class="fw-bold text-danger mb-1">Botón de Pánico · Reversión Segura</h5>
+            <div class="small text-muted">¿La última subida masiva tuvo algún inconveniente? Deshazla de inmediato con 1 solo clic.</div>
+          </div>
+        </div>
+        <form method="post" action="{{ url_for('historias.revertir_ultimo_lote') }}" onsubmit="return confirm('⚠️ ¿CONFIRMAS REVERTIR LA ÚLTIMA SUBIDA MASIVA?\n\nEsta acción eliminará únicamente las consultas importadas en el último lote y el registro del lote. Tus 44 consultas base y cualquier historia clínica creada normalmente quedarán 100% blindadas e intactas.');" class="m-0">
+          {{ form_csrf.hidden_tag() }}
+          <button type="submit" class="btn btn-danger btn-lg rounded-pill px-4 fw-bold shadow d-flex align-items-center gap-2 text-nowrap">
+            <i class="bi bi-arrow-counterclockwise fs-5"></i>
+            Revertir Última Subida Masiva
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
     {# 1. Plantilla oficial e instrucciones #}
     <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
       <div class="card-header bg-light border-0 py-3 px-4 rounded-top-4">

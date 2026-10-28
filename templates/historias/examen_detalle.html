@@ -183,8 +183,30 @@
               <label class="form-label fw-bold small text-dark" for="archivo_resultado">
                 {% if examen.archivo_resultado %}Reemplazar archivo adjunto{% else %}Adjuntar archivo (PDF, Imagen, etc.){% endif %}
               </label>
-              {{ form_resultado.archivo_resultado(class_="form-control", accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.dcm,.dicom") }}
-              <div class="form-text small">Soporta PDF, JPG, PNG, WEBP, DOCX, DICOM.</div>
+              {{ form_resultado.archivo_resultado(class_="form-control", id="archivo_resultado_detalle", accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.dcm,.dicom") }}
+              <div class="form-text small mb-2">Soporta PDF, JPG, PNG, WEBP, DOCX, DICOM.</div>
+
+              <!-- Vista previa en vivo del nuevo archivo en examen_detalle -->
+              <div id="preview-reemplazo-box" class="border rounded-3 p-2 bg-light d-none">
+                <div class="d-flex align-items-center justify-content-between mb-1.5 small">
+                  <span class="fw-bold text-dark d-flex align-items-center gap-1">
+                    <i class="bi bi-eye-fill text-primary"></i> Previsualización nuevo archivo:
+                  </span>
+                  <button type="button" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0.5" onclick="cancelarReemplazoArchivo();">
+                    <i class="bi bi-x-circle me-1"></i>Quitar
+                  </button>
+                </div>
+                <div id="reemplazo-img-box" class="text-center p-2 bg-dark rounded d-none" style="max-height: 250px; overflow: hidden;">
+                  <img id="reemplazo-img-tag" src="" class="img-fluid rounded" style="max-height: 240px; object-fit: contain;">
+                </div>
+                <div id="reemplazo-pdf-box" class="rounded overflow-hidden d-none" style="height: 260px;">
+                  <iframe id="reemplazo-pdf-iframe" src="" class="w-100 h-100 border-0"></iframe>
+                </div>
+                <div id="reemplazo-otro-box" class="p-2 text-center text-muted small d-none">
+                  <i class="bi bi-file-earmark-check fs-2 text-primary d-block"></i>
+                  <span id="reemplazo-otro-nombre"></span>
+                </div>
+              </div>
             </div>
 
             <div class="mb-3">
@@ -226,4 +248,63 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let replacementPreviewUrl = null;
+  const inputDetalle = document.getElementById("archivo_resultado_detalle");
+  const boxReemplazo = document.getElementById("preview-reemplazo-box");
+  const boxImg = document.getElementById("reemplazo-img-box");
+  const tagImg = document.getElementById("reemplazo-img-tag");
+  const boxPdf = document.getElementById("reemplazo-pdf-box");
+  const iframePdf = document.getElementById("reemplazo-pdf-iframe");
+  const boxOtro = document.getElementById("reemplazo-otro-box");
+  const nombreOtro = document.getElementById("reemplazo-otro-nombre");
+
+  window.cancelarReemplazoArchivo = function() {
+    if (inputDetalle) inputDetalle.value = "";
+    if (replacementPreviewUrl) {
+      URL.revokeObjectURL(replacementPreviewUrl);
+      replacementPreviewUrl = null;
+    }
+    if (tagImg) tagImg.src = "";
+    if (iframePdf) iframePdf.src = "";
+    if (boxReemplazo) boxReemplazo.classList.add("d-none");
+    if (boxImg) boxImg.classList.add("d-none");
+    if (boxPdf) boxPdf.classList.add("d-none");
+    if (boxOtro) boxOtro.classList.add("d-none");
+  };
+
+  if (inputDetalle) {
+    inputDetalle.addEventListener("change", function() {
+      if (this.files && this.files[0]) {
+        const file = this.files[0];
+        if (replacementPreviewUrl) {
+          URL.revokeObjectURL(replacementPreviewUrl);
+        }
+        replacementPreviewUrl = URL.createObjectURL(file);
+
+        boxReemplazo.classList.remove("d-none");
+        boxImg.classList.add("d-none");
+        boxPdf.classList.add("d-none");
+        boxOtro.classList.add("d-none");
+
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(ext) || file.type.startsWith('image/')) {
+          tagImg.src = replacementPreviewUrl;
+          boxImg.classList.remove("d-none");
+        } else if (ext === 'pdf' || file.type === 'application/pdf') {
+          iframePdf.src = replacementPreviewUrl;
+          boxPdf.classList.remove("d-none");
+        } else {
+          nombreOtro.textContent = file.name + ' (' + (file.size / (1024*1024)).toFixed(2) + ' MB)';
+          boxOtro.classList.remove("d-none");
+        }
+      } else {
+        cancelarReemplazoArchivo();
+      }
+    });
+  }
+</script>
 {% endblock %}

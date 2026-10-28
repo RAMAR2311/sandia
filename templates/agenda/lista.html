@@ -25,10 +25,24 @@
       </div>
 
       <div class="d-flex flex-wrap gap-2 align-items-center">
+        <!-- Switch de Vistas (Día vs Mes) -->
+        <div class="btn-group shadow-xs rounded-pill p-1 bg-light border" role="group" aria-label="Modo de visualización">
+          <button type="button" class="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold {% if vista != 'dia' %}btn-danger text-white shadow-xs{% else %}btn-light text-secondary{% endif %}" id="btnToggleCalendario" onclick="alternarVistaCalendario()">
+            <i class="bi bi-calendar3 me-1"></i>
+            <span class="d-none d-sm-inline">Calendario Mensual</span>
+            <span class="d-inline d-sm-none">Mes</span>
+          </button>
+          <button type="button" class="btn btn-sm rounded-pill px-3 py-1.5 fw-semibold {% if vista == 'dia' %}btn-danger text-white shadow-xs{% else %}btn-light text-secondary{% endif %}" id="btnToggleDia" onclick="alternarVistaDia()">
+            <i class="bi bi-view-list me-1"></i>
+            <span class="d-none d-sm-inline">Solo Vista Día</span>
+            <span class="d-inline d-sm-none">Día</span>
+          </button>
+        </div>
+
         <!-- Catálogo de Servicios Médicos -->
         <a href="{{ url_for('agenda.servicios_lista') }}" class="btn btn-outline-danger fw-semibold px-3 py-2 rounded-pill shadow-xs d-flex align-items-center gap-2" title="Administrar catálogo de consultas, procedimientos y tarifas">
           <i class="bi bi-journal-medical"></i>
-          <span>Catálogo de Servicios</span>
+          <span class="d-none d-md-inline">Catálogo</span>
         </a>
         <!-- Agendar Cita Médica -->
         <a href="{{ url_for('agenda.nueva') }}" class="btn btn-primary fw-semibold px-3 py-2 rounded-pill shadow-sm d-flex align-items-center gap-2">
@@ -43,14 +57,14 @@
       </div>
     </div>
 
-    <!-- Navegación Rápida de Fecha -->
+    <!-- Navegación Rápida de Fecha del Día -->
     <div class="mt-4 pt-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-3">
       <form method="get" class="d-flex align-items-center gap-2 flex-wrap m-0">
         <label for="inputFecha" class="fw-semibold text-secondary small me-1"><i class="bi bi-funnel me-1 text-primary"></i>Ver Fecha:</label>
-        <input type="date" id="inputFecha" class="form-control form-control-sm rounded-pill px-3 bg-light border" style="max-width: 180px; font-weight: 600;" name="fecha" value="{{ fecha.isoformat() }}" onchange="this.form.submit()">
-        <a class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs" href="{{ url_for('agenda.lista', fecha=fecha_anterior.isoformat()) }}" title="Día anterior">« Día Anterior</a>
-        <a class="btn btn-sm btn-outline-danger fw-semibold rounded-pill px-3 shadow-xs" href="{{ url_for('agenda.lista') }}">Hoy</a>
-        <a class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs" href="{{ url_for('agenda.lista', fecha=fecha_siguiente.isoformat()) }}" title="Día siguiente">Día Siguiente »</a>
+        <input type="date" id="inputFecha" class="form-control form-control-sm rounded-pill px-3 bg-light border" style="max-width: 175px; font-weight: 600;" name="fecha" value="{{ fecha.isoformat() }}" onchange="this.form.submit()">
+        <a class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs" href="{{ url_for('agenda.lista', fecha=fecha_anterior.isoformat(), vista=vista) }}" title="Día anterior">« Día Anterior</a>
+        <a class="btn btn-sm btn-outline-danger fw-semibold rounded-pill px-3 shadow-xs" href="{{ url_for('agenda.lista', vista=vista) }}">Hoy</a>
+        <a class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs" href="{{ url_for('agenda.lista', fecha=fecha_siguiente.isoformat(), vista=vista) }}" title="Día siguiente">Día Siguiente »</a>
       </form>
 
       <div class="d-flex align-items-center gap-2 ms-auto">
@@ -61,12 +75,153 @@
           ✂️ {{ citas_spa_count }} Spa
         </span>
         <span class="badge bg-dark text-white rounded-pill px-3 py-1.5 fw-bold">
-          Total: {{ citas|length }}
+          Total Hoy: {{ citas|length }}
         </span>
       </div>
     </div>
   </div>
 </div>
+
+<!-- ========================================== -->
+<!-- 1.B. CALENDARIO MENSUAL INTERACTIVO CON CONTEOS -->
+<!-- ========================================== -->
+<div id="seccionCalendarioMes" class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden {% if vista == 'dia' %}d-none{% endif %}">
+  <div class="card-header bg-white border-bottom py-3 px-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-3">
+      <div class="rounded-circle bg-danger-subtle text-danger d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; font-size: 1.2rem;">
+        <i class="bi bi-calendar3"></i>
+      </div>
+      <div>
+        <h2 class="h5 fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+          <span>{{ nombre_mes_actual }}</span>
+          <span class="badge bg-light text-secondary border rounded-pill fw-normal fs-7">Distribución mensual</span>
+        </h2>
+        <small class="text-muted">Haz clic en cualquier día para cargar sus citas y ver el conteo programado</small>
+      </div>
+    </div>
+
+    <!-- Navegación entre meses -->
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{ url_for('agenda.lista', fecha=mes_ant_fecha.isoformat(), vista='calendario') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs" title="Mes anterior">
+        <i class="bi bi-chevron-left me-1"></i> Mes Anterior
+      </a>
+      <a href="{{ url_for('agenda.lista', vista='calendario') }}" class="btn btn-sm btn-outline-danger fw-semibold rounded-pill px-3 shadow-xs" title="Volver a fecha de hoy">
+        Mes Actual
+      </a>
+      <a href="{{ url_for('agenda.lista', fecha=mes_sig_fecha.isoformat(), vista='calendario') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-xs" title="Mes siguiente">
+        Mes Siguiente <i class="bi bi-chevron-right ms-1"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="card-body p-2 p-md-3">
+    <div class="table-responsive">
+      <table class="table table-bordered mb-0 align-middle text-center" style="table-layout: fixed; min-width: 700px; border-color: #f1f5f9;">
+        <thead>
+          <tr class="bg-light text-secondary small fw-bold text-uppercase" style="letter-spacing: 0.05em; font-size: 0.78rem;">
+            <th style="width: 14.28%; padding: 10px 0;">Lun</th>
+            <th style="width: 14.28%; padding: 10px 0;">Mar</th>
+            <th style="width: 14.28%; padding: 10px 0;">Mié</th>
+            <th style="width: 14.28%; padding: 10px 0;">Jue</th>
+            <th style="width: 14.28%; padding: 10px 0;">Vie</th>
+            <th style="width: 14.28%; padding: 10px 0; color: #E53935;">Sáb</th>
+            <th style="width: 14.28%; padding: 10px 0; color: #E53935;">Dom</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for semana in calendario_mes %}
+          <tr>
+            {% for c_dia in semana %}
+            <td class="p-1 p-md-2 align-top text-start transition-all position-relative {% if not c_dia.es_mes_actual %}bg-light opacity-50{% elif c_dia.es_seleccionado %}table-danger-selected{% elif c_dia.es_hoy %}table-hoy-subtle{% else %}bg-white{% endif %}"
+                style="height: 98px; cursor: pointer; border-radius: 8px;"
+                onclick="window.location.href='{{ url_for('agenda.lista', fecha=c_dia.iso, vista='calendario') }}'"
+                title="Ver citas del {{ c_dia.fecha.strftime('%d/%m/%Y') }}">
+              
+              <!-- Encabezado de la celda del día -->
+              <div class="d-flex align-items-center justify-content-between mb-1.5">
+                <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center fw-bold {% if c_dia.es_seleccionado %}bg-danger text-white shadow-sm{% elif c_dia.es_hoy %}bg-dark text-white{% else %}text-dark bg-transparent{% endif %}"
+                      style="width: 26px; height: 26px; font-size: 0.85rem;">
+                  {{ c_dia.dia }}
+                </span>
+
+                {% if c_dia.total > 0 %}
+                <span class="badge rounded-pill bg-dark text-white px-2 py-0.5 fw-semibold" style="font-size: 0.68rem;">
+                  {{ c_dia.total }} cita{% if c_dia.total > 1 %}s{% endif %}
+                </span>
+                {% endif %}
+              </div>
+
+              <!-- Indicadores de citas (Médicas / Spa) -->
+              <div class="d-flex flex-column gap-1">
+                {% if c_dia.medica > 0 %}
+                <div class="d-flex align-items-center justify-content-between px-2 py-0.5 rounded-pill" style="background: #FFE4E6; color: #BE123C; font-size: 0.72rem; font-weight: 700;">
+                  <span>🩺 Médicas</span>
+                  <span class="badge bg-danger rounded-circle text-white p-0 d-inline-flex align-items-center justify-content-center" style="width: 16px; height: 16px; font-size: 0.65rem;">
+                    {{ c_dia.medica }}
+                  </span>
+                </div>
+                {% endif %}
+
+                {% if c_dia.spa > 0 %}
+                <div class="d-flex align-items-center justify-content-between px-2 py-0.5 rounded-pill" style="background: #CCFBF1; color: #0F766E; font-size: 0.72rem; font-weight: 700;">
+                  <span>✂️ Spa</span>
+                  <span class="badge rounded-circle text-white p-0 d-inline-flex align-items-center justify-content-center" style="background: #0d9488; width: 16px; height: 16px; font-size: 0.65rem;">
+                    {{ c_dia.spa }}
+                  </span>
+                </div>
+                {% endif %}
+
+                {% if c_dia.total == 0 and c_dia.es_mes_actual %}
+                <div class="text-muted text-center pt-2 d-none d-md-block" style="font-size: 0.7rem; opacity: 0.5;">
+                  Libre
+                </div>
+                {% endif %}
+              </div>
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pie del calendario con leyenda explicativa -->
+  <div class="card-footer bg-light py-2 px-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-2 small">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <span class="fw-semibold text-secondary">Leyenda:</span>
+      <span class="d-inline-flex align-items-center gap-1.5">
+        <span class="rounded-circle bg-danger d-inline-block" style="width: 10px; height: 10px;"></span>
+        <span class="text-secondary">Día seleccionado</span>
+      </span>
+      <span class="d-inline-flex align-items-center gap-1.5">
+        <span class="rounded-circle bg-dark d-inline-block" style="width: 10px; height: 10px;"></span>
+        <span class="text-secondary">Hoy</span>
+      </span>
+      <span class="d-inline-flex align-items-center gap-1.5">
+        <span class="badge px-2 py-0.5" style="background: #FFE4E6; color: #BE123C; font-size: 0.72rem; font-weight: bold;">🩺 Consultas Médicas</span>
+      </span>
+      <span class="d-inline-flex align-items-center gap-1.5">
+        <span class="badge px-2 py-0.5" style="background: #CCFBF1; color: #0F766E; font-size: 0.72rem; font-weight: bold;">✂️ Spa & Grooming</span>
+      </span>
+    </div>
+    <div class="text-muted small">
+      <i class="bi bi-info-circle me-1"></i> Puedes alternar entre vista completa o solo día con el interruptor superior
+    </div>
+  </div>
+</div>
+
+<style>
+  .table-danger-selected {
+    background-color: #FFF1F2 !important;
+    border: 2px solid #E11D48 !important;
+    box-shadow: inset 0 0 0 1px #E11D48;
+  }
+  .table-hoy-subtle {
+    background-color: #F8FAFC !important;
+    border: 1.5px dashed #64748B !important;
+  }
+</style>
 
 <!-- 2. Strip de KPIs del Día -->
 {% if citas %}
@@ -475,5 +630,43 @@
       });
     });
   });
+
+  function alternarVistaCalendario() {
+    const seccionCal = document.getElementById('seccionCalendarioMes');
+    const btnCal = document.getElementById('btnToggleCalendario');
+    const btnDia = document.getElementById('btnToggleDia');
+    if (seccionCal) {
+      seccionCal.classList.remove('d-none');
+    }
+    if (btnCal) {
+      btnCal.className = 'btn btn-sm rounded-pill px-3 py-1.5 fw-semibold btn-danger text-white shadow-xs';
+    }
+    if (btnDia) {
+      btnDia.className = 'btn btn-sm rounded-pill px-3 py-1.5 fw-semibold btn-light text-secondary';
+    }
+    // Recordar en url sin recargar necesariamente
+    const url = new URL(window.location.href);
+    url.searchParams.set('vista', 'calendario');
+    window.history.replaceState({}, '', url);
+  }
+
+  function alternarVistaDia() {
+    const seccionCal = document.getElementById('seccionCalendarioMes');
+    const btnCal = document.getElementById('btnToggleCalendario');
+    const btnDia = document.getElementById('btnToggleDia');
+    if (seccionCal) {
+      seccionCal.classList.add('d-none');
+    }
+    if (btnDia) {
+      btnDia.className = 'btn btn-sm rounded-pill px-3 py-1.5 fw-semibold btn-danger text-white shadow-xs';
+    }
+    if (btnCal) {
+      btnCal.className = 'btn btn-sm rounded-pill px-3 py-1.5 fw-semibold btn-light text-secondary';
+    }
+    // Recordar en url sin recargar
+    const url = new URL(window.location.href);
+    url.searchParams.set('vista', 'dia');
+    window.history.replaceState({}, '', url);
+  }
 </script>
 {% endblock %}

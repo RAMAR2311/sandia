@@ -631,6 +631,12 @@ class Mascota(BaseModel):
         order_by="ConsentimientoEmitido.creado_en.desc()",
         cascade="all, delete-orphan",
     )
+    notas_clinicas = db.relationship(
+        "NotaClinica",
+        back_populates="mascota",
+        order_by="NotaClinica.fecha.desc()",
+        cascade="all, delete-orphan",
+    )
 
     @validates("nombre")
     def _indexar_nombre(self, _clave, valor):
@@ -1614,6 +1620,64 @@ class EnmiendaConsulta(BaseModel):
 
     def __repr__(self):
         return f"<EnmiendaConsulta {self.id} consulta={self.consulta_id}>"
+
+
+CATEGORIAS_NOTA_CLINICA = {
+    "seguimiento": "Seguimiento General",
+    "remision": "Remisión Externa",
+    "contacto_tutor": "Contacto / Llamada Tutor",
+    "cancelacion": "Cancelación / Inasistencia",
+    "alerta": "Alerta / Advertencia Médica",
+    "otro": "Otra Novedad",
+}
+
+
+class NotaClinica(BaseModel):
+    """Novedad o comentario clínico puntual del paciente (llamadas, cancelaciones, remisiones, seguimiento)."""
+
+    __tablename__ = "notas_clinicas"
+    __table_args__ = (
+        db.Index("ix_notas_clinicas_mascota_fecha", "mascota_id", "fecha"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    mascota_id = db.Column(db.Integer, db.ForeignKey("mascotas.id"), nullable=False, index=True)
+    autor_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"), nullable=False)
+    categoria = db.Column(db.String(40), nullable=False, default="seguimiento")
+    texto = db.Column(db.Text, nullable=False)
+    fecha = db.Column(db.DateTime(timezone=True), nullable=False, default=obtener_hora_bogota)
+
+    mascota = db.relationship("Mascota", back_populates="notas_clinicas")
+    autor = db.relationship("Usuario", foreign_keys=[autor_id])
+
+    @property
+    def categoria_etiqueta(self):
+        return CATEGORIAS_NOTA_CLINICA.get(self.categoria, self.categoria.capitalize())
+
+    @property
+    def badge_color(self):
+        mapa = {
+            "remision": "info",
+            "cancelacion": "danger",
+            "alerta": "warning",
+            "contacto_tutor": "success",
+            "seguimiento": "primary",
+        }
+        return mapa.get(self.categoria, "secondary")
+
+    @property
+    def icono(self):
+        mapa = {
+            "remision": "bi-send-check",
+            "cancelacion": "bi-calendar-x",
+            "alerta": "bi-exclamation-triangle",
+            "contacto_tutor": "bi-telephone-outbound",
+            "seguimiento": "bi-journal-text",
+        }
+        return mapa.get(self.categoria, "bi-chat-left-text")
+
+    def __repr__(self):
+        return f"<NotaClinica {self.id} mascota={self.mascota_id} cat={self.categoria}>"
 
 
 class ControlMedico(BaseModel):

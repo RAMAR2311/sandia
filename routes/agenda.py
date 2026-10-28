@@ -3,11 +3,12 @@
 Independiente de la agenda de spa (``routes/spa.py``).
 """
 
-from datetime import datetime, time, timedelta
+import calendar
+from datetime import date, datetime, time, timedelta
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from decorators import admin_required, recepcion_required
@@ -318,6 +319,90 @@ def lista():
     fecha_anterior = fecha - timedelta(days=1)
     fecha_siguiente = fecha + timedelta(days=1)
 
+    # 4. Datos del Calendario Mensual con Conteos Diarios
+    vista = request.args.get("vista", "calendario")  # 'calendario' o 'dia'
+    anio = fecha.year
+    mes = fecha.month
+
+    # Calcular mes anterior y mes siguiente para navegación mensual
+    if mes == 1:
+        mes_ant_fecha = date(anio - 1, 12, 1)
+    else:
+        mes_ant_fecha = date(anio, mes - 1, 1)
+
+    if mes == 12:
+        mes_sig_fecha = date(anio + 1, 1, 1)
+    else:
+        mes_sig_fecha = date(anio, mes + 1, 1)
+
+    cal = calendar.Calendar(firstweekday=0)  # Lunes = 0
+    semanas_fechas = cal.monthdatescalendar(anio, mes)
+
+    rango_inicio_mes = datetime.combine(semanas_fechas[0][0], time.min, tzinfo=ZONA_BOGOTA)
+    rango_fin_mes = datetime.combine(semanas_fechas[-1][-1], time.max, tzinfo=ZONA_BOGOTA)
+
+    # Consultar citas médicas del rango del calendario mensual
+    citas_med_mes = db.session.execute(
+        select(Cita.fecha_hora)
+        .where(
+            Cita.fecha_hora >= rango_inicio_mes,
+            Cita.fecha_hora <= rango_fin_mes,
+            Cita.estado != "cancelada",
+        )
+    ).scalars().all()
+
+    # Consultar citas spa del rango del calendario mensual
+    citas_spa_mes = db.session.execute(
+        select(CitaSpa.fecha_hora)
+        .where(
+            CitaSpa.fecha_hora >= rango_inicio_mes,
+            CitaSpa.fecha_hora <= rango_fin_mes,
+            CitaSpa.estado != "cancelada",
+        )
+    ).scalars().all()
+
+    conteos_calendario = {}
+    for dt in citas_med_mes:
+        if dt:
+            d_str = dt.astimezone(ZONA_BOGOTA).strftime("%Y-%m-%d") if dt.tzinfo else dt.strftime("%Y-%m-%d")
+            entry = conteos_calendario.setdefault(d_str, {"medica": 0, "spa": 0, "total": 0})
+            entry["medica"] += 1
+            entry["total"] += 1
+
+    for dt in citas_spa_mes:
+        if dt:
+            d_str = dt.astimezone(ZONA_BOGOTA).strftime("%Y-%m-%d") if dt.tzinfo else dt.strftime("%Y-%m-%d")
+            entry = conteos_calendario.setdefault(d_str, {"medica": 0, "spa": 0, "total": 0})
+            entry["spa"] += 1
+            entry["total"] += 1
+
+    meses_nombres = [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    nombre_mes_actual = f"{meses_nombres[mes]} {anio}"
+
+    hoy = hoy_bogota()
+
+    calendario_mes = []
+    for semana in semanas_fechas:
+        fila_semana = []
+        for d in semana:
+            iso_d = d.isoformat()
+            conteo = conteos_calendario.get(iso_d, {"medica": 0, "spa": 0, "total": 0})
+            fila_semana.append({
+                "fecha": d,
+                "iso": iso_d,
+                "dia": d.day,
+                "es_mes_actual": (d.month == mes),
+                "es_hoy": (d == hoy),
+                "es_seleccionado": (d == fecha),
+                "medica": conteo["medica"],
+                "spa": conteo["spa"],
+                "total": conteo["total"],
+            })
+        calendario_mes.append(fila_semana)
+
     return render_template(
         "agenda/lista.html",
         citas=citas_unificadas,
@@ -330,6 +415,11 @@ def lista():
         fecha=fecha,
         fecha_anterior=fecha_anterior,
         fecha_siguiente=fecha_siguiente,
+        vista=vista,
+        calendario_mes=calendario_mes,
+        nombre_mes_actual=nombre_mes_actual,
+        mes_ant_fecha=mes_ant_fecha,
+        mes_sig_fecha=mes_sig_fecha,
         ESTADOS_CITA=ESTADOS_CITA,
         TIPOS_CITA=TIPOS_CITA,
         form_csrf=SoloCsrfForm(),

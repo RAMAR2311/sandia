@@ -37,6 +37,7 @@ from forms import (
     SoloCsrfForm,
 )
 from models import (
+    CATEGORIAS_NOTA_CLINICA,
     CertificadoSaludAnimal,
     Cirugia,
     ConfiguracionSistema,
@@ -50,6 +51,7 @@ from models import (
     Hospitalizacion,
     LoteImportacion,
     Mascota,
+    NotaClinica,
     Raza,
     RegistroPeso,
     RemisionInterna,
@@ -306,6 +308,7 @@ def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes,
     # 3. Exámenes / Ayudas Diagnósticas & Rx
     for e in examenes:
         cat_nombre = e.categoria.capitalize() if getattr(e, "categoria", None) else "Laboratorio"
+        url_archivo = url_for("static", filename=f"uploads/examenes/{e.archivo_resultado}") if e.archivo_resultado else None
         eventos.append({
             "tipo": "examen",
             "categoria": f"Ayuda Diagnóstica ({cat_nombre})",
@@ -318,6 +321,8 @@ def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes,
             "objeto": e,
             "url_detalle": url_for("historias.examen_detalle", id=e.id),
             "url_editar": url_for("historias.examen_detalle", id=e.id),
+            "url_pdf": url_archivo if (e.archivo_resultado and e.es_pdf) else None,
+            "url_descargar": url_archivo if e.archivo_resultado else None,
             "tab_destino": "examenes",
         })
 
@@ -457,6 +462,21 @@ def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes,
             "tab_destino": "peso",
         })
 
+    # 12. Notas y Novedades Clínicas
+    for n in getattr(mascota, "notas_clinicas", []):
+        eventos.append({
+            "tipo": "nota",
+            "categoria": n.categoria_etiqueta,
+            "badge_color": n.badge_color,
+            "icono": n.icono,
+            "fecha": n.fecha,
+            "titulo": f"Novedad Clínica: {n.categoria_etiqueta}",
+            "descripcion": n.texto,
+            "profesional": f"Registrado por: {n.autor.nombre}" if getattr(n, "autor", None) else "",
+            "objeto": n,
+            "tab_destino": "general",
+        })
+
     eventos.sort(key=lambda ev: _normalizar_para_orden(ev.get("fecha")), reverse=True)
     return eventos
 
@@ -479,6 +499,7 @@ def ficha_medica(mascota_id: int):
             selectinload(Mascota.registros_peso),
             selectinload(Mascota.consentimientos),
             selectinload(Mascota.certificados_salud),
+            selectinload(Mascota.notas_clinicas).selectinload(NotaClinica.autor),
         )
     ).scalar_one_or_none()
 
@@ -2024,12 +2045,16 @@ def examen_nuevo(mascota_id: int):
             if (nombre_archivo or (form.interpretacion.data and form.interpretacion.data.strip())) and estado_final == "solicitado":
                 estado_final = "con_resultado"
 
+            ahora = obtener_hora_bogota()
+            hora_actual = ahora.time()
+            fecha_toma_dt = datetime.combine(form.fecha_toma.data, hora_actual, tzinfo=ZONA_BOGOTA) if form.fecha_toma.data else ahora
+
             examen = ExamenLaboratorio(
                 mascota_id=mascota.id,
                 solicitado_por_id=current_user.id,
                 categoria=form.categoria.data or "laboratorio",
                 tipo_examen=form.tipo_examen.data,
-                fecha_toma=datetime.combine(form.fecha_toma.data, datetime.min.time(), tzinfo=ZONA_BOGOTA),
+                fecha_toma=fecha_toma_dt,
                 laboratorio_externo=form.laboratorio_externo.data or None,
                 archivo_resultado=nombre_archivo,
                 interpretacion=form.interpretacion.data or None,
@@ -2238,6 +2263,81 @@ def consulta_actualizar_fecha(id: int):
         db.session.rollback()
         current_app.logger.exception("Error al actualizar fecha de la consulta %d", id)
         flash("Ocurrió un error al actualizar la fecha y hora de la consulta.", "danger")
+
+    return redirect(next_url)
+
+
+# ---------------------------------------------------------------------------
+# Notas y Novedades Clínicas Rápidas
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/mascota/<int:mascota_id>/nota/nueva", methods=["POST"])
+@login_required
+@clinico_required
+def nota_clinica_nueva(mascota_id: int):
+    """Registra una novedad o nota médica rápida para la mascota con hora exacta."""
+    mascota = db.session.get(Mascota, mascota_id)
+    if not mascota:
+        flash("La mascota no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    categoria = (request.form.get("categoria") or "seguimiento").strip()
+    texto = (request.form.get("texto") or "").strip()
+    next_url = request.form.get("next") or url_for("historias.ficha_medica", mascota_id=mascota.id, tab="general")
+
+    if not texto:
+        flash("El contenido de la nota clínica no puede estar vacío.", "warning")
+        return redirect(next_url)
+
+    if categoria not in CATEGORIAS_NOTA_CLINICA:
+        categoria = "seguimiento"
+
+    try:
+        nota = NotaClinica(
+            mascota_id=mascota.id,
+            autor_id=current_user.id,
+            categoria=categoria,
+            texto=texto,
+            fecha=obtener_hora_bogota(),
+        )
+        db.session.add(nota)
+        db.session.commit()
+        flash(f"Novedad clínica ({nota.categoria_etiqueta}) registrada con éxito.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al crear nota clínica para mascota %d", mascota_id)
+        flash("No se pudo registrar la nota clínica.", "danger")
+
+    return redirect(next_url)
+
+
+@bp.route("/nota/<int:id>/eliminar", methods=["POST"])
+@login_required
+@clinico_required
+def nota_clinica_eliminar(id: int):
+    """Elimina una nota clínica si fue creada por el usuario actual o si es administrador."""
+    nota = db.session.get(NotaClinica, id)
+    if not nota:
+        flash("La nota clínica no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    mascota_id = nota.mascota_id
+    next_url = request.form.get("next") or url_for("historias.ficha_medica", mascota_id=mascota_id, tab="general")
+
+    # Autorización: creador o admin
+    if current_user.rol != "admin" and nota.autor_id != current_user.id:
+        flash("Solo quien redactó la nota o un administrador pueden eliminarla.", "danger")
+        return redirect(next_url)
+
+    try:
+        db.session.delete(nota)
+        db.session.commit()
+        flash("Nota clínica eliminada correctamente.", "info")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al eliminar nota clínica %d", id)
+        flash("No se pudo eliminar la nota clínica.", "danger")
 
     return redirect(next_url)
 
@@ -2522,6 +2622,78 @@ def plantilla_excel():
     )
 
 
+def _convertir_examen_general_a_json(texto_general: str) -> str:
+    """Convierte texto plano de Examen_General a la estructura JSON esperada por examen_sistemas."""
+    if not texto_general or not texto_general.strip():
+        sistemas_dict = {}
+        for s in SISTEMAS_MEDICOS_CATALOGO:
+            sistemas_dict[s["id"]] = {"estado": "normal", "observacion": "", "nombre": s["nombre"]}
+        return json.dumps({"sistemas": sistemas_dict}, ensure_ascii=False)
+
+    txt = texto_general.strip()
+    norm = normalizar_texto(txt)
+
+    # Detección de sistemas afectados por palabras clave
+    anormales = set()
+    # Órganos de los sentidos: ojo, ocular, otico, oido, cornea, pupila, etc.
+    if any(k in norm for k in ("ojo", "ocular", "otico", "oido", "pupil", "cornea", "epifora", "blefaro", "conjuntiv", "vision", "olfato")):
+        anormales.add("organos_sentidos")
+
+    # Gastrointestinal: vomito, diarrea, abdomen, estomago, heces, palpa, etc.
+    if any(k in norm for k in ("vomit", "diarre", "abdomen", "abdom", "epigastr", "gastr", "timpan", "heces", "tartaro", "dental")):
+        anormales.add("gastrointestinal")
+
+    # Tegumentario: piel, lesion, pelo, rasca, cara, cola, eritema, pulga, prurito, etc.
+    if any(k in norm for k in ("piel", "lesion", "pelo", "pelaje", "rasca", "cara", "cola", "eritem", "prurit", "pulga", "alopeci", "caspa", "pioderm", "ectoparasit", "seborre")):
+        anormales.add("tegumentario")
+
+    # Músculo-esquelético: apoyo, tren posterior, temblores, claudica, cojera, pata, etc.
+    if any(k in norm for k in ("apoyo", "tren posterior", "temblor", "claudic", "cojer", "articul", "panicular", "extremidad", "marcha", "pata")):
+        anormales.add("musculo_esqueletico")
+
+    # Ganglios linfáticos: ganglio, linfonodulo, submandibular, etc.
+    if any(k in norm for k in ("ganglio", "linfaden", "linfonod")):
+        anormales.add("ganglio_linfatico")
+
+    # Sistema respiratorio (opcional si menciona pulmón, sibilancias, etc.)
+    if any(k in norm for k in ("pulmon", "estertor", "roncus", "sibilan", "tos", "traquea")):
+        anormales.add("respiratorio")
+
+    # Sistema cardíaco
+    if any(k in norm for k in ("soplo", "arritmi", "cardiac")):
+        anormales.add("cardiaco")
+
+    # Sistema nervioso
+    if any(k in norm for k in ("ataxia", "convuls", "reflejo espinal", "nervios")):
+        anormales.add("nervioso")
+
+    # Urinario
+    if any(k in norm for k in ("vejiga", "renal", "rinon", "hematuria", "disuria")):
+        anormales.add("urinario")
+
+    # Reproductivo
+    if any(k in norm for k in ("vulv", "prepuc", "testicul", "mamar", "utero")):
+        anormales.add("reproductivo")
+
+    sistemas_dict = {}
+    for s in SISTEMAS_MEDICOS_CATALOGO:
+        s_id = s["id"]
+        if s_id in anormales:
+            sistemas_dict[s_id] = {
+                "estado": "anormal",
+                "observacion": txt,
+                "nombre": s["nombre"],
+            }
+        else:
+            sistemas_dict[s_id] = {
+                "estado": "normal",
+                "observacion": "",
+                "nombre": s["nombre"],
+            }
+
+    return json.dumps({"sistemas": sistemas_dict}, ensure_ascii=False)
+
+
 @bp.route("/importar-excel", methods=["GET", "POST"])
 @login_required
 @clinico_required
@@ -2570,6 +2742,8 @@ def importar_excel():
         col_obs = next((c for c in df.columns if c.lower() in ("observaciones", "notas")), None)
         col_vet = next((c for c in df.columns if c.lower() in ("veterinario", "medico", "doctor", "atendido_por")), None)
         col_fecha = next((c for c in df.columns if c.lower() in ("fecha", "fecha_hora", "fecha_consulta")), None)
+        col_especie = next((c for c in df.columns if c.lower() in ("especie", "tipo_animal")), None)
+        col_raza = next((c for c in df.columns if c.lower() in ("raza",)), None)
 
         creados = 0
         errores = []
@@ -2601,6 +2775,32 @@ def importar_excel():
                     continue
             return None
 
+        # Ordenar DataFrame de forma ASCENDENTE por fecha antes de iterar
+        if col_fecha and col_fecha in df.columns:
+            try:
+                fechas_parseadas = df[col_fecha].apply(lambda x: _parsear_fecha(_limpiar(x)) or datetime.min)
+                df["__fecha_sort"] = fechas_parseadas
+                df = df.sort_values(by="__fecha_sort", ascending=True).reset_index(drop=True)
+            except Exception as e_sort:
+                current_app.logger.warning("No se pudo pre-ordenar df por fecha: %s", e_sort)
+
+        # Buscar usuario veterinario por defecto (Dra. Daniela Pulido o veterinario principal activo)
+        vet_default = db.session.execute(
+            select(Usuario).where(
+                or_(
+                    Usuario.nombre.ilike("%Daniela%"),
+                    Usuario.email == "veterinaria@sandiavet.com",
+                    Usuario.email == "veterinario@sandia.com",
+                    Usuario.rol == "veterinario",
+                ),
+                Usuario.activo.is_(True),
+            )
+        ).scalars().first()
+        if not vet_default:
+            vet_default = db.session.execute(
+                select(Usuario).where(Usuario.rol == "admin", Usuario.activo.is_(True))
+            ).scalars().first() or current_user
+
         try:
             for indice, fila in df.iterrows():
                 num_fila = indice + 2
@@ -2612,89 +2812,130 @@ def importar_excel():
                     errores.append(f"Fila {num_fila}: No se especificó el paciente ni la mascota.")
                     continue
 
-                # REGLA TÉCNICA 2: Vinculación segura de Mascota.
-                # 1) Buscar primero por ID legado (id_externo) que provino de 2_PACIENTES.csv
+                # REGLA TÉCNICA: Vinculación inteligente y segura de Mascota.
                 mascota = None
+                doc_prop = _limpiar(fila.get(col_doc_prop)) if col_doc_prop else ""
+                nom_prop = _limpiar(fila.get(col_nom_prop)) if col_nom_prop else ""
+
+                # 1) Buscar primero por ID legado (id_externo) que provino de pacientes
                 if paciente_val:
                     mascota = db.session.execute(
                         select(Mascota).where(Mascota.id_externo == paciente_val)
                     ).scalar_one_or_none()
 
                 # 2) Si no se encontró por ID legado, buscar por Tutor + Nombre de Mascota
-                if not mascota and nombre_mascota:
-                    norm_mascota = normalizar_texto(nombre_mascota)
-                    doc_prop = _limpiar(fila.get(col_doc_prop)) if col_doc_prop else ""
-                    nom_prop = _limpiar(fila.get(col_nom_prop)) if col_nom_prop else ""
+                norm_mascota = normalizar_texto(nombre_mascota) if nombre_mascota else ""
+                tutor = None
 
-                    tutor = None
-                    if doc_prop:
-                        tutor = db.session.execute(
-                            select(Tutor).where(Tutor.numero_documento == doc_prop)
-                        ).scalar_one_or_none()
-                    if not tutor and nom_prop:
-                        norm_nom = normalizar_texto(nom_prop)
-                        tutor = db.session.execute(
-                            select(Tutor).where(Tutor.nombre_busqueda == norm_nom)
-                        ).first()
-                        if tutor:
-                            tutor = tutor[0]
+                if doc_prop:
+                    tutor = db.session.execute(
+                        select(Tutor).where(Tutor.numero_documento == doc_prop)
+                    ).scalar_one_or_none()
+                if not tutor and nom_prop:
+                    norm_nom = normalizar_texto(nom_prop)
+                    tutor = db.session.execute(
+                        select(Tutor).where(Tutor.nombre_busqueda == norm_nom)
+                    ).scalars().first()
 
-                    if tutor:
-                        mascota = db.session.execute(
-                            select(Mascota).where(
-                                Mascota.tutor_id == tutor.id,
-                                Mascota.nombre_busqueda == norm_mascota
-                            )
-                        ).scalar_one_or_none()
-                    else:
-                        # Si no hay tutor explícito, buscar coincidencia única por nombre de mascota activa
-                        coincidencias = db.session.execute(
-                            select(Mascota).where(
-                                Mascota.nombre_busqueda == norm_mascota,
-                                Mascota.activo.is_(True)
-                            )
+                if not mascota and tutor and norm_mascota:
+                    # a) Coincidencia exacta con Mascota.nombre_busqueda == norm_mascota
+                    mascota = db.session.execute(
+                        select(Mascota).where(
+                            Mascota.tutor_id == tutor.id,
+                            Mascota.nombre_busqueda == norm_mascota,
+                        )
+                    ).scalar_one_or_none()
+
+                    # b) Quitar palabras del nombre/apellido del propietario o tomar primera palabra
+                    if not mascota:
+                        palabras_tutor = set(normalizar_texto(tutor.nombre_completo or nom_prop).split())
+                        palabras_mascota = norm_mascota.split()
+                        palabras_filtradas = [p for p in palabras_mascota if p not in palabras_tutor]
+                        primer_nombre = palabras_filtradas[0] if palabras_filtradas else (palabras_mascota[0] if palabras_mascota else "")
+
+                        mascotas_tutor = db.session.execute(
+                            select(Mascota).where(Mascota.tutor_id == tutor.id)
                         ).scalars().all()
-                        if len(coincidencias) == 1:
-                            mascota = coincidencias[0]
 
+                        for m in mascotas_tutor:
+                            m_norm = m.nombre_busqueda or normalizar_texto(m.nombre)
+                            m_primer = m_norm.split()[0] if m_norm.split() else ""
+                            if (primer_nombre and (m_norm == primer_nombre or m_norm.startswith(primer_nombre) or m_primer == primer_nombre)) or (norm_mascota and m_norm in norm_mascota):
+                                mascota = m
+                                break
+
+                # Si no hay tutor explícito y no se encontró mascota, buscar coincidencia por nombre de mascota activa
+                if not mascota and norm_mascota:
+                    coincidencias = db.session.execute(
+                        select(Mascota).where(
+                            Mascota.nombre_busqueda == norm_mascota,
+                            Mascota.activo.is_(True),
+                        )
+                    ).scalars().all()
+                    if len(coincidencias) == 1:
+                        mascota = coincidencias[0]
+
+                # c) Auto-crear tutor y mascota si aún no existen para no perder filas del CSV
                 if not mascota:
-                    ref = paciente_val or nombre_mascota
-                    errores.append(
-                        f"Fila {num_fila}: No se encontró la mascota '{ref}' en el sistema. Debe importarse primero el catálogo de pacientes."
+                    if not tutor:
+                        nom_tutor_crear = nom_prop or f"Tutor de {nombre_mascota or 'Paciente'}"
+                        tutor = Tutor(
+                            nombre_completo=nom_tutor_crear,
+                            tipo_documento="CC" if doc_prop else None,
+                            numero_documento=doc_prop or None,
+                            creado_por_id=current_user.id,
+                        )
+                        db.session.add(tutor)
+                        db.session.flush()
+
+                    # Limpiar nombre para la nueva mascota: quitar apellido del propietario si está pegado
+                    palabras_tutor = set(normalizar_texto(tutor.nombre_completo or nom_prop).split())
+                    partes_nom = nombre_mascota.split()
+                    partes_limpias = [p for p in partes_nom if normalizar_texto(p) not in palabras_tutor]
+                    nombre_final_mascota = " ".join(partes_limpias) if partes_limpias else (partes_nom[0] if partes_nom else (nombre_mascota or "Paciente"))
+
+                    esp_val = (_limpiar(fila.get(col_especie)) if col_especie else "").lower()
+                    especie_final = "canino"
+                    if "felin" in esp_val or "gato" in esp_val:
+                        especie_final = "felino"
+                    elif "ave" in esp_val:
+                        especie_final = "ave"
+                    elif "roedor" in esp_val or "conejo" in esp_val:
+                        especie_final = "roedor"
+
+                    mascota = Mascota(
+                        tutor_id=tutor.id,
+                        nombre=nombre_final_mascota,
+                        especie=especie_final,
+                        id_externo=paciente_val or None,
+                        creado_por_id=current_user.id,
                     )
-                    continue
+                    db.session.add(mascota)
+                    db.session.flush()
 
                 # Veterinario asignado
                 vet_nom = _limpiar(fila.get(col_vet)) if col_vet else ""
                 vet_user = None
-                if vet_nom:
-                    norm_vet = normalizar_texto(vet_nom)
+                norm_vet = normalizar_texto(vet_nom) if vet_nom else ""
+
+                if "sandia" in norm_vet:
+                    vet_user = vet_default
+                elif norm_vet:
                     vet_user = db.session.execute(
                         select(Usuario).where(
                             Usuario.rol.in_(("veterinario", "admin")),
-                            Usuario.nombre.ilike(f"%{norm_vet}%")
+                            Usuario.nombre.ilike(f"%{norm_vet}%"),
                         )
-                    ).first()
-                    if vet_user:
-                        vet_user = vet_user[0]
+                    ).scalars().first()
 
                 if not vet_user:
-                    if current_user.rol in ("veterinario", "admin"):
-                        vet_user = current_user
-                    else:
-                        vet_user = db.session.execute(
-                            select(Usuario).where(Usuario.rol == "veterinario", Usuario.activo.is_(True))
-                        ).first()
-                        if vet_user:
-                            vet_user = vet_user[0]
-                        else:
-                            vet_user = current_user
+                    vet_user = vet_default or current_user
 
                 # Fecha de la consulta
                 f_dt = _parsear_fecha(_limpiar(fila.get(col_fecha))) if col_fecha else None
                 fecha_hora = f_dt.replace(tzinfo=ZONA_BOGOTA) if f_dt else obtener_hora_bogota()
 
-                # Constantes vitales
+                # Constantes vitales con limpieza de errores de digitación
                 def _a_decimal(val):
                     txt = _limpiar(val).replace(",", ".")
                     if not txt:
@@ -2717,6 +2958,33 @@ def importar_excel():
                 fr_raw = (_limpiar(fila.get(col_fr)) if col_fr else "") or None
                 examen_gral = (_limpiar(fila.get(col_examen)) if col_examen else "") or None
 
+                # Limpiezas específicas según especificación
+                # 1) Si peso_kg > 100, dividirlo entre 10
+                if peso_kg is not None and peso_kg > 100:
+                    peso_kg = (peso_kg / Decimal(10)).quantize(Decimal("0.01"))
+
+                # 2) Si temp_c < 32.0 o > 43.0, None
+                if temp_c is not None and (temp_c < Decimal("32.0") or temp_c > Decimal("43.0")):
+                    temp_c = None
+
+                # 3) Si fc > 350, dividirlo entre 10; si fc < 20, None
+                if fc is not None:
+                    if fc > 350:
+                        fc = fc // 10
+                    if fc < 20:
+                        fc = None
+
+                # 4) fr_raw: "JAEO" -> "JADEO", "E" -> None
+                if fr_raw:
+                    fr_limpio = fr_raw.strip().upper()
+                    if fr_limpio == "JAEO":
+                        fr_raw = "JADEO"
+                    elif fr_limpio == "E":
+                        fr_raw = None
+
+                # Examen de sistemas JSON interactivo
+                examen_sistemas_json = _convertir_examen_general_a_json(examen_gral)
+
                 # Motivo, Diagnóstico y Tratamiento
                 motivo = (_limpiar(fila.get(col_motivo)) if col_motivo else "") or "Consulta médica veterinaria"
 
@@ -2736,6 +3004,17 @@ def importar_excel():
                 pronostico = _limpiar(fila.get(col_pronostico)) if col_pronostico else ""
                 observaciones = _limpiar(fila.get(col_obs)) if col_obs else ""
 
+                # Si medicamentos está vacío y plan_ter contiene fármacos/dosis, copiar plan_ter a receta_medica
+                if not medicamentos and plan_ter:
+                    norm_plan = normalizar_texto(plan_ter).upper()
+                    palabras_clave_rx = (
+                        "ML", "MG", "GOTAS", "TABLETAS", "CADA", "MELOXICAM",
+                        "DIPIRONA", "OMEPRAZOL", "ONDASETRON", "LACTATO",
+                        "CLORHEXIDINA", "DEXAMETASONA",
+                    )
+                    if any(pk in norm_plan for pk in palabras_clave_rx):
+                        medicamentos = plan_ter
+
                 partes_plan = []
                 if plan_ter:
                     partes_plan.append(plan_ter)
@@ -2750,8 +3029,6 @@ def importar_excel():
                     obs_lista.append(f"Pronóstico: {pronostico}")
                 observaciones_completas = "\n".join(obs_lista) if obs_lista else None
 
-                # REGLA TÉCNICA 1: NUNCA sobreescribir ni usar db.session.get por ID de historia.
-                # Cada consulta importada se inserta SIEMPRE como NUEVA ConsultaMedica vinculada a mascota.id y mascota.tutor_id.
                 nueva_consulta = ConsultaMedica(
                     mascota_id=mascota.id,
                     tutor_id=mascota.tutor_id,
@@ -2763,7 +3040,7 @@ def importar_excel():
                     temperatura_c=temp_c,
                     frecuencia_cardiaca=fc,
                     frecuencia_respiratoria=fr_raw,
-                    examen_sistemas=examen_gral,
+                    examen_sistemas=examen_sistemas_json,
                     diagnostico=diagnostico_final,
                     plan_tratamiento=plan_completo,
                     receta_medica=medicamentos or None,
@@ -2773,8 +3050,23 @@ def importar_excel():
                 )
                 db.session.add(nueva_consulta)
 
+                # Proteger mascota.peso_actual de datos viejos
                 if peso_kg is not None:
-                    mascota.peso_actual = peso_kg
+                    debe_actualizar_peso = False
+                    if not mascota.peso_actual:
+                        debe_actualizar_peso = True
+                    else:
+                        ultima_consulta = db.session.execute(
+                            select(ConsultaMedica.fecha_hora)
+                            .where(ConsultaMedica.mascota_id == mascota.id)
+                            .order_by(ConsultaMedica.fecha_hora.desc())
+                        ).scalars().first()
+                        if not ultima_consulta or fecha_hora >= ultima_consulta:
+                            debe_actualizar_peso = True
+
+                    if debe_actualizar_peso:
+                        mascota.peso_actual = peso_kg
+
                 creados += 1
 
             # Registrar lote de importación
@@ -2873,5 +3165,49 @@ def revertir_lote(uuid_lote):
     return redirect(url_for("historias.importar_excel"))
 
 
+@bp.route("/revertir-ultimo-lote", methods=["POST"])
+@login_required
+@admin_required
+def revertir_ultimo_lote():
+    """Botón de pánico: Busca el último lote de historias, elimina sus consultas y el lote."""
+    form_csrf = SoloCsrfForm()
+    if not form_csrf.validate_on_submit():
+        flash("Error de validación de seguridad (CSRF).", "danger")
+        return redirect(url_for("historias.importar_excel"))
 
+    ultimo_lote = db.session.execute(
+        select(LoteImportacion)
+        .where(LoteImportacion.tipo == "historias")
+        .order_by(LoteImportacion.fecha.desc(), LoteImportacion.id.desc())
+    ).scalars().first()
 
+    if not ultimo_lote:
+        flash("No hay ningún lote de importación masiva de historias para revertir.", "warning")
+        return redirect(url_for("historias.importar_excel"))
+
+    try:
+        # Eliminar únicamente las consultas médicas pertenecientes a este lote_uuid
+        # NUNCA tocar las que tienen lote_importacion == None
+        consultas = db.session.execute(
+            select(ConsultaMedica).where(ConsultaMedica.lote_importacion == ultimo_lote.uuid)
+        ).scalars().all()
+
+        eliminadas = 0
+        for c in consultas:
+            db.session.delete(c)
+            eliminadas += 1
+
+        # Eliminar el registro del lote
+        db.session.delete(ultimo_lote)
+        db.session.commit()
+
+        flash(
+            f"¡Reversión de pánico exitosa! Se eliminó el lote '{ultimo_lote.nombre_archivo or ultimo_lote.uuid}' y {eliminadas} consultas médicas asociadas. Los datos previos del sistema permanecen intactos.",
+            "success",
+        )
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception("Error al revertir último lote de historias")
+        flash(f"Error al revertir el último lote: {exc}", "danger")
+
+    return redirect(url_for("historias.importar_excel"))
