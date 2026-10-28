@@ -111,13 +111,19 @@
       </div>
       <div class="card-body p-4">
         <div class="row g-3 text-center mb-4">
-          <div class="col-6">
+          <div class="col-4">
             <div class="p-3 bg-success-subtle rounded-4 border border-success-subtle">
               <div class="fs-2 fw-bold text-success">{{ reporte.creados }}</div>
-              <div class="small fw-semibold text-success">Consultas Registradas</div>
+              <div class="small fw-semibold text-success">Consultas Creadas</div>
             </div>
           </div>
-          <div class="col-6">
+          <div class="col-4">
+            <div class="p-3 bg-primary-subtle rounded-4 border border-primary-subtle">
+              <div class="fs-2 fw-bold text-primary">{{ reporte.actualizados }}</div>
+              <div class="small fw-semibold text-primary">Actualizadas (Sin duplicar)</div>
+            </div>
+          </div>
+          <div class="col-4">
             <div class="p-3 bg-danger-subtle rounded-4 border border-danger-subtle">
               <div class="fs-2 fw-bold text-danger">{{ reporte.errores|length }}</div>
               <div class="small fw-semibold text-danger">Con Observaciones / Omitidas</div>

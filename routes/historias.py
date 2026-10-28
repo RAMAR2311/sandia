@@ -2746,6 +2746,7 @@ def importar_excel():
         col_raza = next((c for c in df.columns if c.lower() in ("raza",)), None)
 
         creados = 0
+        actualizados = 0
         errores = []
         lote_uuid = str(uuid.uuid4())
 
@@ -2775,6 +2776,20 @@ def importar_excel():
                     continue
             return None
 
+        # AJUSTE 1: ELIMINAR CLONES INTERNOS DEL CSV (conservar la fila más completa)
+        subset_cols = [c for c in [col_mascota, col_doc_prop, col_fecha] if c and c in df.columns]
+        if subset_cols:
+            try:
+                # Contar campos con contenido real (no vacíos ni NaN)
+                df["__campos_llenos"] = df.apply(lambda row: sum(1 for val in row if _limpiar(val) != ""), axis=1)
+                # Ordenar para que la fila con más campos completos quede de última
+                df = df.sort_values(by="__campos_llenos", ascending=True)
+                # Eliminar duplicados manteniendo la última fila (la más completa)
+                df = df.drop_duplicates(subset=subset_cols, keep="last")
+                df = df.drop(columns=["__campos_llenos"]).reset_index(drop=True)
+            except Exception as e_dup:
+                current_app.logger.warning("No se pudo desduplicar df: %s", e_dup)
+
         # Ordenar DataFrame de forma ASCENDENTE por fecha antes de iterar
         if col_fecha and col_fecha in df.columns:
             try:
@@ -2800,6 +2815,8 @@ def importar_excel():
             vet_default = db.session.execute(
                 select(Usuario).where(Usuario.rol == "admin", Usuario.activo.is_(True))
             ).scalars().first() or current_user
+
+        FECHA_LIMITE_BACKUP = datetime(2026, 9, 10, 23, 59, 59, tzinfo=ZONA_BOGOTA)
 
         try:
             for indice, fila in df.iterrows():
@@ -3029,26 +3046,68 @@ def importar_excel():
                     obs_lista.append(f"Pronóstico: {pronostico}")
                 observaciones_completas = "\n".join(obs_lista) if obs_lista else None
 
-                nueva_consulta = ConsultaMedica(
-                    mascota_id=mascota.id,
-                    tutor_id=mascota.tutor_id,
-                    veterinario_id=vet_user.id,
-                    fecha_hora=fecha_hora,
-                    motivo_consulta=motivo,
-                    anamnesis=anamnesis_txt or None,
-                    peso_kg=peso_kg,
-                    temperatura_c=temp_c,
-                    frecuencia_cardiaca=fc,
-                    frecuencia_respiratoria=fr_raw,
-                    examen_sistemas=examen_sistemas_json,
-                    diagnostico=diagnostico_final,
-                    plan_tratamiento=plan_completo,
-                    receta_medica=medicamentos or None,
-                    observaciones=observaciones_completas,
-                    creado_por_id=current_user.id,
-                    lote_importacion=lote_uuid,
-                )
-                db.session.add(nueva_consulta)
+                # AJUSTE 2: EVITAR DUPLICADOS EN EL SERVIDOR (UPSERT INTELIGENTE)
+                # Buscar si ya existe una consulta para este mascota_id con la misma fecha_hora o mismo día y motivo
+                consultas_existentes = db.session.execute(
+                    select(ConsultaMedica).where(ConsultaMedica.mascota_id == mascota.id)
+                ).scalars().all()
+
+                consulta_existente = None
+                norm_motivo = normalizar_texto(motivo)
+                dia_consulta = fecha_hora.date() if hasattr(fecha_hora, "date") else None
+
+                for ce in consultas_existentes:
+                    if ce.fecha_hora == fecha_hora:
+                        consulta_existente = ce
+                        break
+                    ce_dia = ce.fecha_hora.date() if hasattr(ce.fecha_hora, "date") else None
+                    if dia_consulta and ce_dia == dia_consulta:
+                        if ce.motivo_consulta and normalizar_texto(ce.motivo_consulta) == norm_motivo:
+                            consulta_existente = ce
+                            break
+
+                if consulta_existente:
+                    # Si ya existe pero es una consulta reciente creada en el nuevo sistema (fecha > 2026-09-10) -> saltar
+                    if consulta_existente.fecha_hora > FECHA_LIMITE_BACKUP:
+                        continue
+
+                    # Si es del rango del backup (<= 2026-09-10) -> Actualizar datos limpios (Upsert)
+                    consulta_existente.tutor_id = mascota.tutor_id
+                    consulta_existente.veterinario_id = vet_user.id
+                    consulta_existente.motivo_consulta = motivo
+                    consulta_existente.anamnesis = anamnesis_txt or None
+                    consulta_existente.peso_kg = peso_kg
+                    consulta_existente.temperatura_c = temp_c
+                    consulta_existente.frecuencia_cardiaca = fc
+                    consulta_existente.frecuencia_respiratoria = fr_raw
+                    consulta_existente.examen_sistemas = examen_sistemas_json
+                    consulta_existente.diagnostico = diagnostico_final
+                    consulta_existente.plan_tratamiento = plan_completo
+                    consulta_existente.receta_medica = medicamentos or None
+                    consulta_existente.observaciones = observaciones_completas
+                    actualizados += 1
+                else:
+                    nueva_consulta = ConsultaMedica(
+                        mascota_id=mascota.id,
+                        tutor_id=mascota.tutor_id,
+                        veterinario_id=vet_user.id,
+                        fecha_hora=fecha_hora,
+                        motivo_consulta=motivo,
+                        anamnesis=anamnesis_txt or None,
+                        peso_kg=peso_kg,
+                        temperatura_c=temp_c,
+                        frecuencia_cardiaca=fc,
+                        frecuencia_respiratoria=fr_raw,
+                        examen_sistemas=examen_sistemas_json,
+                        diagnostico=diagnostico_final,
+                        plan_tratamiento=plan_completo,
+                        receta_medica=medicamentos or None,
+                        observaciones=observaciones_completas,
+                        creado_por_id=current_user.id,
+                        lote_importacion=lote_uuid,
+                    )
+                    db.session.add(nueva_consulta)
+                    creados += 1
 
                 # Proteger mascota.peso_actual de datos viejos
                 if peso_kg is not None:
@@ -3067,15 +3126,13 @@ def importar_excel():
                     if debe_actualizar_peso:
                         mascota.peso_actual = peso_kg
 
-                creados += 1
-
             # Registrar lote de importación
             lote_registro = LoteImportacion(
                 uuid=lote_uuid,
                 tipo="historias",
                 nombre_archivo=getattr(archivo, "filename", "historias_clinicas.xlsx"),
                 creados=creados,
-                actualizados=0,
+                actualizados=actualizados,
                 usuario_id=current_user.id,
             )
             db.session.add(lote_registro)
@@ -3086,12 +3143,12 @@ def importar_excel():
             reporte = {
                 "lote_uuid": lote_uuid,
                 "creados": creados,
-                "actualizados": 0,
+                "actualizados": actualizados,
                 "errores": errores,
-                "total_procesados": creados,
+                "total_procesados": creados + actualizados,
             }
             flash(
-                f"Importación de historias finalizada. Creadas: {creados}, Con observaciones: {len(errores)}.",
+                f"Importación de historias finalizada. Creadas: {creados}, Actualizadas: {actualizados}, Con observaciones: {len(errores)}.",
                 "success" if not errores else "warning",
             )
         except Exception as exc:
