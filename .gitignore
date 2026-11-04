@@ -1,6 +1,9 @@
 # Secretos y entorno
 .env
 *.env.local
+*.db
+*.sqlite
+*.sqlite3
 
 # Python
 venv/

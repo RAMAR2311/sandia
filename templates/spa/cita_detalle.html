@@ -241,15 +241,53 @@
             </div>
           </div>
           <div class="col-sm-6">
-            <div class="p-3 rounded-3 bg-light border">
-              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-cash-stack me-1 text-danger"></i> Servicio Base</div>
-              <div class="fw-bold text-dark font-monospace fs-5 mt-1">{{ cita.precio_base_efectivo|cop }}</div>
+            <div class="p-3 rounded-3 bg-light border h-100">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-cash-stack me-1 text-danger"></i> Servicio Base</div>
+                {% if not cita.venta and current_user.rol in ('admin', 'recepcion', 'auxiliar', 'groomer') %}
+                <button type="button" class="btn btn-link btn-sm p-0 text-danger text-decoration-none fw-semibold" style="font-size: 0.78rem;" onclick="toggleEditarPrecioInline('base')">
+                  <i class="bi bi-pencil-square me-1"></i>Editar
+                </button>
+                {% endif %}
+              </div>
+              <div id="vistaPrecioBase" class="fw-bold text-dark font-monospace fs-5 mt-1">{{ cita.precio_base_efectivo|cop }}</div>
+              {% if not cita.venta and current_user.rol in ('admin', 'recepcion', 'auxiliar', 'groomer') %}
+              <form method="post" action="{{ url_for('spa.cita_guardar_adicionales', id=cita.id) }}" id="formInlineBase" class="d-none mt-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="edicion_rapida" value="base">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-white fw-bold">$</span>
+                  <input type="text" name="nuevo_valor" id="inputInlineBase" class="form-control font-monospace fw-bold formato-miles-cop" value="{{ '{:,.0f}'.format(cita.precio_base_efectivo|float).replace(',', '.') }}" autocomplete="off">
+                  <button type="submit" class="btn btn-success fw-bold px-2" title="Guardar precio"><i class="bi bi-check-lg"></i></button>
+                  <button type="button" class="btn btn-outline-secondary px-2" onclick="toggleEditarPrecioInline('base')" title="Cancelar"><i class="bi bi-x-lg"></i></button>
+                </div>
+              </form>
+              {% endif %}
             </div>
           </div>
           <div class="col-sm-6">
-            <div class="p-3 rounded-3 bg-light border">
-              <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-receipt me-1 text-success"></i> Total Estimado a Cobrar</div>
-              <div class="fw-bold text-success font-monospace fs-5 mt-1">{{ cita.precio_total_estimado|cop }}</div>
+            <div class="p-3 rounded-3 bg-light border h-100">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="text-secondary small fw-semibold text-uppercase"><i class="bi bi-receipt me-1 text-success"></i> Total Estimado a Cobrar</div>
+                {% if not cita.venta and current_user.rol in ('admin', 'recepcion', 'auxiliar', 'groomer') %}
+                <button type="button" class="btn btn-link btn-sm p-0 text-success text-decoration-none fw-semibold" style="font-size: 0.78rem;" onclick="toggleEditarPrecioInline('total')">
+                  <i class="bi bi-pencil-square me-1"></i>Editar
+                </button>
+                {% endif %}
+              </div>
+              <div id="vistaPrecioTotal" class="fw-bold text-success font-monospace fs-5 mt-1">{{ cita.precio_total_estimado|cop }}</div>
+              {% if not cita.venta and current_user.rol in ('admin', 'recepcion', 'auxiliar', 'groomer') %}
+              <form method="post" action="{{ url_for('spa.cita_guardar_adicionales', id=cita.id) }}" id="formInlineTotal" class="d-none mt-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="edicion_rapida" value="total">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-white text-success fw-bold">$</span>
+                  <input type="text" name="nuevo_valor" id="inputInlineTotal" class="form-control font-monospace fw-bold text-success formato-miles-cop" value="{{ '{:,.0f}'.format(cita.precio_total_estimado|float).replace(',', '.') }}" autocomplete="off">
+                  <button type="submit" class="btn btn-success fw-bold px-2" title="Guardar total"><i class="bi bi-check-lg"></i></button>
+                  <button type="button" class="btn btn-outline-secondary px-2" onclick="toggleEditarPrecioInline('total')" title="Cancelar"><i class="bi bi-x-lg"></i></button>
+                </div>
+              </form>
+              {% endif %}
             </div>
           </div>
         </div>
@@ -560,7 +598,7 @@
               <div class="input-group">
                 <span class="input-group-text bg-light text-muted">$</span>
                 <input type="number" name="precio_personalizado" id="modalPrecioBase" class="form-control bg-light fw-bold font-monospace" 
-                       value="{{ cita.precio_base_efectivo|float }}" min="0" step="500">
+                       value="{{ cita.precio_base_efectivo|int }}" min="0" step="any">
               </div>
             </div>
             <div class="col-12 col-md-6">
@@ -659,6 +697,26 @@
 
 {% block scripts %}
 <script>
+  function toggleEditarPrecioInline(tipo) {
+    const esTotal = (tipo === 'total');
+    const vista = document.getElementById(esTotal ? 'vistaPrecioTotal' : 'vistaPrecioBase');
+    const form = document.getElementById(esTotal ? 'formInlineTotal' : 'formInlineBase');
+    const input = document.getElementById(esTotal ? 'inputInlineTotal' : 'inputInlineBase');
+    if (!vista || !form) return;
+
+    if (form.classList.contains('d-none')) {
+      vista.classList.add('d-none');
+      form.classList.remove('d-none');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    } else {
+      form.classList.add('d-none');
+      vista.classList.remove('d-none');
+    }
+  }
+
   function abrirModalFoto(tipo, titulo) {
     document.getElementById('input-foto-tipo').value = tipo;
     document.getElementById('modal-foto-titulo').textContent = titulo;
@@ -728,7 +786,7 @@
             <div class="input-group input-group-sm">
               <span class="input-group-text bg-light text-muted">$</span>
               <input type="number" class="form-control form-control-sm bg-light fw-bold font-monospace input-modal-adic" 
-                     value="${item.precio || 0}" min="0" step="500" oninput="modalCambiarPrecioAdic(${index}, this.value)">
+                     value="${item.precio || 0}" min="0" step="any" oninput="modalCambiarPrecioAdic(${index}, this.value)">
             </div>
           </td>
           <td class="py-2 text-center">

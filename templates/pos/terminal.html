@@ -191,6 +191,9 @@
               <button type="button" class="btn btn-pago-metodo" data-metodo="nequi" onclick="setMetodoUnico('nequi')">
                 📱 Nequi
               </button>
+              <button type="button" class="btn btn-pago-metodo" data-metodo="bancolombia" onclick="setMetodoUnico('bancolombia')">
+                🏦 Bancolombia
+              </button>
               <button type="button" class="btn btn-pago-metodo" data-metodo="daviplata" onclick="setMetodoUnico('daviplata')">
                 📱 Daviplata
               </button>
@@ -236,6 +239,12 @@
                 <span class="input-group-text bg-white" style="width: 105px; font-size: 0.78rem;"><i class="bi bi-phone text-primary me-1"></i>Nequi</span>
                 <input type="text" id="div_nequi" class="form-control text-end font-monospace formato-miles-cop input-div-pago" placeholder="0" oninput="recalcularDivisionPago()">
                 <button type="button" class="btn btn-outline-secondary px-2" style="font-size: 0.72rem;" onclick="autoCompletarRestante('div_nequi')" title="Cubrir saldo pendiente">Resto</button>
+              </div>
+              <!-- Bancolombia -->
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white" style="width: 105px; font-size: 0.78rem;"><i class="bi bi-bank2 text-warning me-1"></i>Bancolombia</span>
+                <input type="text" id="div_bancolombia" class="form-control text-end font-monospace formato-miles-cop input-div-pago" placeholder="0" oninput="recalcularDivisionPago()">
+                <button type="button" class="btn btn-outline-secondary px-2" style="font-size: 0.72rem;" onclick="autoCompletarRestante('div_bancolombia')" title="Cubrir saldo pendiente">Resto</button>
               </div>
               <!-- Daviplata -->
               <div class="input-group input-group-sm">
@@ -309,6 +318,14 @@
             </div>
             <div class="col-6">
               <input type="number" id="pagoNequi" class="form-control form-control-sm text-end" placeholder="0.00" oninput="calcularCambio()">
+            </div>
+          </div>
+          <div class="row g-2 align-items-center mb-2">
+            <div class="col-6">
+              <span class="small fw-bold"><i class="bi bi-bank2 me-1 text-warning"></i>Bancolombia</span>
+            </div>
+            <div class="col-6">
+              <input type="number" id="pagoBancolombia" class="form-control form-control-sm text-end" placeholder="0.00" oninput="calcularCambio()">
             </div>
           </div>
           <div class="row g-2 align-items-center mb-2">
@@ -864,11 +881,12 @@ function recalcularDivisionPago() {
 
   const ef = parseInt((document.getElementById('div_efectivo')?.value || '').replace(/\D/g, '') || '0', 10);
   const nq = parseInt((document.getElementById('div_nequi')?.value || '').replace(/\D/g, '') || '0', 10);
+  const bc = parseInt((document.getElementById('div_bancolombia')?.value || '').replace(/\D/g, '') || '0', 10);
   const dv = parseInt((document.getElementById('div_daviplata')?.value || '').replace(/\D/g, '') || '0', 10);
   const tj = parseInt((document.getElementById('div_tarjeta')?.value || '').replace(/\D/g, '') || '0', 10);
   const tr = parseInt((document.getElementById('div_transf')?.value || '').replace(/\D/g, '') || '0', 10);
 
-  const suma = ef + nq + dv + tj + tr;
+  const suma = ef + nq + bc + dv + tj + tr;
   const dif = totalFactura - suma;
 
   document.getElementById('lblTotalAsignado').innerText = '$' + suma.toLocaleString('es-CO');
@@ -900,7 +918,7 @@ function recalcularDivisionPago() {
 
 function autoCompletarRestante(targetId) {
   const totalFactura = obtenerTotalPagarNumerico();
-  const campos = ['div_efectivo', 'div_nequi', 'div_daviplata', 'div_tarjeta', 'div_transf'];
+  const campos = ['div_efectivo', 'div_nequi', 'div_bancolombia', 'div_daviplata', 'div_tarjeta', 'div_transf'];
 
   let sumaOtros = 0;
   campos.forEach(c => {
@@ -937,12 +955,14 @@ async function ejecutarCobroPOS() {
     // Modo dividido
     const ef = parseInt((document.getElementById('div_efectivo')?.value || '').replace(/\D/g, '') || '0', 10);
     const nq = parseInt((document.getElementById('div_nequi')?.value || '').replace(/\D/g, '') || '0', 10);
+    const bc = parseInt((document.getElementById('div_bancolombia')?.value || '').replace(/\D/g, '') || '0', 10);
     const dv = parseInt((document.getElementById('div_daviplata')?.value || '').replace(/\D/g, '') || '0', 10);
     const tj = parseInt((document.getElementById('div_tarjeta')?.value || '').replace(/\D/g, '') || '0', 10);
     const tr = parseInt((document.getElementById('div_transf')?.value || '').replace(/\D/g, '') || '0', 10);
 
     if (ef > 0) pagos.push({ metodo_pago: 'efectivo', monto: ef });
     if (nq > 0) pagos.push({ metodo_pago: 'nequi', monto: nq });
+    if (bc > 0) pagos.push({ metodo_pago: 'bancolombia', monto: bc });
     if (dv > 0) pagos.push({ metodo_pago: 'daviplata', monto: dv });
     if (tj > 0) pagos.push({ metodo_pago: 'tarjeta_debito', monto: tj });
     if (tr > 0) pagos.push({ metodo_pago: 'transferencia', monto: tr });
@@ -1145,6 +1165,7 @@ function abrirModalPago() {
   // Sugerir el monto total en efectivo por defecto
   document.getElementById('pagoEfectivo').value = total;
   document.getElementById('pagoNequi').value = '';
+  document.getElementById('pagoBancolombia').value = '';
   document.getElementById('pagoDaviplata').value = '';
   document.getElementById('pagoTarjeta').value = '';
   document.getElementById('pagoTransferencia').value = '';
@@ -1160,12 +1181,13 @@ function calcularCambio() {
 
   const ef = parseFloat(document.getElementById('pagoEfectivo').value || 0);
   const nq = parseFloat(document.getElementById('pagoNequi').value || 0);
+  const bc = parseFloat(document.getElementById('pagoBancolombia')?.value || 0);
   const dv = parseFloat(document.getElementById('pagoDaviplata').value || 0);
   const tj = parseFloat(document.getElementById('pagoTarjeta').value || 0);
   const tr = parseFloat(document.getElementById('pagoTransferencia').value || 0);
 
-  const suma = ef + nq + dv + tj + tr;
-  const cambio = Math.max(0, ef - (totalFactura - (nq + dv + tj + tr)));
+  const suma = ef + nq + bc + dv + tj + tr;
+  const cambio = Math.max(0, ef - (totalFactura - (nq + bc + dv + tj + tr)));
 
   document.getElementById('lblSumaPagos').innerText = '$' + suma.toLocaleString('es-CO');
   document.getElementById('lblCambio').innerText = '$' + cambio.toLocaleString('es-CO');
@@ -1193,12 +1215,14 @@ async function confirmarVenta() {
   const pagos = [];
   const ef = parseFloat(document.getElementById('pagoEfectivo').value || 0);
   const nq = parseFloat(document.getElementById('pagoNequi').value || 0);
+  const bc = parseFloat(document.getElementById('pagoBancolombia')?.value || 0);
   const dv = parseFloat(document.getElementById('pagoDaviplata').value || 0);
   const tj = parseFloat(document.getElementById('pagoTarjeta').value || 0);
   const tr = parseFloat(document.getElementById('pagoTransferencia').value || 0);
 
   if (ef > 0) pagos.push({ metodo_pago: 'efectivo', monto: ef });
   if (nq > 0) pagos.push({ metodo_pago: 'nequi', monto: nq });
+  if (bc > 0) pagos.push({ metodo_pago: 'bancolombia', monto: bc });
   if (dv > 0) pagos.push({ metodo_pago: 'daviplata', monto: dv });
   if (tj > 0) pagos.push({ metodo_pago: 'tarjeta_debito', monto: tj });
   if (tr > 0) pagos.push({ metodo_pago: 'transferencia', monto: tr });

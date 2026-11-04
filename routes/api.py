@@ -13,11 +13,11 @@ from utils import PREFIJO_MINIATURA, normalizar_texto, solo_digitos
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
-LIMITE_MAXIMO = 50
+LIMITE_MAXIMO = 200
 
 
 def _limite() -> int:
-    limite = request.args.get("limite", 15, type=int)
+    limite = request.args.get("limite", 50, type=int)
     return max(1, min(limite, LIMITE_MAXIMO))
 
 
@@ -101,12 +101,25 @@ def buscar_tutores():
 @login_required
 def buscar_mascotas():
     texto = request.args.get("q", "").strip()
+    incluir_todas = request.args.get("todas", "").strip() in ("1", "true", "si")
     if not texto:
-        return jsonify([])
+        if not incluir_todas:
+            return jsonify([])
+        consulta_todas = (
+            select(Mascota)
+            .join(Mascota.tutor)
+            .where(Mascota.activo.is_(True), Mascota.fallecido.is_(False))
+            .order_by(Mascota.nombre_busqueda.asc())
+            .limit(_limite())
+        )
+        return jsonify([mascota_a_dict(m) for m in db.session.execute(consulta_todas).scalars()])
+
     normalizado = normalizar_texto(texto)
     condiciones = [
         Mascota.nombre_busqueda.ilike(f"%{normalizado}%"),
+        Mascota.nombre.ilike(f"%{texto}%"),
         Tutor.nombre_busqueda.ilike(f"%{normalizado}%"),
+        Tutor.nombre_completo.ilike(f"%{texto}%"),
     ]
     if texto:
         condiciones.append(Mascota.microchip.ilike(f"%{texto}%"))

@@ -2362,6 +2362,22 @@ body.pagina-login { background: var(--sandia-crema) radial-gradient(circle at 20
   color: #075985 !important;
 }
 
+/* 1.2 Fórmula Médica (Rx) (Rosa Sandía Suave) */
+.btn-accion-clinica--formula {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #e11d48 !important;
+}
+.btn-accion-clinica--formula .btn-accion-clinica__icono {
+  background: #ffe4e6;
+  color: #e11d48;
+}
+.btn-accion-clinica--formula:hover {
+  background: #ffe4e6 !important;
+  border-color: #fda4af !important;
+  color: #be123c !important;
+}
+
 /* 2. Vacuna (Verde Esmeralda) */
 .btn-accion-clinica--vacuna {
   background: #f0fdf4 !important;

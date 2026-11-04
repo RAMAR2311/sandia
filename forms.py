@@ -420,6 +420,7 @@ class AperturaCajaForm(FlaskForm):
 class CierreCajaForm(FlaskForm):
     monto_efectivo = DecimalField("Efectivo en caja (contado)", places=2, validators=[InputRequired("Ingresa el efectivo."), NumberRange(min=Decimal("0"))], default=Decimal("0.00"))
     monto_nequi = DecimalField("Total Nequi (verificado)", places=2, validators=[Optional(), NumberRange(min=Decimal("0"))], default=Decimal("0.00"))
+    monto_bancolombia = DecimalField("Total Bancolombia (verificado)", places=2, validators=[Optional(), NumberRange(min=Decimal("0"))], default=Decimal("0.00"))
     monto_daviplata = DecimalField("Total Daviplata (verificado)", places=2, validators=[Optional(), NumberRange(min=Decimal("0"))], default=Decimal("0.00"))
     monto_tarjetas = DecimalField("Total Tarjetas (datáfono)", places=2, validators=[Optional(), NumberRange(min=Decimal("0"))], default=Decimal("0.00"))
     monto_transferencia = DecimalField("Total Transferencias (cuenta bancaria)", places=2, validators=[Optional(), NumberRange(min=Decimal("0"))], default=Decimal("0.00"))
@@ -836,7 +837,7 @@ class PagoProveedorForm(FlaskForm):
     monto = DecimalField("Monto abonado (COP)", places=2, validators=[DataRequired("Ingresa el monto."), NumberRange(min=Decimal("0.01"))])
     metodo_pago = SelectField(
         "Método de pago",
-        choices=[("efectivo", "Efectivo"), ("transferencia", "Transferencia"), ("nequi", "Nequi"), ("daviplata", "Daviplata"), ("tarjeta", "Tarjeta")],
+        choices=[("efectivo", "Efectivo"), ("bancolombia", "Bancolombia"), ("transferencia", "Transferencia"), ("nequi", "Nequi"), ("daviplata", "Daviplata"), ("tarjeta", "Tarjeta")],
         validators=[DataRequired()],
     )
     notas = TextAreaField("Notas (opcional)", validators=[Optional(), Length(max=500)])
@@ -860,7 +861,7 @@ class AbonoCuentaTutorForm(FlaskForm):
     monto = DecimalField("Monto abonado (COP)", places=2, validators=[DataRequired("Ingresa el monto."), NumberRange(min=Decimal("0.01"))])
     metodo_pago = SelectField(
         "Método de pago",
-        choices=[("efectivo", "Efectivo"), ("nequi", "Nequi"), ("daviplata", "Daviplata"), ("transferencia", "Transferencia"), ("tarjeta", "Tarjeta")],
+        choices=[("efectivo", "Efectivo"), ("bancolombia", "Bancolombia"), ("nequi", "Nequi"), ("daviplata", "Daviplata"), ("transferencia", "Transferencia"), ("tarjeta", "Tarjeta")],
         validators=[DataRequired()],
     )
     notas = TextAreaField("Notas (opcional)", validators=[Optional(), Length(max=500)])

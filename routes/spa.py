@@ -491,7 +491,7 @@ def cita_detalle(id: int):
 @login_required
 @spa_required
 def cita_guardar_adicionales(id: int):
-    """Guarda o actualiza los servicios adicionales y recargo de desenrede de la cita."""
+    """Guarda o actualiza el precio base/total, los servicios adicionales y recargo de desenrede de la cita."""
     cita = db.session.get(CitaSpa, id)
     if not cita:
         flash("La cita de spa no existe.", "danger")
@@ -499,6 +499,41 @@ def cita_guardar_adicionales(id: int):
 
     if cita.venta_id and cita.venta and cita.venta.estado != "anulada":
         flash("No se pueden modificar los costos de una cita que ya fue facturada/pagada en POS.", "warning")
+        return redirect(url_for("spa.cita_detalle", id=id))
+
+    # Edición rápida directa del precio desde las tarjetas de detalle
+    edicion_rapida = request.form.get("edicion_rapida")
+    if edicion_rapida in ("base", "total"):
+        from decimal import Decimal, InvalidOperation
+
+        valor_crudo = (request.form.get("nuevo_valor") or "").strip().replace("$", "").replace(".", "").replace(",", "").replace(" ", "")
+        try:
+            nuevo_monto = Decimal(valor_crudo) if valor_crudo else Decimal("0.00")
+            if nuevo_monto < 0:
+                raise InvalidOperation()
+        except InvalidOperation:
+            flash("Ingresa un valor numérico válido mayor o igual a 0.", "danger")
+            return redirect(url_for("spa.cita_detalle", id=id))
+
+        try:
+            if edicion_rapida == "total":
+                adicionales_actuales = cita.total_adicionales
+                if nuevo_monto >= adicionales_actuales:
+                    cita.precio_personalizado = nuevo_monto - adicionales_actuales
+                else:
+                    # Si el nuevo total es menor que los adicionales, ajustar base al nuevo monto y limpiar adicionales
+                    cita.precio_personalizado = nuevo_monto
+                    cita.recargo_adicional = Decimal("0.00")
+                    cita.items_adicionales_json = "[]"
+            else:
+                cita.precio_personalizado = nuevo_monto
+
+            db.session.commit()
+            flash("Precio de la cita actualizado correctamente.", "success")
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Error al actualizar precio rápido de cita spa %d", id)
+            flash("Error al actualizar el precio.", "danger")
         return redirect(url_for("spa.cita_detalle", id=id))
 
     form = AdicionalesSpaModalForm()

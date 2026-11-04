@@ -267,15 +267,25 @@ def _normalizar_para_orden(dt):
 def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes, remisiones):
     eventos = []
 
-    # 1. Consultas SOAP
+    # 1. Consultas SOAP y Fórmulas Médicas (Rx)
     for c in getattr(mascota, "consultas", []):
+        has_receta = bool(c.receta_medica and c.receta_medica.strip())
+        motivo_lower = (c.motivo_consulta or "").lower()
+        es_formula_directa = (
+            ("fórmula" in motivo_lower or "formula" in motivo_lower or "receta" in motivo_lower or "prescripción" in motivo_lower or "prescripcion" in motivo_lower)
+            and not c.anamnesis
+            and not c.peso_kg
+        )
+        categoria = "Fórmula Médica (Rx)" if es_formula_directa else "Consulta SOAP"
+        icono = "bi-prescription2" if (es_formula_directa or (has_receta and not c.anamnesis)) else "bi-journal-medical"
+
         eventos.append({
             "tipo": "soap",
-            "categoria": "Consulta SOAP",
+            "categoria": categoria,
             "badge_color": "danger",
-            "icono": "bi-journal-medical",
+            "icono": icono,
             "fecha": c.fecha_hora,
-            "titulo": f"Consulta Médica: {c.motivo_consulta}",
+            "titulo": f"Fórmula Médica: {c.motivo_consulta.replace('Fórmula Médica:', '').replace('Fórmula Médica (Prescripción Rx)', 'Prescripción Rx').strip()}" if es_formula_directa else f"Consulta Médica: {c.motivo_consulta}",
             "descripcion": c.diagnostico or c.plan_tratamiento or "",
             "profesional": f"Dr/a. {c.veterinario.nombre}" if getattr(c, "veterinario", None) else "",
             "objeto": c,
@@ -283,6 +293,11 @@ def _construir_eventos_generales(mascota, hospitalizaciones, cirugias, examenes,
             "url_editar": url_for("historias.consulta_editar", id=c.id),
             "url_whatsapp": getattr(c, "enlace_whatsapp", None),
             "url_pdf": url_for("historias.consulta_pdf", id=c.id),
+            "url_receta_pdf": url_for("historias.receta_pdf", id=c.id) if has_receta else None,
+            "url_receta_doc": url_for("historias.receta_documento_publico", id=c.id) if has_receta else None,
+            "url_receta_whatsapp": getattr(c, "enlace_whatsapp_receta", None) if has_receta else None,
+            "has_receta": has_receta,
+            "es_formula_directa": es_formula_directa,
             "tab_destino": "soap",
         })
 
@@ -570,6 +585,12 @@ def ficha_medica(mascota_id: int):
         remisiones=remisiones,
     )
 
+    veterinarios = db.session.execute(
+        select(Usuario)
+        .filter(Usuario.activo == True, Usuario.rol.in_(["veterinario", "admin"]))
+        .order_by(Usuario.nombre)
+    ).scalars().all()
+
     tab_activa = request.args.get("tab", "general")
 
     return render_template(
@@ -582,6 +603,7 @@ def ficha_medica(mascota_id: int):
         form_remision=form_remision,
         datos_peso=datos_peso,
         eventos_generales=eventos_generales,
+        veterinarios=veterinarios,
         tab_activa=tab_activa,
         form_csrf=SoloCsrfForm(),
     )
@@ -2338,6 +2360,120 @@ def nota_clinica_eliminar(id: int):
         db.session.rollback()
         current_app.logger.exception("Error al eliminar nota clínica %d", id)
         flash("No se pudo eliminar la nota clínica.", "danger")
+
+    return redirect(next_url)
+
+
+# ---------------------------------------------------------------------------
+# Fórmulas Médicas (Rx) / Prescripciones Clínicas
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/mascota/<int:mascota_id>/formula/nueva", methods=["POST"])
+@login_required
+@clinico_required
+def formula_nueva(mascota_id: int):
+    """Registra una fórmula médica (Rx) oficial para la mascota y la guarda en el historial clínico."""
+    mascota = db.session.get(Mascota, mascota_id)
+    if not mascota:
+        flash("La mascota no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    motivo = (request.form.get("motivo_diagnostico") or "").strip()
+    receta = (request.form.get("receta_medica") or "").strip()
+    recomendaciones = (request.form.get("plan_tratamiento") or "").strip()
+    consulta_id = request.form.get("consulta_id")
+    vet_id_raw = request.form.get("veterinario_id")
+    fecha_hora_str = request.form.get("fecha_hora")
+    next_url = request.form.get("next") or url_for("historias.ficha_medica", mascota_id=mascota.id, tab="general")
+
+    if not receta:
+        flash("Debes ingresar el detalle de los medicamentos y posología de la fórmula médica.", "warning")
+        return redirect(next_url)
+
+    # Validar veterinario asignado
+    veterinario_id = current_user.id
+    if vet_id_raw and str(vet_id_raw).isdigit():
+        vet_candidato = db.session.get(Usuario, int(vet_id_raw))
+        if vet_candidato and vet_candidato.activo:
+            veterinario_id = vet_candidato.id
+
+    # Parsear fecha y hora
+    from utils import obtener_hora_bogota, ZONA_BOGOTA
+    fecha_hora = obtener_hora_bogota()
+    if fecha_hora_str:
+        try:
+            dt = datetime.fromisoformat(fecha_hora_str)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=ZONA_BOGOTA)
+            fecha_hora = dt
+        except Exception:
+            pass
+
+    try:
+        # Si se seleccionó asociar a una consulta existente
+        if consulta_id and str(consulta_id).isdigit():
+            c_existente = db.session.get(ConsultaMedica, int(consulta_id))
+            if c_existente and c_existente.mascota_id == mascota.id:
+                c_existente.receta_medica = receta
+                if motivo and (not c_existente.diagnostico or c_existente.diagnostico == "Prescripción de medicamentos"):
+                    c_existente.diagnostico = motivo
+                if recomendaciones and not c_existente.plan_tratamiento:
+                    c_existente.plan_tratamiento = recomendaciones
+                db.session.commit()
+                flash(f"Fórmula médica vinculada y guardada con éxito en la consulta #{c_existente.id:04d} de {mascota.nombre}.", "success")
+                return redirect(next_url)
+
+        # Crear nuevo registro de consulta clínica/fórmula
+        titulo_motivo = f"Fórmula Médica: {motivo}" if motivo else "Fórmula Médica (Prescripción Rx)"
+        diagnostico_final = motivo or "Prescripción médica ambulatoria"
+        plan_final = recomendaciones or "Administrar tratamiento según posología e indicaciones prescritas."
+
+        consulta = ConsultaMedica(
+            mascota_id=mascota.id,
+            tutor_id=mascota.tutor_id,
+            veterinario_id=veterinario_id,
+            fecha_hora=fecha_hora,
+            motivo_consulta=titulo_motivo,
+            diagnostico=diagnostico_final,
+            plan_tratamiento=plan_final,
+            receta_medica=receta,
+            creado_por_id=current_user.id,
+            fecha_registro=obtener_hora_bogota(),
+        )
+        db.session.add(consulta)
+        db.session.commit()
+
+        flash(f"Fórmula médica #{consulta.id:04d} registrada y guardada exitosamente en el historial de {mascota.nombre}.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al guardar fórmula médica para mascota %d", mascota_id)
+        flash("No se pudo guardar la fórmula médica. Por favor verifica los datos.", "danger")
+
+    return redirect(next_url)
+
+
+@bp.route("/consulta/<int:id>/formula/editar", methods=["POST"])
+@login_required
+@clinico_required
+def formula_editar(id: int):
+    """Permite editar rápidamente la fórmula médica de una consulta existente."""
+    consulta = db.session.get(ConsultaMedica, id)
+    if not consulta:
+        flash("La consulta médica no existe.", "danger")
+        return redirect(url_for("historias.lista"))
+
+    receta = (request.form.get("receta_medica") or "").strip()
+    next_url = request.form.get("next") or url_for("historias.ficha_medica", mascota_id=consulta.mascota_id, tab="general")
+
+    try:
+        consulta.receta_medica = receta or None
+        db.session.commit()
+        flash(f"Fórmula médica de la consulta #{consulta.id:04d} actualizada exitosamente.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al actualizar fórmula médica para consulta %d", id)
+        flash("No se pudo actualizar la fórmula médica.", "danger")
 
     return redirect(next_url)
 

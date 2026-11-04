@@ -80,9 +80,9 @@
                      placeholder="Escribe nombre de la mascota, tutor, cédula o teléfono..." autocomplete="off" autofocus>
             </div>
             <div class="form-text text-muted small mb-2">
-              Escribe al menos 2 letras para buscar pacientes activos y sus tutores registrados.
+              Escribe para filtrar por mascota, tutor o teléfono, o desplázate en la lista para ver todos.
             </div>
-            <div class="list-group shadow-sm border rounded-3 overflow-hidden d-none mt-2" id="resultados-mascota" style="max-height: 280px; overflow-y: auto;"></div>
+            <div class="list-group shadow-sm border rounded-3 d-none mt-2" id="resultados-mascota" style="max-height: 320px; overflow-y: auto; overscroll-behavior: contain;"></div>
           </div>
 
           {% for error in form.mascota_id.errors %}

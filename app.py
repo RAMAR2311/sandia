@@ -73,6 +73,9 @@ def _detectar_driver_postgres() -> str:
 
 def _normalizar_url_postgres(url: str) -> str:
     """Acepta solo PostgreSQL y selecciona automáticamente el driver disponible (psycopg o psycopg2)."""
+    if url.startswith("sqlite:") and _env_bool("ALLOW_SQLITE_LOCAL", False):
+        return url
+
     driver = _detectar_driver_postgres()
 
     if url.startswith("postgres://"):
@@ -86,6 +89,20 @@ def _normalizar_url_postgres(url: str) -> str:
         raise RuntimeError(
             "VetCare solo soporta PostgreSQL: DATABASE_URL debe ser una URL de conexión válida a PostgreSQL."
         )
+
+    if _env_bool("ALLOW_SQLITE_LOCAL", False):
+        import socket
+        from sqlalchemy.engine import make_url
+        try:
+            parsed = make_url(url)
+            host = parsed.host or "127.0.0.1"
+            port = int(parsed.port or 5432)
+            with socket.create_connection((host, port), timeout=0.6):
+                pass
+        except Exception:
+            sqlite_path = (BASE_DIR / "vetcare_local.db").as_posix()
+            return f"sqlite:///{sqlite_path}"
+
     return url
 
 
@@ -122,6 +139,8 @@ def create_app(config_override: dict | None = None) -> Flask:
     if config_override:
         configuracion.update(config_override)
     configuracion["SQLALCHEMY_DATABASE_URI"] = _normalizar_url_postgres(configuracion["SQLALCHEMY_DATABASE_URI"])
+    if configuracion["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:"):
+        configuracion["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
     app.config.update(configuracion)
 
     if _env_bool("BEHIND_PROXY", False):

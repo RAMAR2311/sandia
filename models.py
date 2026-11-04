@@ -1019,6 +1019,7 @@ class MovimientoStock(BaseModel):
 METODOS_PAGO = {
     "efectivo": "Efectivo",
     "nequi": "Nequi",
+    "bancolombia": "Bancolombia",
     "daviplata": "Daviplata",
     "tarjeta_debito": "Tarjeta Débito",
     "tarjeta_credito": "Tarjeta Crédito",

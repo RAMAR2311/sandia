@@ -211,6 +211,8 @@
                 <div class="rounded-circle p-2 bg-light border">
                   {% if p.metodo_pago == 'efectivo' %}
                   <i class="bi bi-cash-stack text-success fs-5"></i>
+                  {% elif p.metodo_pago == 'bancolombia' %}
+                  <i class="bi bi-bank2 text-warning fs-5"></i>
                   {% elif p.metodo_pago in ('nequi', 'daviplata') %}
                   <i class="bi bi-phone text-purple fs-5" style="color: #6b21a8;"></i>
                   {% elif p.metodo_pago in ('tarjeta_debito', 'tarjeta_credito') %}

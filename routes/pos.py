@@ -172,6 +172,7 @@ def caja_estado():
     resumen_caja = {
         "efectivo": Decimal("0.00"),
         "nequi": Decimal("0.00"),
+        "bancolombia": Decimal("0.00"),
         "daviplata": Decimal("0.00"),
         "tarjeta_debito": Decimal("0.00"),
         "tarjeta_credito": Decimal("0.00"),
@@ -198,6 +199,7 @@ def caja_estado():
         # Cierre sugerido: Efectivo base + ventas en efectivo
         form_cierre.monto_efectivo.data = turno_activo.monto_apertura + resumen_caja["efectivo"]
         form_cierre.monto_nequi.data = resumen_caja["nequi"]
+        form_cierre.monto_bancolombia.data = resumen_caja["bancolombia"]
         form_cierre.monto_daviplata.data = resumen_caja["daviplata"]
         form_cierre.monto_tarjetas.data = resumen_caja["tarjeta_debito"] + resumen_caja["tarjeta_credito"]
         form_cierre.monto_transferencia.data = resumen_caja["transferencia"]
@@ -260,6 +262,37 @@ def abrir_caja():
     return redirect(url_for("pos.caja_estado"))
 
 
+@bp.route("/caja/editar-base", methods=["POST"])
+@login_required
+@caja_required
+def editar_base_caja():
+    """Permite corregir el monto de base inicial del turno de caja activo."""
+    turno_activo = obtener_turno_activo(current_user.id)
+    if not turno_activo:
+        flash("No hay ningún turno de caja abierto para modificar.", "warning")
+        return redirect(url_for("pos.caja_estado"))
+
+    valor_limpio = _limpiar_monto(request.form.get("monto_apertura", ""))
+    try:
+        nuevo_monto = Decimal(valor_limpio) if valor_limpio else Decimal("0.00")
+        if nuevo_monto < Decimal("0.00"):
+            raise InvalidOperation()
+    except InvalidOperation:
+        flash("Ingresa un monto de base inicial válido (mayor o igual a 0).", "danger")
+        return redirect(url_for("pos.caja_estado"))
+
+    try:
+        turno_activo.monto_apertura = nuevo_monto
+        db.session.commit()
+        flash("Base inicial de efectivo actualizada correctamente.", "success")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Error al editar base inicial de caja")
+        flash("No se pudo actualizar la base inicial. Intenta de nuevo.", "danger")
+
+    return redirect(url_for("pos.caja_estado"))
+
+
 @bp.route("/caja/cerrar", methods=["POST"])
 @login_required
 @caja_required
@@ -270,7 +303,7 @@ def cerrar_caja():
         return redirect(url_for("pos.caja_estado"))
 
     datos_post = request.form.copy()
-    for campo in ["monto_efectivo", "monto_nequi", "monto_daviplata", "monto_tarjetas", "monto_transferencia"]:
+    for campo in ["monto_efectivo", "monto_nequi", "monto_bancolombia", "monto_daviplata", "monto_tarjetas", "monto_transferencia"]:
         if campo in datos_post:
             datos_post[campo] = _limpiar_monto(datos_post[campo])
 
