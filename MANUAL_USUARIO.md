@@ -89,6 +89,13 @@ El sistema implementa control de acceso basado en roles (RBAC) para garantizar l
    - Alergias y condiciones preexistentes.
 4. Haz clic en **Guardar Paciente**.
 
+### 4.2 Registro y Galería de Fotos de Entrada y Salida (Spa & Grooming)
+En el perfil del paciente (`/mascotas/<id>`) y en su ficha médica (`/historias/mascota/<id>?tab=fotos_spa`):
+- **Historial visual Antes y Después:** El sistema organiza todas las fotografías tomadas al ingreso (entrada) y entrega (salida) de cada servicio de estética.
+- **Orden cronológico:** Presentadas estrictamente de la **más reciente a la más antigua**, indicando la fecha exacta, hora, servicio realizado, estilista a cargo y observaciones de pelaje o piel.
+- **Visor Lightbox:** Al hacer clic sobre cualquier foto, se abre un visor a pantalla completa con opción de zoom y descarga en alta calidad.
+- **Acceso rápido:** Botón directo **`Fotos Entrada/Salida`** en la cabecera del paciente y en la tarjeta de resumen de Spa.
+
 ---
 
 ## 5. Módulo de Ficha Clínica & Historias Médicas

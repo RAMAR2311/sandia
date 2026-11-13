@@ -39,6 +39,7 @@ from forms import (
 from models import (
     CATEGORIAS_NOTA_CLINICA,
     CertificadoSaludAnimal,
+    CitaSpa,
     Cirugia,
     ConfiguracionSistema,
     ConsentimientoEmitido,
@@ -591,6 +592,19 @@ def ficha_medica(mascota_id: int):
         .order_by(Usuario.nombre)
     ).scalars().all()
 
+    fotos_spa = db.session.execute(
+        select(CitaSpa)
+        .where(
+            CitaSpa.mascota_id == mascota.id,
+            (CitaSpa.foto_ingreso.is_not(None) | CitaSpa.foto_salida.is_not(None))
+        )
+        .options(
+            selectinload(CitaSpa.servicio_spa),
+            selectinload(CitaSpa.groomer)
+        )
+        .order_by(CitaSpa.fecha_hora.desc())
+    ).scalars().all()
+
     tab_activa = request.args.get("tab", "general")
 
     return render_template(
@@ -603,6 +617,7 @@ def ficha_medica(mascota_id: int):
         form_remision=form_remision,
         datos_peso=datos_peso,
         eventos_generales=eventos_generales,
+        fotos_spa=fotos_spa,
         veterinarios=veterinarios,
         tab_activa=tab_activa,
         form_csrf=SoloCsrfForm(),

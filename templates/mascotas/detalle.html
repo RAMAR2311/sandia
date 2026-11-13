@@ -13,6 +13,9 @@
     </a>
   </div>
   <div class="d-flex flex-wrap gap-2">
+    <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 shadow-xs fw-semibold" onclick="activarTabFotos()">
+      <i class="bi bi-camera-fill me-1 text-warning"></i> Fotos Entrada/Salida ({{ fotos_spa|length }})
+    </button>
     <a href="{{ url_for('historias.ficha_medica', mascota_id=mascota.id) }}" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-xs fw-semibold">
       <i class="bi bi-heart-pulse me-1"></i> Ficha Médica Completa
     </a>
@@ -247,9 +250,14 @@
         <div class="tarjeta-resumen-evento__meta">
           <i class="bi bi-calendar3"></i> {{ resumen.ultimo_spa.fecha_hora|fecha }} · <span class="badge bg-light text-secondary border px-1.5 py-0.5" style="font-size: 0.7rem;">{{ resumen.ultimo_spa.estado_etiqueta }}</span>
         </div>
-        <a href="{{ url_for('spa.cita_detalle', id=resumen.ultimo_spa.id) }}" class="tarjeta-resumen-evento__link text-dark">
-          Ver turno spa <i class="bi bi-arrow-right"></i>
-        </a>
+        <div class="d-flex align-items-center justify-content-between mt-auto pt-2">
+          <a href="{{ url_for('spa.cita_detalle', id=resumen.ultimo_spa.id) }}" class="tarjeta-resumen-evento__link text-dark">
+            Ver turno spa <i class="bi bi-arrow-right"></i>
+          </a>
+          <button type="button" class="btn btn-link p-0 text-decoration-none small text-warning fw-bold d-inline-flex align-items-center gap-1" onclick="activarTabFotos()">
+            <i class="bi bi-camera-fill"></i> Fotos ({{ fotos_spa|length }})
+          </button>
+        </div>
       {% else %}
         <div class="text-muted small my-auto py-2">Sin servicios de spa</div>
         <a href="{{ url_for('spa.cita_nueva', mascota_id=mascota.id) }}" class="tarjeta-resumen-evento__link text-dark">
@@ -328,102 +336,272 @@
 
 {# Estructura Principal en 2 Columnas #}
 <div class="row g-4">
-  {# Columna Principal (Izquierda): Línea de Tiempo Integral con Registro de Atenciones #}
+  {# Columna Principal (Izquierda): Línea de Tiempo Integral con Registro de Atenciones y Galería de Fotos #}
   <div class="col-12 col-lg-7 col-xl-8">
-    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4">
-      <div class="card-header bg-white border-bottom py-3 px-4 rounded-top-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="card border-0 shadow-sm rounded-4 bg-white mb-4" id="seccion-principal-tabs">
+      <div class="card-header bg-white border-bottom py-2.5 px-3 px-md-4 rounded-top-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <ul class="nav nav-pills gap-1" id="perfilMascotaTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill fw-bold px-3 py-1.5 small {% if tab_activa != 'fotos' %}active{% endif %}" id="tab-historial-btn" data-bs-toggle="pill" data-bs-target="#tab-historial" type="button" role="tab">
+              <i class="bi bi-clock-history me-1.5"></i> Cronología General
+              <span class="badge rounded-pill ms-1">{{ eventos|length }}</span>
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill fw-bold px-3 py-1.5 small {% if tab_activa == 'fotos' %}active{% endif %}" id="tab-fotos-spa-btn" data-bs-toggle="pill" data-bs-target="#tab-fotos-spa" type="button" role="tab">
+              <i class="bi bi-camera-fill me-1.5 text-warning"></i> Fotos Entrada & Salida
+              <span class="badge rounded-pill ms-1">{{ fotos_spa|length }}</span>
+            </button>
+          </li>
+        </ul>
+
         <div class="d-flex align-items-center gap-2">
-          <span class="fs-5">📋</span>
-          <span class="fw-bold text-dark fs-6" style="font-family: var(--fuente-marca);">Registro Cronológico de Atenciones e Historial</span>
+          <a href="{{ url_for('spa.cita_nueva', mascota_id=mascota.id) }}" class="btn btn-xs btn-outline-warning text-dark fw-bold rounded-pill px-2.5 py-1 shadow-2xs">
+            <i class="bi bi-scissors me-1"></i>+ Turno Spa
+          </a>
         </div>
-        <span class="badge bg-light text-secondary border rounded-pill px-2 py-1 small">
-          {{ eventos|length }} registros
-        </span>
       </div>
 
       <div class="card-body p-4">
-        {% if not eventos %}
-          <div class="text-center text-muted py-4">
-            <span class="fs-2 d-block mb-2">🐾</span>
-            No hay actividades ni atenciones registradas todavía.
-          </div>
-        {% else %}
-          <div class="timeline-container">
-            {% for evento in eventos %}
-              <div class="d-flex gap-3 mb-3 pb-3 border-bottom position-relative">
-                {# Icono de Categoría #}
-                <div class="flex-shrink-0">
-                  <div class="rounded-circle d-flex align-items-center justify-content-center shadow-xs" 
-                       style="width: 40px; height: 40px; 
-                       {% if evento.tipo == 'consulta' %}background-color: #FEE2E2; color: #DC2626;
-                       {% elif evento.tipo == 'spa' %}background-color: #FEF3C7; color: #D97706;
-                       {% elif evento.tipo == 'vacuna' or evento.tipo == 'desparasitacion' %}background-color: #DCFCE7; color: #16A34A;
-                       {% elif evento.tipo == 'cita' or evento.tipo == 'registro' %}background-color: #E0E7FF; color: #4F46E5;
-                       {% elif evento.tipo == 'hospitalizacion' or evento.tipo == 'cirugia' %}background-color: #FCE7F3; color: #DB2777;
-                       {% else %}background-color: #F3F4F6; color: #4B5563;{% endif %}">
-                    <i class="bi {{ evento.icono }} fs-6"></i>
-                  </div>
-                </div>
-
-                {# Contenido del Evento #}
-                <div class="flex-grow-1 min-w-0">
-                  <div class="d-flex flex-wrap align-items-center justify-content-between gap-1 mb-1">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                      <span class="badge rounded-pill px-2 py-0.5 small fw-semibold" 
-                            style="{% if evento.tipo == 'consulta' %}background-color: #FEE2E2; color: #DC2626;
-                            {% elif evento.tipo == 'spa' %}background-color: #FEF3C7; color: #D97706;
-                            {% elif evento.tipo == 'vacuna' or evento.tipo == 'desparasitacion' %}background-color: #DCFCE7; color: #16A34A;
-                            {% elif evento.tipo == 'cita' or evento.tipo == 'registro' %}background-color: #E0E7FF; color: #4F46E5;
-                            {% elif evento.tipo == 'hospitalizacion' or evento.tipo == 'cirugia' %}background-color: #FCE7F3; color: #DB2777;
-                            {% else %}background-color: #F3F4F6; color: #4B5563;{% endif %} font-size: 0.75rem;">
-                        {{ evento.categoria }}
-                      </span>
-                      {% if evento.url %}
-                        <a href="{{ evento.url }}" class="fw-bold text-dark text-decoration-none text-truncate small hover-primary">
-                          {{ evento.titulo }}
-                        </a>
-                      {% else %}
-                        <span class="fw-bold text-dark small">{{ evento.titulo }}</span>
-                      {% endif %}
-                    </div>
-                    <span class="small text-muted" style="font-size: 0.8rem;">
-                      <i class="bi bi-clock me-1"></i>{{ evento.fecha|fecha_hora }}
-                    </span>
-                  </div>
-
-                  {% if evento.detalle %}
-                    <div class="small text-secondary mt-1 lh-sm">{{ evento.detalle }}</div>
-                  {% endif %}
-
-                  {% if evento.foto_ingreso or evento.foto_salida %}
-                    <div class="d-flex gap-2 mt-2">
-                      {% if evento.foto_ingreso %}
-                        <div class="text-center">
-                          <img src="{{ evento.foto_ingreso }}" alt="Antes" class="rounded-2 border shadow-xs" style="width: 48px; height: 48px; object-fit: cover;">
-                          <div class="text-muted" style="font-size: 0.65rem;">Antes</div>
-                        </div>
-                      {% endif %}
-                      {% if evento.foto_salida %}
-                        <div class="text-center">
-                          <img src="{{ evento.foto_salida }}" alt="Después" class="rounded-2 border shadow-xs" style="width: 48px; height: 48px; object-fit: cover;">
-                          <div class="text-success fw-bold" style="font-size: 0.65rem;">Resultado ✨</div>
-                        </div>
-                      {% endif %}
-                    </div>
-                  {% endif %}
-
-                  {% if evento.url %}
-                    <div class="mt-2">
-                      <a href="{{ evento.url }}" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">
-                        Ver detalles <i class="bi bi-chevron-right ms-1"></i>
-                      </a>
-                    </div>
-                  {% endif %}
-                </div>
+        <div class="tab-content" id="perfilMascotaTabsContent">
+          <!-- Pestaña 1: Cronología General -->
+          <div class="tab-pane fade {% if tab_activa != 'fotos' %}show active{% endif %}" id="tab-historial" role="tabpanel">
+            {% if not eventos %}
+              <div class="text-center text-muted py-4">
+                <span class="fs-2 d-block mb-2">🐾</span>
+                No hay actividades ni atenciones registradas todavía.
               </div>
-            {% endfor %}
+            {% else %}
+              <div class="timeline-container">
+                {% for evento in eventos %}
+                  <div class="d-flex gap-3 mb-3 pb-3 border-bottom position-relative">
+                    {# Icono de Categoría #}
+                    <div class="flex-shrink-0">
+                      <div class="rounded-circle d-flex align-items-center justify-content-center shadow-xs" 
+                           style="width: 40px; height: 40px; 
+                           {% if evento.tipo == 'consulta' %}background-color: #FEE2E2; color: #DC2626;
+                           {% elif evento.tipo == 'spa' %}background-color: #FEF3C7; color: #D97706;
+                           {% elif evento.tipo == 'vacuna' or evento.tipo == 'desparasitacion' %}background-color: #DCFCE7; color: #16A34A;
+                           {% elif evento.tipo == 'cita' or evento.tipo == 'registro' %}background-color: #E0E7FF; color: #4F46E5;
+                           {% elif evento.tipo == 'hospitalizacion' or evento.tipo == 'cirugia' %}background-color: #FCE7F3; color: #DB2777;
+                           {% else %}background-color: #F3F4F6; color: #4B5563;{% endif %}">
+                        <i class="bi {{ evento.icono }} fs-6"></i>
+                      </div>
+                    </div>
+
+                    {# Contenido del Evento #}
+                    <div class="flex-grow-1 min-w-0">
+                      <div class="d-flex flex-wrap align-items-center justify-content-between gap-1 mb-1">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <span class="badge rounded-pill px-2 py-0.5 small fw-semibold" 
+                                style="{% if evento.tipo == 'consulta' %}background-color: #FEE2E2; color: #DC2626;
+                                {% elif evento.tipo == 'spa' %}background-color: #FEF3C7; color: #D97706;
+                                {% elif evento.tipo == 'vacuna' or evento.tipo == 'desparasitacion' %}background-color: #DCFCE7; color: #16A34A;
+                                {% elif evento.tipo == 'cita' or evento.tipo == 'registro' %}background-color: #E0E7FF; color: #4F46E5;
+                                {% elif evento.tipo == 'hospitalizacion' or evento.tipo == 'cirugia' %}background-color: #FCE7F3; color: #DB2777;
+                                {% else %}background-color: #F3F4F6; color: #4B5563;{% endif %} font-size: 0.75rem;">
+                            {{ evento.categoria }}
+                          </span>
+                          {% if evento.url %}
+                            <a href="{{ evento.url }}" class="fw-bold text-dark text-decoration-none text-truncate small hover-primary">
+                              {{ evento.titulo }}
+                            </a>
+                          {% else %}
+                            <span class="fw-bold text-dark small">{{ evento.titulo }}</span>
+                          {% endif %}
+                        </div>
+                        <span class="small text-muted" style="font-size: 0.8rem;">
+                          <i class="bi bi-clock me-1"></i>{{ evento.fecha|fecha_hora }}
+                        </span>
+                      </div>
+
+                      {% if evento.detalle %}
+                        <div class="small text-secondary mt-1 lh-sm">{{ evento.detalle }}</div>
+                      {% endif %}
+
+                      {% if evento.foto_ingreso or evento.foto_salida %}
+                        <div class="d-flex gap-2 mt-2">
+                          {% if evento.foto_ingreso %}
+                            <div class="text-center" style="cursor: pointer;" onclick="abrirVisorFoto('{{ evento.foto_ingreso }}', 'Foto de Entrada (Ingreso) · {{ mascota.nombre }}', '{{ evento.fecha|fecha_hora }}')">
+                              <img src="{{ evento.foto_ingreso }}" alt="Antes" class="rounded-2 border shadow-xs" style="width: 48px; height: 48px; object-fit: cover;">
+                              <div class="text-muted" style="font-size: 0.65rem;">Antes</div>
+                            </div>
+                          {% endif %}
+                          {% if evento.foto_salida %}
+                            <div class="text-center" style="cursor: pointer;" onclick="abrirVisorFoto('{{ evento.foto_salida }}', 'Foto de Salida (Resultado ✨) · {{ mascota.nombre }}', '{{ evento.fecha|fecha_hora }}')">
+                              <img src="{{ evento.foto_salida }}" alt="Después" class="rounded-2 border shadow-xs" style="width: 48px; height: 48px; object-fit: cover;">
+                              <div class="text-success fw-bold" style="font-size: 0.65rem;">Resultado ✨</div>
+                            </div>
+                          {% endif %}
+                        </div>
+                      {% endif %}
+
+                      {% if evento.url %}
+                        <div class="mt-2">
+                          <a href="{{ evento.url }}" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0.5" style="font-size: 0.75rem;">
+                            Ver detalles <i class="bi bi-chevron-right ms-1"></i>
+                          </a>
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
           </div>
-        {% endif %}
+
+          <!-- Pestaña 2: Registro de Fotos Entrada y Salida (Spa & Grooming) -->
+          <div class="tab-pane fade {% if tab_activa == 'fotos' %}show active{% endif %}" id="tab-fotos-spa" role="tabpanel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4 pb-2 border-bottom">
+              <div>
+                <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                  <i class="bi bi-camera-fill text-warning"></i>
+                  <span>Registro de Fotos de Entrada y Salida (Spa & Grooming)</span>
+                  <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill">{{ fotos_spa|length }}</span>
+                </h5>
+                <p class="text-muted small mb-0 mt-1">Historial fotográfico de transformación estética de {{ mascota.nombre }}, de la más reciente a la más antigua.</p>
+              </div>
+              <div>
+                <a href="{{ url_for('spa.cita_nueva', mascota_id=mascota.id) }}" class="btn btn-sm btn-outline-warning text-dark fw-bold rounded-pill px-3 shadow-xs">
+                  <i class="bi bi-plus-lg me-1"></i> + Nuevo Turno Spa
+                </a>
+              </div>
+            </div>
+
+            {% if not fotos_spa %}
+              <div class="text-center py-5 px-3 border border-2 border-dashed rounded-4 bg-light">
+                <div class="avatar-lg bg-warning-subtle text-warning rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-xs" style="width: 64px; height: 64px;">
+                  <i class="bi bi-camera-fill fs-2 text-warning"></i>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">No hay fotos de entrada y salida registradas</h6>
+                <p class="text-muted small mx-auto mb-3" style="max-width: 480px;">
+                  Al ingresar a {{ mascota.nombre }} al servicio de estética en el módulo de Spa, sube la <strong>Foto de Entrada</strong> para documentar cómo llega el paciente (nudos, piel, pelaje), y al finalizar el arreglo, sube la <strong>Foto de Salida</strong> con el resultado. Ambas quedarán archivadas aquí con su respectiva fecha y hora.
+                </p>
+                <a href="{{ url_for('spa.cita_nueva', mascota_id=mascota.id) }}" class="btn btn-sm btn-warning text-dark fw-bold rounded-pill px-3 shadow-xs">
+                  <i class="bi bi-scissors me-1"></i> Agendar Turno de Spa
+                </a>
+              </div>
+            {% else %}
+              <div class="d-flex flex-column gap-4">
+                {% for cita in fotos_spa %}
+                  <div class="card border rounded-4 shadow-xs overflow-hidden" style="border-color: #E2E8F0 !important;">
+                    {# Cabecera de la sesión con fecha y hora destacada #}
+                    <div class="card-header bg-white border-bottom py-2.5 px-3 px-md-4 d-flex flex-wrap justify-content-between align-items-center gap-2" style="background: linear-gradient(135deg, #FFFDF5 0%, #FFFFFF 100%) !important;">
+                      <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="fw-bold text-dark fs-6 d-inline-flex align-items-center gap-1.5">
+                          <i class="bi bi-calendar2-check-fill text-warning"></i>
+                          {{ cita.fecha_hora|fecha_hora }}
+                        </span>
+                        {% if cita.servicio_spa %}
+                          <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill px-2.5 py-1 small fw-bold">
+                            <i class="bi bi-scissors me-1"></i>{{ cita.servicio_spa.nombre }}
+                          </span>
+                        {% endif %}
+                        {% if cita.groomer %}
+                          <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1 small">
+                            <i class="bi bi-person-badge me-1"></i>{{ cita.groomer.nombre }}
+                          </span>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1 small">
+                          {{ cita.estado_etiqueta }}
+                        </span>
+                        <a href="{{ url_for('spa.cita_detalle', id=cita.id) }}" class="btn btn-xs btn-outline-secondary rounded-pill px-2.5 py-1 fw-semibold" title="Ver detalle completo del turno en Spa">
+                          Ver Turno #{{ cita.id }} <i class="bi bi-arrow-right ms-0.5"></i>
+                        </a>
+                      </div>
+                    </div>
+
+                    {# Cuerpo: Comparativa de Fotos Entrada y Salida #}
+                    <div class="card-body p-3 p-md-4">
+                      <div class="row g-3">
+                        {# 1. Foto de Entrada / Ingreso #}
+                        <div class="col-12 col-md-6">
+                          <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 small fw-bold">
+                              <i class="bi bi-box-arrow-in-right me-1"></i> 1. Foto de Entrada (Ingreso)
+                            </span>
+                            {% if cita.foto_ingreso %}
+                              <span class="badge bg-light text-muted border small">
+                                <i class="bi bi-clock me-1"></i>{{ cita.fecha_hora|fecha_hora }}
+                              </span>
+                            {% endif %}
+                          </div>
+
+                          {% if cita.foto_ingreso %}
+                            <div class="foto-spa-preview position-relative rounded-3 overflow-hidden border shadow-xs" 
+                                 style="cursor: pointer; background: #0F172A;" 
+                                 onclick="abrirVisorFoto('{{ cita.url_foto_ingreso }}', 'Foto de Entrada (Ingreso) · {{ mascota.nombre }}', '{{ cita.fecha_hora|fecha_hora }} · {{ cita.servicio_spa.nombre if cita.servicio_spa else 'Spa' }}')">
+                              <img src="{{ cita.url_foto_ingreso }}" alt="Foto de ingreso" class="w-100 object-fit-cover foto-spa-hover-zoom" style="height: 240px; display: block;">
+                              <div class="position-absolute bottom-0 start-0 end-0 p-2 text-white d-flex align-items-center justify-content-between" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px);">
+                                <span class="small fw-semibold"><i class="bi bi-zoom-in me-1"></i> Ampliar foto</span>
+                                <span class="badge bg-primary rounded-pill px-2" style="font-size: 0.68rem;">Antes</span>
+                              </div>
+                            </div>
+                            {% if cita.notas_ingreso %}
+                              <div class="small text-secondary mt-2 p-2.5 bg-light rounded-3 border-start border-3 border-primary lh-sm">
+                                <strong class="text-dark">Notas de ingreso:</strong> {{ cita.notas_ingreso }}
+                              </div>
+                            {% endif %}
+                          {% else %}
+                            <div class="p-4 text-center text-muted border border-2 border-dashed rounded-3 bg-light d-flex flex-column align-items-center justify-content-center" style="min-height: 240px;">
+                              <i class="bi bi-camera text-secondary fs-1 mb-2 opacity-50"></i>
+                              <span class="fw-semibold small">Sin foto de entrada registrada</span>
+                              <span class="text-muted" style="font-size: 0.75rem;">No se tomó foto al momento del ingreso</span>
+                            </div>
+                          {% endif %}
+                        </div>
+
+                        {# 2. Foto de Salida / Retiro #}
+                        <div class="col-12 col-md-6">
+                          <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 small fw-bold">
+                              <i class="bi bi-stars me-1 text-warning"></i> 2. Foto de Salida (Resultado ✨)
+                            </span>
+                            {% if cita.fecha_listo %}
+                              <span class="badge bg-light text-muted border small">
+                                <i class="bi bi-check2-circle text-success me-1"></i>Listo: {{ cita.fecha_listo|fecha_hora }}
+                              </span>
+                            {% endif %}
+                          </div>
+
+                          {% if cita.foto_salida %}
+                            <div class="foto-spa-preview position-relative rounded-3 overflow-hidden border shadow-xs" 
+                                 style="cursor: pointer; background: #0F172A;" 
+                                 onclick="abrirVisorFoto('{{ cita.url_foto_salida }}', 'Foto de Salida (Resultado ✨) · {{ mascota.nombre }}', '{{ cita.fecha_hora|fecha_hora }} · {{ cita.servicio_spa.nombre if cita.servicio_spa else 'Spa' }}')">
+                              <img src="{{ cita.url_foto_salida }}" alt="Foto de salida" class="w-100 object-fit-cover foto-spa-hover-zoom" style="height: 240px; display: block;">
+                              <div class="position-absolute bottom-0 start-0 end-0 p-2 text-white d-flex align-items-center justify-content-between" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px);">
+                                <span class="small fw-semibold"><i class="bi bi-zoom-in me-1"></i> Ampliar foto</span>
+                                <span class="badge bg-success rounded-pill px-2" style="font-size: 0.68rem;">Resultado ✨</span>
+                              </div>
+                            </div>
+                            {% if cita.notas_salida %}
+                              <div class="small text-secondary mt-2 p-2.5 bg-light rounded-3 border-start border-3 border-success lh-sm">
+                                <strong class="text-dark">Notas de entrega:</strong> {{ cita.notas_salida }}
+                              </div>
+                            {% endif %}
+                          {% else %}
+                            <div class="p-4 text-center text-muted border border-2 border-dashed rounded-3 bg-light d-flex flex-column align-items-center justify-content-center" style="min-height: 240px;">
+                              <i class="bi bi-camera text-secondary fs-1 mb-2 opacity-50"></i>
+                              <span class="fw-semibold small">Pendiente foto de salida</span>
+                              <span class="text-muted mb-2" style="font-size: 0.75rem;">Se capturará al terminar el servicio</span>
+                              {% if cita.estado in ('programada', 'en_proceso', 'en_atencion') %}
+                                <a href="{{ url_for('spa.cita_detalle', id=cita.id) }}" class="btn btn-xs btn-outline-success rounded-pill px-3 py-1 fw-bold">
+                                  <i class="bi bi-camera me-1"></i> Subir foto al turno
+                                </a>
+                              {% endif %}
+                            </div>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -753,6 +931,61 @@
   </div>
 </div>
 {% endif %}
+{# Modal Lightbox para Ampliar Fotos de Spa #}
+<div class="modal fade" id="modalVisorFotoSpa" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden" style="background: #0F172A;">
+      <div class="modal-header border-0 py-2.5 px-4 d-flex align-items-center justify-content-between" style="background: #090D16;">
+        <div>
+          <h6 class="modal-title fw-bold mb-0 text-white" id="visorFotoTitulo">Foto de Spa</h6>
+          <small class="text-white-50" id="visorFotoSubtitulo"></small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body p-0 text-center position-relative" style="background: #000000;">
+        <img id="visorFotoImg" src="" alt="Foto de Spa" class="img-fluid" style="max-height: 75vh; width: auto; object-fit: contain;">
+      </div>
+      <div class="modal-footer border-0 py-2.5 px-4 d-flex justify-content-between" style="background: #090D16;">
+        <a id="visorFotoDescargar" href="#" target="_blank" download class="btn btn-sm btn-outline-light rounded-pill px-3">
+          <i class="bi bi-download me-1"></i> Abrir imagen original
+        </a>
+        <button type="button" class="btn btn-sm btn-light rounded-pill px-3" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+#perfilMascotaTabs .nav-link {
+  color: #4B5563;
+  transition: all 0.2s ease;
+}
+#perfilMascotaTabs .nav-link:hover {
+  background-color: #F3F4F6;
+}
+#perfilMascotaTabs .nav-link.active#tab-historial-btn {
+  background-color: #DC2626 !important;
+  color: #FFFFFF !important;
+}
+#perfilMascotaTabs .nav-link.active#tab-historial-btn .badge {
+  background-color: #FFFFFF !important;
+  color: #DC2626 !important;
+}
+#perfilMascotaTabs .nav-link.active#tab-fotos-spa-btn {
+  background-color: #F59E0B !important;
+  color: #1F2937 !important;
+}
+#perfilMascotaTabs .nav-link.active#tab-fotos-spa-btn .badge {
+  background-color: #1F2937 !important;
+  color: #F59E0B !important;
+}
+.foto-spa-hover-zoom {
+  transition: transform 0.28s ease, filter 0.28s ease;
+}
+.foto-spa-preview:hover .foto-spa-hover-zoom {
+  transform: scale(1.04);
+}
+</style>
 {% endblock %}
 
 {% block scripts %}
@@ -776,6 +1009,35 @@
       }
     });
   }
+
+  // Visor Lightbox para Fotos de Spa
+  function abrirVisorFoto(url, titulo, subtitulo) {
+    const modalEl = document.getElementById('modalVisorFotoSpa');
+    if (!modalEl) return;
+    document.getElementById('visorFotoImg').src = url;
+    document.getElementById('visorFotoTitulo').textContent = titulo || 'Foto de Spa';
+    document.getElementById('visorFotoSubtitulo').textContent = subtitulo || '';
+    document.getElementById('visorFotoDescargar').href = url;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  }
+
+  // Función para activar la pestaña de fotos desde cualquier botón o enlace
+  function activarTabFotos() {
+    const btn = document.getElementById('tab-fotos-spa-btn');
+    if (btn) {
+      const tabTrigger = new bootstrap.Tab(btn);
+      tabTrigger.show();
+      document.getElementById('seccion-principal-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tab') === 'fotos' || window.location.hash === '#fotos-spa') {
+      activarTabFotos();
+    }
+  });
 </script>
 {% endblock %}
 

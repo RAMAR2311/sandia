@@ -342,6 +342,13 @@
               <span class="ficha-tab-badge">{{ remisiones|length }}</span>
             </button>
           </li>
+          <li class="nav-item" role="presentation">
+            <button class="ficha-tab-btn {% if tab_activa == 'fotos_spa' %}active{% endif %}" id="fotos-spa-tab" data-bs-toggle="tab" data-bs-target="#fotos_spa" type="button" role="tab">
+              <i class="bi bi-camera-fill text-warning"></i>
+              <span>Fotos Spa</span>
+              <span class="ficha-tab-badge">{{ fotos_spa|length }}</span>
+            </button>
+          </li>
         </ul>
       </div>
 
@@ -1720,6 +1727,137 @@
             {% endif %}
           </div>
 
+          <!-- Pestaña 9: Fotos de Entrada y Salida (Spa & Grooming) -->
+          <div class="tab-pane fade {% if tab_activa == 'fotos_spa' %}show active{% endif %}" id="fotos_spa" role="tabpanel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
+              <div>
+                <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                  <i class="bi bi-camera-fill text-warning"></i>
+                  <span>Registro de Fotos de Entrada y Salida (Spa & Grooming)</span>
+                  <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill">{{ fotos_spa|length }}</span>
+                </h5>
+                <p class="text-muted small mb-0 mt-1">Historial fotográfico de transformación estética de {{ mascota.nombre }}, de la más reciente a la más antigua.</p>
+              </div>
+              <a href="{{ url_for('spa.cita_nueva', mascota_id=mascota.id) }}" class="btn btn-sm btn-outline-warning text-dark fw-bold rounded-pill px-3 shadow-xs">
+                <i class="bi bi-scissors me-1"></i> + Turno Spa
+              </a>
+            </div>
+
+            {% if not fotos_spa %}
+              <div class="card border-0 bg-light rounded-4 text-center py-5">
+                <i class="bi bi-camera-fill display-5 text-warning opacity-50 mb-2"></i>
+                <h6 class="fw-bold text-dark mb-1">Sin fotos de entrada y salida registradas</h6>
+                <p class="small text-muted mb-3 mx-auto" style="max-width: 480px;">Las fotos de ingreso (antes) y salida (después) capturadas durante los turnos de estética en el Spa se archivarán en esta sección ordenadas cronológicamente.</p>
+                <div>
+                  <a href="{{ url_for('spa.cita_nueva', mascota_id=mascota.id) }}" class="btn btn-warning text-dark btn-sm rounded-pill px-4 fw-bold shadow-xs">
+                    <i class="bi bi-scissors me-1"></i> Agendar Turno de Spa
+                  </a>
+                </div>
+              </div>
+            {% else %}
+              <div class="d-flex flex-column gap-3">
+                {% for cita in fotos_spa %}
+                  <div class="card border rounded-4 shadow-xs overflow-hidden" style="border-color: #E2E8F0 !important;">
+                    <div class="card-header bg-white border-bottom py-2.5 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2" style="background: linear-gradient(135deg, #FFFDF5 0%, #FFFFFF 100%) !important;">
+                      <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="fw-bold text-dark fs-6 d-inline-flex align-items-center gap-1.5">
+                          <i class="bi bi-calendar2-check-fill text-warning"></i>
+                          {{ cita.fecha_hora|fecha_hora }}
+                        </span>
+                        {% if cita.servicio_spa %}
+                          <span class="badge bg-warning-subtle text-dark border border-warning-subtle rounded-pill px-2.5 py-1 small fw-bold">
+                            <i class="bi bi-scissors me-1"></i>{{ cita.servicio_spa.nombre }}
+                          </span>
+                        {% endif %}
+                        {% if cita.groomer %}
+                          <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1 small">
+                            <i class="bi bi-person-badge me-1"></i>{{ cita.groomer.nombre }}
+                          </span>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1 small">
+                          {{ cita.estado_etiqueta }}
+                        </span>
+                        <a href="{{ url_for('spa.cita_detalle', id=cita.id) }}" class="btn btn-xs btn-outline-secondary rounded-pill px-2.5 py-1 fw-semibold">
+                          Ver Turno #{{ cita.id }} <i class="bi bi-arrow-right ms-0.5"></i>
+                        </a>
+                      </div>
+                    </div>
+
+                    <div class="card-body p-3">
+                      <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                          <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0.5 small fw-bold">
+                              <i class="bi bi-box-arrow-in-right me-1"></i> 1. Foto de Entrada (Ingreso)
+                            </span>
+                            {% if cita.foto_ingreso %}
+                              <span class="badge bg-light text-muted border small">{{ cita.fecha_hora|fecha_hora }}</span>
+                            {% endif %}
+                          </div>
+                          {% if cita.foto_ingreso %}
+                            <div class="foto-spa-preview position-relative rounded-3 overflow-hidden border shadow-xs" 
+                                 style="cursor: pointer; background: #0F172A;" 
+                                 onclick="abrirVisorFotoSpa('{{ cita.url_foto_ingreso }}', 'Foto de Entrada (Ingreso) · {{ mascota.nombre }}', '{{ cita.fecha_hora|fecha_hora }} · {{ cita.servicio_spa.nombre if cita.servicio_spa else 'Spa' }}')">
+                              <img src="{{ cita.url_foto_ingreso }}" alt="Foto de ingreso" class="w-100 object-fit-cover" style="height: 220px; display: block;">
+                              <div class="position-absolute bottom-0 start-0 end-0 p-2 text-white d-flex align-items-center justify-content-between" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px);">
+                                <span class="small fw-semibold"><i class="bi bi-zoom-in me-1"></i> Ampliar</span>
+                                <span class="badge bg-primary rounded-pill px-2" style="font-size: 0.68rem;">Antes</span>
+                              </div>
+                            </div>
+                            {% if cita.notas_ingreso %}
+                              <div class="small text-secondary mt-2 p-2 bg-light rounded-3 border-start border-3 border-primary lh-sm">
+                                <strong class="text-dark">Notas:</strong> {{ cita.notas_ingreso }}
+                              </div>
+                            {% endif %}
+                          {% else %}
+                            <div class="p-4 text-center text-muted border border-2 border-dashed rounded-3 bg-light d-flex flex-column align-items-center justify-content-center" style="min-height: 220px;">
+                              <i class="bi bi-camera text-secondary fs-2 mb-1 opacity-50"></i>
+                              <span class="small fw-semibold">Sin foto de entrada</span>
+                            </div>
+                          {% endif %}
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                          <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 small fw-bold">
+                              <i class="bi bi-stars me-1 text-warning"></i> 2. Foto de Salida (Resultado ✨)
+                            </span>
+                            {% if cita.fecha_listo %}
+                              <span class="badge bg-light text-muted border small">Listo: {{ cita.fecha_listo|fecha_hora }}</span>
+                            {% endif %}
+                          </div>
+                          {% if cita.foto_salida %}
+                            <div class="foto-spa-preview position-relative rounded-3 overflow-hidden border shadow-xs" 
+                                 style="cursor: pointer; background: #0F172A;" 
+                                 onclick="abrirVisorFotoSpa('{{ cita.url_foto_salida }}', 'Foto de Salida (Resultado ✨) · {{ mascota.nombre }}', '{{ cita.fecha_hora|fecha_hora }} · {{ cita.servicio_spa.nombre if cita.servicio_spa else 'Spa' }}')">
+                              <img src="{{ cita.url_foto_salida }}" alt="Foto de salida" class="w-100 object-fit-cover" style="height: 220px; display: block;">
+                              <div class="position-absolute bottom-0 start-0 end-0 p-2 text-white d-flex align-items-center justify-content-between" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px);">
+                                <span class="small fw-semibold"><i class="bi bi-zoom-in me-1"></i> Ampliar</span>
+                                <span class="badge bg-success rounded-pill px-2" style="font-size: 0.68rem;">Resultado ✨</span>
+                              </div>
+                            </div>
+                            {% if cita.notas_salida %}
+                              <div class="small text-secondary mt-2 p-2 bg-light rounded-3 border-start border-3 border-success lh-sm">
+                                <strong class="text-dark">Notas:</strong> {{ cita.notas_salida }}
+                              </div>
+                            {% endif %}
+                          {% else %}
+                            <div class="p-4 text-center text-muted border border-2 border-dashed rounded-3 bg-light d-flex flex-column align-items-center justify-content-center" style="min-height: 220px;">
+                              <i class="bi bi-camera text-secondary fs-2 mb-1 opacity-50"></i>
+                              <span class="small fw-semibold">Pendiente foto de salida</span>
+                            </div>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
         </div>
       </div>
     </div>
@@ -1755,6 +1893,30 @@
     </div>
   </div>
 </div>
+
+{# Modal Lightbox para Ampliar Fotos de Spa #}
+<div class="modal fade" id="modalVisorFotoSpa" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden" style="background: #0F172A;">
+      <div class="modal-header border-0 py-2.5 px-4 d-flex align-items-center justify-content-between" style="background: #090D16;">
+        <div>
+          <h6 class="modal-title fw-bold mb-0 text-white" id="visorFotoTitulo">Foto de Spa</h6>
+          <small class="text-white-50" id="visorFotoSubtitulo"></small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body p-0 text-center position-relative" style="background: #000000;">
+        <img id="visorFotoImg" src="" alt="Foto de Spa" class="img-fluid" style="max-height: 75vh; width: auto; object-fit: contain;">
+      </div>
+      <div class="modal-footer border-0 py-2.5 px-4 d-flex justify-content-between" style="background: #090D16;">
+        <a id="visorFotoDescargar" href="#" target="_blank" download class="btn btn-sm btn-outline-light rounded-pill px-3">
+          <i class="bi bi-download me-1"></i> Abrir imagen original
+        </a>
+        <button type="button" class="btn btn-sm btn-light rounded-pill px-3" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -1769,6 +1931,18 @@ document.addEventListener("DOMContentLoaded", function() {
     const tabInst = bootstrap.Tab.getOrCreateInstance(targetTabBtn);
     tabInst.show();
   }
+
+  // Visor Lightbox para Fotos de Spa
+  window.abrirVisorFotoSpa = function(url, titulo, subtitulo) {
+    const modalEl = document.getElementById('modalVisorFotoSpa');
+    if (!modalEl) return;
+    document.getElementById('visorFotoImg').src = url;
+    document.getElementById('visorFotoTitulo').textContent = titulo || 'Foto de Spa';
+    document.getElementById('visorFotoSubtitulo').textContent = subtitulo || '';
+    document.getElementById('visorFotoDescargar').href = url;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  };
 
   // Manejo de visualización dinámica de detalles de remisión
   const botonesDetalle = document.querySelectorAll(".btn-ver-detalle-remision");

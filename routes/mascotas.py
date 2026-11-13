@@ -495,12 +495,27 @@ def detalle(mascota_id):
         {"fecha": peso.fecha.astimezone(ZONA_BOGOTA).strftime("%Y-%m-%d"), "peso": float(peso.peso_kg)}
         for peso in mascota.registros_peso
     ]
+    fotos_spa = db.session.execute(
+        select(CitaSpa)
+        .where(
+            CitaSpa.mascota_id == mascota.id,
+            (CitaSpa.foto_ingreso.is_not(None) | CitaSpa.foto_salida.is_not(None))
+        )
+        .options(
+            selectinload(CitaSpa.servicio_spa),
+            selectinload(CitaSpa.groomer)
+        )
+        .order_by(CitaSpa.fecha_hora.desc())
+    ).scalars().all()
+    tab_activa = request.args.get("tab", "historial")
     return render_template(
         "mascotas/detalle.html",
         mascota=mascota,
         resumen=obtener_resumen_atenciones(mascota),
         eventos=construir_linea_tiempo(mascota),
         datos_peso=datos_peso,
+        fotos_spa=fotos_spa,
+        tab_activa=tab_activa,
         form_peso=RegistroPesoForm(fecha=hoy_bogota()),
         form_foto=FotoForm(),
         form_fallecimiento=FallecimientoForm(fecha_fallecimiento=hoy_bogota()),
