@@ -10,10 +10,14 @@
     </a>
     <h1 class="h3 fw-bold mb-0 text-dark">Expediente Médico de {{ mascota.nombre }}</h1>
   </div>
-  <div class="d-flex align-items-center gap-2">
-    <a href="{{ url_for('historias.expediente_pdf', mascota_id=mascota.id) }}" target="_blank" class="btn btn-sm btn-danger rounded-pill px-3 py-1.5 fw-bold shadow-sm d-inline-flex align-items-center gap-1.5" title="Descargar la historia clínica completa en PDF oficial para remisiones o archivo">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 py-1.5 fw-bold shadow-sm d-inline-flex align-items-center gap-1.5" data-bs-toggle="modal" data-bs-target="#modalNuevaFormulaMedica" title="Emitir y guardar fórmula médica independiente (Rx)">
+      <i class="bi bi-prescription2 fs-6"></i>
+      <span>+ Nueva Fórmula</span>
+    </button>
+    <a href="{{ url_for('historias.expediente_pdf', mascota_id=mascota.id) }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1.5 fw-bold shadow-xs d-inline-flex align-items-center gap-1.5" title="Descargar la historia clínica completa en PDF oficial para remisiones o archivo">
       <i class="bi bi-file-earmark-pdf-fill fs-6"></i>
-      <span>Descargar Todo el Expediente</span>
+      <span>Expediente Completo</span>
     </a>
     <span class="badge bg-secondary-subtle text-secondary border px-3 py-2 rounded-pill fw-bold">
       <i class="bi bi-person-heart me-1"></i> Tutor: {{ mascota.tutor.nombre_completo }}
@@ -145,12 +149,12 @@
           <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
         </a>
 
-        <!-- 1.1 Agregar Fórmula Médica (Rx) -->
+        <!-- 1.1 Fórmula Médica Independiente (Rx) -->
         <button type="button" class="btn-accion-clinica btn-accion-clinica--formula" data-bs-toggle="modal" data-bs-target="#modalNuevaFormulaMedica">
           <div class="btn-accion-clinica__icono">
             <i class="bi bi-prescription2"></i>
           </div>
-          <span class="btn-accion-clinica__texto">+ Agregar Fórmula</span>
+          <span class="btn-accion-clinica__texto">+ Nueva Fórmula</span>
           <i class="bi bi-chevron-right btn-accion-clinica__flecha"></i>
         </button>
 
@@ -356,14 +360,17 @@
                 <p class="text-muted small mb-0 mt-1">Línea de tiempo médica unificada: lo último registrado para {{ mascota.nombre }} en primer lugar.</p>
               </div>
               <div class="d-flex align-items-center gap-2 flex-wrap">
-                <button type="button" class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3 shadow-xs" data-bs-toggle="modal" data-bs-target="#modalNuevaFormulaMedica" title="Emitir y guardar fórmula médica (Rx)">
-                  <i class="bi bi-prescription2 me-1"></i> + Agregar Fórmula
+                <button type="button" class="btn btn-sm btn-danger fw-bold rounded-pill px-3 shadow-xs" data-bs-toggle="modal" data-bs-target="#modalNuevaFormulaMedica" title="Emitir y guardar fórmula médica independiente (Rx)">
+                  <i class="bi bi-prescription2 me-1"></i> + Nueva Fórmula
                 </button>
+                <a href="{{ url_for('historias.control_nuevo', mascota_id=mascota.id) }}" class="btn btn-sm btn-outline-info text-dark fw-bold rounded-pill px-3 shadow-xs" title="Registrar nuevo control médico">
+                  <i class="bi bi-clipboard2-check-fill me-1 text-info"></i> + Nuevo Control
+                </a>
                 <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold rounded-pill px-3 shadow-xs" data-bs-toggle="modal" data-bs-target="#modalNuevaNotaClinica" title="Registrar comentario, remisión o novedad rápida">
                   <i class="bi bi-chat-square-text-fill text-warning me-1"></i> + Nota / Novedad
                 </button>
-                <a href="{{ url_for('historias.expediente_pdf', mascota_id=mascota.id) }}" target="_blank" class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3 shadow-xs" title="Exportar toda la historia clínica en PDF">
-                  <i class="bi bi-file-earmark-pdf me-1"></i> Expediente Completo
+                <a href="{{ url_for('historias.expediente_pdf', mascota_id=mascota.id) }}" target="_blank" class="btn btn-sm btn-outline-secondary fw-bold rounded-pill px-3 shadow-xs" title="Exportar toda la historia clínica en PDF">
+                  <i class="bi bi-file-earmark-pdf me-1"></i> Expediente
                 </a>
                 {% if mascota.consultas and mascota.tutor.whatsapp_efectivo %}
                   {% set ult_c = mascota.consultas[0] %}
@@ -371,7 +378,7 @@
                     <i class="bi bi-whatsapp me-1"></i> WhatsApp Consulta
                   </a>
                 {% endif %}
-                <a href="{{ url_for('historias.consulta_nueva', mascota_id=mascota.id) }}" class="btn btn-sm btn-danger fw-bold rounded-pill px-3 shadow-xs">
+                <a href="{{ url_for('historias.consulta_nueva', mascota_id=mascota.id) }}" class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3 shadow-xs">
                   <i class="bi bi-plus-lg me-1"></i> Nueva Consulta
                 </a>
               </div>
@@ -2080,17 +2087,22 @@ document.addEventListener("DOMContentLoaded", function() {
   </div>
 </div>
 
-<!-- Modal Principal: Agregar Fórmula Médica (Rx) -->
+<!-- Modal Principal: Nueva Fórmula Médica Independiente (Rx) -->
 <div class="modal fade" id="modalNuevaFormulaMedica" tabindex="-1" aria-labelledby="modalNuevaFormulaMedicaLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content rounded-4 border-0 shadow">
       <div class="modal-header bg-danger bg-opacity-10 border-bottom border-danger border-opacity-25 py-3 px-4">
-        <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="modalNuevaFormulaMedicaLabel">
-          <div class="rounded-circle bg-danger text-white p-1.5 d-inline-flex align-items-center justify-content-center" style="width: 34px; height: 34px; font-size: 1.05rem;">
-            <i class="bi bi-prescription2"></i>
+        <div>
+          <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2 mb-0" id="modalNuevaFormulaMedicaLabel">
+            <div class="rounded-circle bg-danger text-white p-1.5 d-inline-flex align-items-center justify-content-center flex-shrink-0" style="width: 34px; height: 34px; font-size: 1.05rem;">
+              <i class="bi bi-prescription2"></i>
+            </div>
+            <span>Nueva Fórmula Médica Independiente (Rx)</span>
+          </h5>
+          <div class="small text-secondary ps-1 mt-1" style="font-size: 0.8rem;">
+            Prescripción directa para <strong>{{ mascota.nombre }}</strong> (ideal tras resultados de laboratorio o ajustes de medicación).
           </div>
-          <span>Prescribir Fórmula Médica (Rx) · {{ mascota.nombre }}</span>
-        </h5>
+        </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
       <form method="post" action="{{ url_for('historias.formula_nueva', mascota_id=mascota.id) }}" id="formNuevaFormulaMedica">
@@ -2100,13 +2112,13 @@ document.addEventListener("DOMContentLoaded", function() {
           <input type="hidden" name="consulta_id" id="inputFormulaConsultaId" value="">
 
           <div class="row g-3 mb-3">
-            <div class="col-12 col-md-7">
-              <label for="inputFormulaMotivo" class="form-label fw-bold small text-dark">
-                <i class="bi bi-journal-check me-1 text-danger"></i>Motivo / Diagnóstico:
-              </label>
-              <input type="text" class="form-control modern-input" id="inputFormulaMotivo" name="motivo_diagnostico" placeholder="Ej. Otitis externa, Dermatitis alérgica, Control post-quirúrgico..." required>
-            </div>
             <div class="col-12 col-md-5">
+              <label for="inputFormulaMotivo" class="form-label fw-bold small text-dark">
+                <i class="bi bi-journal-check me-1 text-danger"></i>Motivo / Diagnóstico: <span class="text-danger">*</span>
+              </label>
+              <input type="text" class="form-control modern-input" id="inputFormulaMotivo" name="motivo_diagnostico" placeholder="Ej. Según resultados de laboratorio, Otitis, Tratamiento dermatológico..." required>
+            </div>
+            <div class="col-12 col-md-4">
               <label for="selectFormulaVet" class="form-label fw-bold small text-dark">
                 <i class="bi bi-person-badge-fill me-1 text-secondary"></i>Médico Veterinario:
               </label>
@@ -2119,6 +2131,12 @@ document.addEventListener("DOMContentLoaded", function() {
                   <option value="{{ current_user.id }}">Dr/a. {{ current_user.nombre }}</option>
                 {% endif %}
               </select>
+            </div>
+            <div class="col-12 col-md-3">
+              <label for="inputFormulaFecha" class="form-label fw-bold small text-dark">
+                <i class="bi bi-calendar-event me-1 text-secondary"></i>Fecha y Hora:
+              </label>
+              <input type="datetime-local" class="form-control modern-input" id="inputFormulaFecha" name="fecha_hora">
             </div>
           </div>
 
@@ -2299,14 +2317,35 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     });
 
-    // Resetear consulta_id al abrir el modal principal
-    const btnPrincipalFormula = document.querySelector(".btn-accion-clinica--formula");
-    if (btnPrincipalFormula) {
-      btnPrincipalFormula.addEventListener("click", function() {
-        if (inputFormulaConsultaId) inputFormulaConsultaId.value = "";
-        if (inputFormulaMotivo) inputFormulaMotivo.value = "";
+    // Inicializar fecha y hora actual en modal de fórmula si está vacío
+    const inputFormulaFecha = document.getElementById("inputFormulaFecha");
+    function prellenarFechaFormula() {
+      if (inputFormulaFecha && !inputFormulaFecha.value) {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        const hh = String(now.getHours()).padStart(2, "0");
+        const min = String(now.getMinutes()).padStart(2, "0");
+        inputFormulaFecha.value = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+      }
+    }
+
+    if (newFormulaModalEl) {
+      newFormulaModalEl.addEventListener("show.bs.modal", function() {
+        prellenarFechaFormula();
       });
     }
+
+    // Resetear consulta_id al abrir el modal principal de nueva fórmula independiente
+    document.querySelectorAll("[data-bs-target='#modalNuevaFormulaMedica']").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        if (!this.classList.contains("btn-abrir-agregar-formula-consulta")) {
+          if (inputFormulaConsultaId) inputFormulaConsultaId.value = "";
+          if (inputFormulaMotivo && inputFormulaMotivo.value.startsWith("Fórmula para:")) inputFormulaMotivo.value = "";
+        }
+      });
+    });
   });
 </script>
 {% endblock %}

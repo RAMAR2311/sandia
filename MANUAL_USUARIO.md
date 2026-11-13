@@ -114,24 +114,25 @@ Para abrir una nueva consulta, haz clic en **`+ Nueva Consulta SOAP`**:
 
 ### 5.3 Fórmulas Médicas (Rx) y Recetario Oficial
 Puedes prescribir de dos formas:
-1. **Directamente en la Consulta SOAP:** Rellenando el campo *Fórmula Médica (Rx)*.
-2. **Mediante el botón directo `+ Agregar Fórmula`:** Ubicado en la barra lateral izquierda y en la barra superior de la cronología.
+1. **Directamente en la Consulta SOAP:** Rellenando el campo *Fórmula Médica (Rx)* durante la atención.
+2. **Mediante el botón directo `+ Nueva Fórmula` (Fórmula Independiente):** Ubicado en la barra superior de acciones rápidas de la ficha del paciente, en la barra de herramientas de la Cronología General y en el panel lateral. Permite emitir una prescripción sin tener que diligenciar anamnesis, constantes fisiológicas ni evaluación SOAP completa (ideal para pacientes que regresan días después con resultados de laboratorio o ajustes de dosis).
 
-#### Pasos para emitir una Fórmula Rápida:
-1. Haz clic en **`+ Agregar Fórmula`**.
-2. Escribe el **Motivo / Diagnóstico** (ej. *Tratamiento Dermatitis Alérgica*).
-3. Selecciona el **Veterinario Responsable**.
-4. Usa los **Botones de Prescripción Rápida (Snippets)** para insertar estructuras comunes:
+#### Pasos para emitir una Fórmula Rápida / Independiente:
+1. Haz clic en **`+ Nueva Fórmula`**.
+2. Opcionalmente ajusta la **Fecha y Hora** de emisión si se trata de un registro extemporáneo.
+3. Escribe el **Motivo / Diagnóstico** (ej. *Tratamiento según resultados de Laboratorio Clínico*).
+4. Selecciona el **Veterinario Responsable**.
+5. Usa los **Botones de Prescripción Rápida (Snippets)** para insertar estructuras comunes:
    - `+ Antibiótico oral`
    - `+ Antiinflamatorio / Analgésico`
    - `+ Protector gástrico`
    - `+ Tratamiento ótico`
    - `+ Baño dérmico`
-5. Ajusta la concentración, dosis, frecuencia y días de tratamiento.
-6. (Opcional) Agrega recomendaciones de cuidado en casa (ej. uso de collar isabelino).
-7. Haz clic en **Guardar Fórmula en Historial**.
+6. Ajusta la concentración, dosis, frecuencia y días de tratamiento.
+7. (Opcional) Agrega recomendaciones de cuidado en casa (ej. uso de collar isabelino).
+8. Haz clic en **Guardar Fórmula en Historial**.
 
-> **Edición y Envío:** En la tarjeta de la fórmula en el historial tendrás los botones:
+> **Edición y Envío:** En la tarjeta de la fórmula en la cronología tendrás los botones:
 > - **Fórmula PDF:** Descarga el recetario membretado oficial de Sandía con logo, datos legales y firma profesional.
 > - **WhatsApp:** Envía la receta con un solo clic al tutor de la mascota.
 > - **Editar (Lápiz):** Corrige dosis o indicaciones sin necesidad de editar toda la consulta clínica.
@@ -179,9 +180,10 @@ El módulo de estética veterinaria permite un seguimiento minucioso del servici
 3. **Cargos Adicionales y Edición de Precios:**
    - Si la mascota requiere desenredo extra, corte de uñas especial o baño medicado, se pueden agregar cargos adicionales.
    - **Edición en un clic:** Puedes editar directamente el precio del **Servicio Base** o el **Total Estimado a Cobrar** con el botón de lápiz integrado.
-4. **Finalización & Salida:**
-   - Se sube la **Foto de Salida** con el resultado final.
+4. **Finalización, Salida & Entrega Rápida:**
+   - Se sube la **Foto de Salida** con el resultado final y se cambia el estado a *Listo para Recogida*.
    - Se hace clic en **`Aviso al Tutor por WhatsApp`**: el sistema abre WhatsApp con un mensaje automático indicando que la mascota ya está lista y hermosa para su recogida, junto con el valor a cancelar.
+   - **Acción Rápida de Entrega (1 Clic):** Directamente desde el **Dashboard Principal (Inicio)** o la **Agenda de Spa**, cuando el turno está en estado *Listo para Recogida*, basta con hacer clic en el botón verde **`Entregar`** o en el badge de estado para marcar la mascota como *Entregada a tutor* al instante, sin necesidad de navegar a la vista detallada de la cita.
 5. **Cobro:** Botón directo **`Facturar Servicio en el POS`** para liquidar el servicio en caja en 3 segundos.
 
 ---
@@ -198,14 +200,21 @@ El módulo de estética veterinaria permite un seguimiento minucioso del servici
 ### 8.1 Turno de Cobro (Apertura y Cierre)
 - **Apertura de Turno:** Al iniciar la jornada, se abre el turno ingresando la **Base Inicial en Efectivo**.
 - **Edición de Base:** Si hubo una equivocación al digitar el dinero de base, el sistema permite corregir el monto de la base inicial haciendo clic en el lápiz junto a **Base Inicial (Efectivo)** sin necesidad de cerrar el turno.
-- **Arqueo y Cierre:** El sistema totaliza automáticamente las ventas discriminadas por cada canal: Efectivo, Nequi, Daviplata, Bancolombia y Tarjetas.
+- **Arqueo y Cierre:** El sistema totaliza automáticamente las ventas discriminadas por cada canal: Efectivo, Nequi, Daviplata, Bancolombia / Llave, Tarjetas y Transferencias.
 
 ### 8.2 Terminal de Venta (POS)
 1. Selecciona o busca al cliente/tutor.
 2. Agrega los productos del catálogo o servicios médicos/spa.
 3. El sistema valida automáticamente las existencias en inventario.
 4. **Forma de Pago:**
-   - Selecciona el método: **Efectivo**, **Nequi**, **Daviplata**, **Bancolombia**, **Tarjetas (Débito/Crédito)** o **Pago Dividido / Mixto** (ej. parte en Efectivo y parte en Bancolombia).
+   - La cuadrícula de pago cuenta con 6 métodos diferenciados:
+     - 💵 **Efectivo** (con cálculo automático de cambio/vueltos al digitar el valor recibido).
+     - 📱 **Nequi** (monto exacto).
+     - 🔴 **Daviplata** (monto exacto).
+     - 🏦 **Bancolombia / Llave** (monto exacto para transferencias directas Bancolombia o interoperabilidad Llave Bre-B).
+     - 💳 **Tarjetas (Débito/Crédito)**.
+     - 🔄 **Transf. (QR Físico Externo)**.
+   - También permite **Pago Dividido / Mixto** (ej. parte en Efectivo y parte en Bancolombia / Llave o Nequi).
 5. Haz clic en **Completar Venta & Facturar**.
 6. Se genera el ticket de venta imprimible o exportable.
 

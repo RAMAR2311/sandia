@@ -192,7 +192,7 @@
                 📱 Nequi
               </button>
               <button type="button" class="btn btn-pago-metodo" data-metodo="bancolombia" onclick="setMetodoUnico('bancolombia')">
-                🏦 Bancolombia
+                🏦 Bancolombia / Llave
               </button>
               <button type="button" class="btn btn-pago-metodo" data-metodo="daviplata" onclick="setMetodoUnico('daviplata')">
                 📱 Daviplata
@@ -240,9 +240,9 @@
                 <input type="text" id="div_nequi" class="form-control text-end font-monospace formato-miles-cop input-div-pago" placeholder="0" oninput="recalcularDivisionPago()">
                 <button type="button" class="btn btn-outline-secondary px-2" style="font-size: 0.72rem;" onclick="autoCompletarRestante('div_nequi')" title="Cubrir saldo pendiente">Resto</button>
               </div>
-              <!-- Bancolombia -->
+              <!-- Bancolombia / Llave -->
               <div class="input-group input-group-sm">
-                <span class="input-group-text bg-white" style="width: 105px; font-size: 0.78rem;"><i class="bi bi-bank2 text-warning me-1"></i>Bancolombia</span>
+                <span class="input-group-text bg-white" style="width: 135px; font-size: 0.78rem;"><i class="bi bi-bank2 text-warning me-1"></i>Bancolombia / Llave</span>
                 <input type="text" id="div_bancolombia" class="form-control text-end font-monospace formato-miles-cop input-div-pago" placeholder="0" oninput="recalcularDivisionPago()">
                 <button type="button" class="btn btn-outline-secondary px-2" style="font-size: 0.72rem;" onclick="autoCompletarRestante('div_bancolombia')" title="Cubrir saldo pendiente">Resto</button>
               </div>
@@ -322,7 +322,7 @@
           </div>
           <div class="row g-2 align-items-center mb-2">
             <div class="col-6">
-              <span class="small fw-bold"><i class="bi bi-bank2 me-1 text-warning"></i>Bancolombia</span>
+              <span class="small fw-bold"><i class="bi bi-bank2 me-1 text-warning"></i>Bancolombia / Llave</span>
             </div>
             <div class="col-6">
               <input type="number" id="pagoBancolombia" class="form-control form-control-sm text-end" placeholder="0.00" oninput="calcularCambio()">

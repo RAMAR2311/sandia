@@ -555,9 +555,15 @@
                         <i class="bi bi-scissors me-1"></i>En Baño / Corte
                       </span>
                     {% elif cita.estado == 'listo_recogida' %}
-                      <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill fw-bold" style="font-size: 0.68rem; padding: 2px 7px;">
-                        <i class="bi bi-bell-fill me-1"></i>Listo para Recogida
-                      </span>
+                      <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=cita.id) }}" class="d-inline m-0" onsubmit="return confirm('¿Confirmas la entrega de {{ cita.mascota.nombre }} a su tutor?')">
+                        {{ form_csrf.csrf_token }}
+                        <input type="hidden" name="estado" value="entregado">
+                        <input type="hidden" name="forzar_entrega" value="true">
+                        <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+                        <button type="submit" class="badge bg-danger text-white border-0 rounded-pill fw-bold shadow-2xs" style="font-size: 0.68rem; padding: 2px 7px; cursor: pointer;" title="Mascota lista. Clic para marcar como Entregado a tutor">
+                          <i class="bi bi-bell-fill me-1"></i>Listo para Recogida <span class="badge bg-white text-danger ms-1 px-1 py-0">Entregar ✓</span>
+                        </button>
+                      </form>
                     {% elif cita.estado == 'entregado' %}
                       <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size: 0.68rem; padding: 2px 7px;">
                         <i class="bi bi-check2-circle me-1"></i>Entregado
@@ -608,10 +614,19 @@
                   </form>
                 {% elif cita.estado == 'listo_recogida' %}
                   {% if not cita.venta_id %}
-                  <a href="{{ url_for('pos.terminal', cita_spa_id=cita.id) }}" class="btn btn-xs btn-outline-success fw-bold rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                  <a href="{{ url_for('pos.terminal', cita_spa_id=cita.id) }}" class="btn btn-xs btn-outline-success fw-bold rounded-pill px-2 py-1" style="font-size: 0.75rem;" title="Cobrar el servicio en POS">
                     <i class="bi bi-cart-check me-0.5"></i>Cobrar
                   </a>
                   {% endif %}
+                  <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=cita.id) }}" class="m-0" onsubmit="return confirm('{% if not cita.venta_id %}⚠️ Nota: Esta cita aún figura sin pagar en POS. {% endif %}¿Confirmas la entrega de {{ cita.mascota.nombre }} a su tutor?')">
+                    {{ form_csrf.csrf_token }}
+                    <input type="hidden" name="estado" value="entregado">
+                    <input type="hidden" name="forzar_entrega" value="true">
+                    <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+                    <button type="submit" class="btn btn-xs btn-success fw-bold rounded-pill px-2.5 py-1 shadow-xs text-white" style="font-size: 0.75rem;" title="Marcar como entregada al tutor en 1 clic">
+                      <i class="bi bi-check2-circle me-1"></i>Entregar
+                    </button>
+                  </form>
                 {% endif %}
 
                 <a href="{{ url_for('spa.cita_detalle', id=cita.id) }}" class="btn btn-xs btn-light border rounded-pill py-1 px-2.5 text-secondary" style="font-size: 0.75rem;" title="Ver ficha del turno">
@@ -709,20 +724,20 @@
                 </a>
                 {% endif %}
 
-                {% if item.pagado %}
-                <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=item.cita.id) }}" class="m-0" onsubmit="return confirm('¿Confirmas la entrega de {{ item.cita.mascota.nombre }} a su tutor?')">
-                  {{ form_csrf.csrf_token }}
-                  <input type="hidden" name="estado" value="entregado">
-                  <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
-                  <button type="submit" class="btn btn-sm btn-success fw-bold shadow-xs py-1 px-2.5 rounded-pill" style="font-size: 0.75rem;" title="Marcar como entregada al tutor">
-                    <i class="bi bi-check2 me-1"></i>Entregar
-                  </button>
-                </form>
-                {% else %}
+                {% if not item.pagado %}
                 <a href="{{ url_for('pos.terminal', cita_spa_id=item.cita.id) }}" class="btn btn-sm btn-outline-success fw-bold shadow-xs py-1 px-2.5 rounded-pill" style="font-size: 0.75rem;" title="Cobrar el servicio en POS">
                   <i class="bi bi-cart-check me-1"></i>Cobrar
                 </a>
                 {% endif %}
+                <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=item.cita.id) }}" class="m-0" onsubmit="return confirm('{% if not item.pagado %}⚠️ Nota: Esta cita aún figura sin pagar en POS. {% endif %}¿Confirmas la entrega de {{ item.cita.mascota.nombre }} a su tutor?')">
+                  {{ form_csrf.csrf_token }}
+                  <input type="hidden" name="estado" value="entregado">
+                  <input type="hidden" name="forzar_entrega" value="true">
+                  <input type="hidden" name="next" value="{{ url_for('dashboard.index') }}">
+                  <button type="submit" class="btn btn-sm btn-success fw-bold shadow-xs py-1 px-2.5 rounded-pill text-white" style="font-size: 0.75rem;" title="Marcar como entregada al tutor">
+                    <i class="bi bi-check2-circle me-1"></i>Entregar
+                  </button>
+                </form>
 
                 <a href="{{ url_for('spa.cita_detalle', id=item.cita.id) }}" class="btn btn-sm btn-light border py-1 px-2 text-secondary rounded-pill" style="font-size: 0.75rem;" title="Ver detalle de la cita">
                   <i class="bi bi-chevron-right"></i>

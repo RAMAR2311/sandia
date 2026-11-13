@@ -724,14 +724,19 @@ def cita_cambiar_estado(id: int):
     notas_salida = request.form.get("notas_salida", "").strip()
 
     if nuevo_estado == "entregado" and not cita.venta_id:
-        flash(
-            f"No se puede entregar sin cobrar: debes registrar el cobro de {cita.mascota.nombre} en el Punto de Venta (POS) primero.",
-            "warning",
+        permitir_sin_cobro = (
+            request.form.get("forzar_entrega") in ("true", "1")
+            or current_user.rol in ("admin", "veterinario")
         )
-        next_url = request.form.get("next")
-        if next_url:
-            return redirect(next_url)
-        return redirect(url_for("spa.cita_detalle", id=id))
+        if not permitir_sin_cobro:
+            flash(
+                f"No se puede entregar sin cobrar: debes registrar el cobro de {cita.mascota.nombre} en el Punto de Venta (POS) primero.",
+                "warning",
+            )
+            next_url = request.form.get("next")
+            if next_url:
+                return redirect(next_url)
+            return redirect(url_for("spa.cita_detalle", id=id))
 
     if nuevo_estado in ESTADOS_SPA:
         foto_ingreso_subida = _procesar_foto_spa(form.foto_ingreso)

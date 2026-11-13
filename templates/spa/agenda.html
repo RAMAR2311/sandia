@@ -255,9 +255,14 @@
             <i class="bi bi-arrow-repeat me-1"></i>En Proceso
           </span>
           {% elif c.estado == 'listo_recogida' %}
-          <span class="badge bg-success text-white rounded-pill px-3 py-1 shadow-xs fw-semibold animate-pulse">
-            <i class="bi bi-bell-fill me-1"></i>¡Listo para Recoger!
-          </span>
+          <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=c.id) }}" class="d-inline m-0" onsubmit="return confirm('¿Confirmas la entrega de {{ c.mascota.nombre }} a su tutor?')">
+            {{ form_csrf.csrf_token }}
+            <input type="hidden" name="estado" value="entregado">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <button type="submit" class="badge bg-success text-white rounded-pill px-3 py-1 shadow-xs fw-semibold border-0 animate-pulse" style="cursor: pointer;" title="Mascota lista. Clic para marcar como Entregado a tutor">
+              <i class="bi bi-bell-fill me-1"></i>¡Listo para Recoger! <span class="badge bg-white text-success ms-1 px-1.5 py-0">Entregar ✓</span>
+            </button>
+          </form>
           {% elif c.estado == 'entregado' %}
           <span class="badge bg-secondary-subtle text-secondary border px-3 py-1 rounded-pill fw-semibold">
             <i class="bi bi-check2-all me-1"></i>Entregado
@@ -282,6 +287,18 @@
               <i class="bi bi-whatsapp"></i>
               <span>Avisar Tutor</span>
             </a>
+          {% endif %}
+
+          {% if c.estado == 'listo_recogida' %}
+          <form method="post" action="{{ url_for('spa.cita_cambiar_estado', id=c.id) }}" class="m-0" onsubmit="return confirm('{% if not c.venta_id %}⚠️ Nota: Esta cita aún figura sin pagar en POS. {% endif %}¿Confirmas la entrega de {{ c.mascota.nombre }} a su tutor?')">
+            {{ form_csrf.csrf_token }}
+            <input type="hidden" name="estado" value="entregado">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 py-1 fw-semibold shadow-xs d-inline-flex align-items-center gap-1 text-white" style="font-size: 0.8rem; height: 32px;" title="Marcar como entregado al tutor con 1 clic">
+              <i class="bi bi-check2-circle"></i>
+              <span>Entregar</span>
+            </button>
+          </form>
           {% endif %}
 
           <a href="{{ url_for('spa.cita_detalle', id=c.id) }}" 
