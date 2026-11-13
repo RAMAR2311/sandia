@@ -49,6 +49,19 @@ def _opciones_servicios_salud():
     ]
 
 
+def _normalizar_para_orden(dt):
+    """Normaliza cualquier fecha (naive, aware o date) con zona Bogotá para ordenar sin error."""
+    if dt is None:
+        return datetime.min.replace(tzinfo=ZONA_BOGOTA)
+    if isinstance(dt, datetime):
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=ZONA_BOGOTA)
+        return dt.astimezone(ZONA_BOGOTA)
+    if isinstance(dt, date):
+        return datetime.combine(dt, datetime.min.time()).replace(tzinfo=ZONA_BOGOTA)
+    return datetime.min.replace(tzinfo=ZONA_BOGOTA)
+
+
 # ---------------------------------------------------------------------------
 # Catálogo de Servicios Médicos & Salud
 # ---------------------------------------------------------------------------
@@ -306,7 +319,7 @@ def lista():
         })
 
     # Orden cronológico por hora
-    citas_unificadas.sort(key=lambda x: x["fecha_hora"])
+    citas_unificadas.sort(key=lambda x: _normalizar_para_orden(x.get("fecha_hora")))
 
     # Conteo de métricas consolidadas
     count_medicas = len(citas_medicas)

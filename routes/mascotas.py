@@ -1,6 +1,6 @@
 import io
 import uuid
-from datetime import datetime, time
+from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation
 
 import pandas as pd
@@ -120,6 +120,19 @@ def _fecha_hora_desde_dia(dia):
     if dia is None or dia == hoy_bogota():
         return obtener_hora_bogota()
     return datetime.combine(dia, time(12, 0), tzinfo=ZONA_BOGOTA)
+
+
+def _normalizar_para_orden(dt):
+    """Normaliza cualquier fecha (naive, aware o date) con zona Bogotá para ordenar sin error."""
+    if dt is None:
+        return datetime.min.replace(tzinfo=ZONA_BOGOTA)
+    if isinstance(dt, datetime):
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=ZONA_BOGOTA)
+        return dt.astimezone(ZONA_BOGOTA)
+    if isinstance(dt, date):
+        return datetime.combine(dt, datetime.min.time()).replace(tzinfo=ZONA_BOGOTA)
+    return datetime.min.replace(tzinfo=ZONA_BOGOTA)
 
 
 def construir_linea_tiempo(mascota: Mascota) -> list[dict]:
@@ -339,7 +352,7 @@ def construir_linea_tiempo(mascota: Mascota) -> list[dict]:
             "url": None,
         })
 
-    eventos.sort(key=lambda evento: evento["fecha"] or datetime.min.replace(tzinfo=ZONA_BOGOTA), reverse=True)
+    eventos.sort(key=lambda evento: _normalizar_para_orden(evento.get("fecha")), reverse=True)
     return eventos
 
 
