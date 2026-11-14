@@ -5,7 +5,7 @@
    conexión. NO cachea respuestas HTML dinámicas ni datos (historias clínicas,
    inventario, ventas): esos siempre deben venir frescos del servidor. */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE_SHELL = `vetcare-shell-${VERSION}`;
 
 const ARCHIVOS_SHELL = [
@@ -15,7 +15,10 @@ const ARCHIVOS_SHELL = [
   '/static/vendor/bootstrap/bootstrap.bundle.min.js',
   '/static/vendor/bootstrap-icons/bootstrap-icons.min.css',
   '/static/vendor/bootstrap-icons/fonts/bootstrap-icons.woff2',
+  '/static/vendor/pdfjs/pdf.min.js',
+  '/static/vendor/pdfjs/pdf.worker.min.js',
   '/static/js/app.js',
+  '/static/js/pdf_viewer.js',
   '/static/img/logo.svg',
   '/static/img/favicon.svg',
   '/static/fonts/fredoka-variable.woff2',

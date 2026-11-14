@@ -516,7 +516,7 @@
                       {% if ex.archivo_resultado %}
                         <div class="mt-3 mb-2">
                           {% if ex.es_pdf %}
-                            <!-- Visor PDF embebido optimizado para web y tablets -->
+                            <!-- Visor PDF universal para Celular, Tablet, PWA y PC -->
                             <div class="border rounded-4 overflow-hidden shadow-2xs bg-light">
                               <div class="d-flex flex-wrap align-items-center justify-content-between px-3 py-2 bg-white border-bottom gap-2">
                                 <div class="d-flex align-items-center gap-2 min-w-0">
@@ -524,25 +524,21 @@
                                   <span class="fw-bold text-dark small text-truncate">{{ ex.archivo_resultado }}</span>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
-                                  <a href="{{ url_for('static', filename='uploads/examenes/' ~ ex.archivo_resultado) }}" target="_blank" class="btn btn-xs btn-danger rounded-pill fw-bold px-3 py-1 shadow-2xs text-white" title="Abrir PDF en pantalla completa">
-                                    <i class="bi bi-box-arrow-up-right me-1"></i> Ver / Abrir PDF
-                                  </a>
+                                  <button type="button" class="btn btn-xs btn-danger rounded-pill fw-bold px-3 py-1 shadow-2xs text-white btn-preview-pdf"
+                                          data-pdf-url="{{ url_for('static', filename='uploads/examenes/' ~ ex.archivo_resultado) }}"
+                                          data-pdf-title="{{ ex.tipo_examen }} · {{ ex.archivo_resultado }}"
+                                          title="Ampliar previsualización en modal completo">
+                                    <i class="bi bi-arrows-fullscreen me-1"></i> Pantalla Completa
+                                  </button>
                                   <a href="{{ url_for('static', filename='uploads/examenes/' ~ ex.archivo_resultado) }}" download class="btn btn-xs btn-outline-secondary rounded-pill fw-bold px-2 py-1" title="Descargar archivo PDF">
                                     <i class="bi bi-download"></i>
                                   </a>
                                 </div>
                               </div>
-                              <div style="height: 480px; width: 100%; position: relative;">
-                                <object data="{{ url_for('static', filename='uploads/examenes/' ~ ex.archivo_resultado) }}" type="application/pdf" class="w-100 h-100 border-0">
-                                  <div class="p-4 text-center h-100 d-flex flex-column align-items-center justify-content-center bg-white">
-                                    <i class="bi bi-file-earmark-pdf text-danger display-4 mb-2"></i>
-                                    <h6 class="fw-bold text-dark">Documento PDF listo para visualizar</h6>
-                                    <p class="text-muted small mb-3">En tablets o dispositivos móviles puedes abrirlo directamente en pantalla completa:</p>
-                                    <a href="{{ url_for('static', filename='uploads/examenes/' ~ ex.archivo_resultado) }}" target="_blank" class="btn btn-danger rounded-pill px-4 py-2 fw-bold shadow-sm">
-                                      <i class="bi bi-eye-fill me-1"></i> Abrir PDF en Pantalla Completa
-                                    </a>
-                                  </div>
-                                </object>
+                              <div class="sandia-pdf-embed"
+                                   data-pdf-url="{{ url_for('static', filename='uploads/examenes/' ~ ex.archivo_resultado) }}"
+                                   data-height="480px"
+                                   data-title="{{ ex.tipo_examen }} - {{ ex.archivo_resultado }}">
                               </div>
                             </div>
                           {% elif ex.es_imagen %}
@@ -1291,25 +1287,21 @@
                                 <span class="fw-bold text-dark small text-truncate">{{ e.archivo_resultado }}</span>
                               </div>
                               <div class="d-flex align-items-center gap-2">
-                                <a href="{{ url_for('static', filename='uploads/examenes/' ~ e.archivo_resultado) }}" target="_blank" class="btn btn-xs btn-danger rounded-pill fw-bold px-3 py-1 shadow-2xs text-white" title="Abrir PDF en pantalla completa">
-                                  <i class="bi bi-box-arrow-up-right me-1"></i> Ver / Abrir PDF
-                                </a>
+                                <button type="button" class="btn btn-xs btn-danger rounded-pill fw-bold px-3 py-1 shadow-2xs text-white btn-preview-pdf"
+                                        data-pdf-url="{{ url_for('static', filename='uploads/examenes/' ~ e.archivo_resultado) }}"
+                                        data-pdf-title="{{ e.tipo_examen }} · {{ e.archivo_resultado }}"
+                                        title="Ampliar previsualización en modal completo">
+                                  <i class="bi bi-arrows-fullscreen me-1"></i> Pantalla Completa
+                                </button>
                                 <a href="{{ url_for('static', filename='uploads/examenes/' ~ e.archivo_resultado) }}" download class="btn btn-xs btn-outline-secondary rounded-pill fw-bold px-2 py-1" title="Descargar archivo PDF">
                                   <i class="bi bi-download"></i>
                                 </a>
                               </div>
                             </div>
-                            <div style="height: 480px; width: 100%; position: relative;">
-                              <object data="{{ url_for('static', filename='uploads/examenes/' ~ e.archivo_resultado) }}" type="application/pdf" class="w-100 h-100 border-0">
-                                <div class="p-4 text-center h-100 d-flex flex-column align-items-center justify-content-center bg-white">
-                                  <i class="bi bi-file-earmark-pdf text-danger display-4 mb-2"></i>
-                                  <h6 class="fw-bold text-dark">Documento PDF listo para visualizar</h6>
-                                  <p class="text-muted small mb-3">En tablets o dispositivos móviles puedes abrirlo directamente en pantalla completa:</p>
-                                  <a href="{{ url_for('static', filename='uploads/examenes/' ~ e.archivo_resultado) }}" target="_blank" class="btn btn-danger rounded-pill px-4 py-2 fw-bold shadow-sm">
-                                    <i class="bi bi-eye-fill me-1"></i> Abrir PDF en Pantalla Completa
-                                  </a>
-                                </div>
-                              </object>
+                            <div class="sandia-pdf-embed"
+                                 data-pdf-url="{{ url_for('static', filename='uploads/examenes/' ~ e.archivo_resultado) }}"
+                                 data-height="480px"
+                                 data-title="{{ e.tipo_examen }} - {{ e.archivo_resultado }}">
                             </div>
                           </div>
                         {% elif e.es_imagen %}

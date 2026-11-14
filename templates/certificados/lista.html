@@ -131,7 +131,7 @@
             </td>
             <td class="text-end pe-4">
               <div class="btn-group">
-                <a href="{{ c.url_pdf() }}" target="_blank" class="btn btn-sm btn-light border rounded-pill shadow-2xs me-1" title="Descargar PDF Oficial">
+                <a href="{{ c.url_pdf() }}" target="_blank" class="btn btn-sm btn-light border rounded-pill shadow-2xs me-1 btn-preview-pdf" data-pdf-url="{{ c.url_pdf() }}" data-pdf-title="Certificado Oficial {{ c.consecutivo }} · {{ c.mascota.nombre }}" title="Previsualizar PDF Oficial">
                   <i class="bi bi-file-earmark-pdf-fill text-danger"></i> PDF
                 </a>
                 <a href="{{ c.url_verificacion_publica() }}" target="_blank" class="btn btn-sm btn-light border rounded-pill shadow-2xs me-1" title="Verificar Certificado QR">

@@ -273,9 +273,9 @@
                         <img id="preview-img-tag" src="" alt="Previsualización" class="img-fluid rounded" style="max-height: 360px; object-fit: contain;">
                       </div>
 
-                      <!-- Preview PDF -->
-                      <div id="preview-pdf-box" style="display: none; height: 350px;">
-                        <iframe id="preview-pdf-iframe" src="" class="w-100 h-100 border-0" title="Previsualización PDF"></iframe>
+                      <!-- Preview PDF Universal (Móvil, Tablet, PWA, PC) -->
+                      <div id="preview-pdf-box" style="display: none; height: 380px;">
+                        <div id="preview-pdf-container" style="width: 100%; height: 100%;"></div>
                       </div>
 
                       <!-- Preview Otros formatos (DOCX, DICOM) -->
@@ -678,7 +678,6 @@ document.addEventListener("DOMContentLoaded", function() {
   const previewImagenBox = document.getElementById("preview-imagen-box");
   const previewImgTag = document.getElementById("preview-img-tag");
   const previewPdfBox = document.getElementById("preview-pdf-box");
-  const previewPdfIframe = document.getElementById("preview-pdf-iframe");
   const previewOtrosBox = document.getElementById("preview-otros-box");
   const previewOtrosNombre = document.getElementById("preview-otros-nombre");
 
@@ -697,7 +696,8 @@ document.addEventListener("DOMContentLoaded", function() {
       currentPreviewUrl = null;
     }
     if (previewImgTag) previewImgTag.src = "";
-    if (previewPdfIframe) previewPdfIframe.src = "";
+    const pdfCont = document.getElementById("preview-pdf-container");
+    if (pdfCont) pdfCont.innerHTML = "";
     if (contenedorVisor) contenedorVisor.style.display = "none";
     if (previewImagenBox) previewImagenBox.style.display = "none";
     if (previewPdfBox) previewPdfBox.style.display = "none";
@@ -730,8 +730,14 @@ document.addEventListener("DOMContentLoaded", function() {
         previewImagenBox.style.display = "block";
       } else if (ext === 'pdf' || file.type === 'application/pdf') {
         fileIconPreview.innerHTML = '<i class="bi bi-file-earmark-pdf-fill text-danger"></i>';
-        previewPdfIframe.src = currentPreviewUrl;
         previewPdfBox.style.display = "block";
+        if (window.SandiaPdfViewer) {
+          SandiaPdfViewer.render('preview-pdf-container', file, {
+            height: '100%',
+            title: file.name,
+            showToolbar: true
+          });
+        }
       } else {
         fileIconPreview.innerHTML = '<i class="bi bi-file-earmark-text-fill text-primary"></i>';
         previewOtrosNombre.textContent = file.name;

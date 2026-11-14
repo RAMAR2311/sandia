@@ -3164,3 +3164,167 @@ html, body {
 
 
 
+
+/* ==========================================================================
+   8. VISOR Y PREVISUALIZADOR UNIVERSAL DE DOCUMENTOS PDF
+      (MÓVILES, TABLETS, PWA STANDALONE, Y COMPUTADORES)
+   ========================================================================== */
+
+.sandia-pdf-container {
+  display: flex;
+  flex-direction: column;
+  background-color: #0f172a;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  position: relative;
+  border: 1px solid #334155;
+}
+
+.sandia-pdf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background-color: #0b1120;
+  color: #f8fafc;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  border-bottom: 1px solid #1e293b;
+  flex-wrap: wrap;
+  z-index: 10;
+}
+
+.sandia-pdf-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.btn-pdf-control {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 0.4rem;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.btn-pdf-control:hover,
+.btn-pdf-control:focus {
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+.btn-pdf-control:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.sandia-pdf-page-indicator,
+.sandia-pdf-zoom-indicator {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  padding: 0 0.35rem;
+  min-width: 52px;
+  text-align: center;
+  user-select: none;
+}
+
+.sandia-pdf-viewport {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background-color: #1e293b;
+  padding: 1rem 0.5rem;
+  position: relative;
+  text-align: center;
+  min-height: 250px;
+}
+
+.sandia-pdf-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  margin: 0 auto;
+}
+
+.sandia-pdf-page-wrapper {
+  position: relative;
+  margin: 0 auto;
+  background: #ffffff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+  overflow: hidden;
+  max-width: 100%;
+  transition: transform 0.15s ease-out;
+}
+
+.sandia-pdf-page-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+.sandia-pdf-page-number {
+  position: absolute;
+  bottom: 8px;
+  right: 10px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.sandia-pdf-loading,
+.sandia-pdf-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  color: #f1f5f9;
+  min-height: 220px;
+}
+
+/* Adaptación para pantallas de Celulares y Tablets */
+@media (max-width: 768px) {
+  .sandia-pdf-toolbar {
+    padding: 0.4rem 0.5rem;
+    gap: 0.35rem;
+  }
+  .btn-pdf-control {
+    padding: 0.22rem 0.45rem;
+    font-size: 0.72rem;
+  }
+  .sandia-pdf-viewport {
+    padding: 0.65rem 0.25rem;
+  }
+  .sandia-pdf-pages {
+    gap: 0.85rem;
+  }
+  .sandia-pdf-page-indicator,
+  .sandia-pdf-zoom-indicator {
+    min-width: 44px;
+    font-size: 0.72rem;
+  }
+}

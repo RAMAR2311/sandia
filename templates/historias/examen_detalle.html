@@ -84,14 +84,20 @@
                 </form>
               </div>
             {% elif examen.es_pdf %}
-              <!-- Visualizador de PDF -->
-              <div class="ratio ratio-4x3 border rounded-3 mb-2 bg-light">
-                <iframe src="{{ url_for('static', filename='uploads/examenes/' ~ examen.archivo_resultado) }}" class="rounded-3"></iframe>
+              <!-- Visualizador Universal de PDF (Móvil, Tablet, PWA, PC) -->
+              <div class="border rounded-4 overflow-hidden shadow-2xs bg-light mb-2">
+                <div class="sandia-pdf-embed" 
+                     data-pdf-url="{{ url_for('static', filename='uploads/examenes/' ~ examen.archivo_resultado) }}" 
+                     data-height="420px"
+                     data-title="{{ examen.tipo_examen }} - {{ examen.archivo_resultado }}">
+                </div>
               </div>
-              <div class="d-flex justify-content-between align-items-center mt-2">
-                <a href="{{ url_for('static', filename='uploads/examenes/' ~ examen.archivo_resultado) }}" target="_blank" class="btn btn-primary btn-sm fw-bold">
-                  <i class="bi bi-box-arrow-up-right me-1"></i> Abrir PDF en pestaña nueva
-                </a>
+              <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
+                <button type="button" class="btn btn-danger btn-sm fw-bold rounded-pill btn-preview-pdf"
+                        data-pdf-url="{{ url_for('static', filename='uploads/examenes/' ~ examen.archivo_resultado) }}"
+                        data-pdf-title="{{ examen.tipo_examen }} - {{ examen.archivo_resultado }}">
+                  <i class="bi bi-arrows-fullscreen me-1"></i> Previsualizar en pantalla completa
+                </button>
                 <form method="post" action="{{ url_for('historias.examen_eliminar_archivo', id=examen.id) }}" class="d-inline" onsubmit="return confirm('¿Quitar este archivo adjunto?');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-link btn-sm text-danger text-decoration-none p-0">
@@ -199,8 +205,8 @@
                 <div id="reemplazo-img-box" class="text-center p-2 bg-dark rounded d-none" style="max-height: 250px; overflow: hidden;">
                   <img id="reemplazo-img-tag" src="" class="img-fluid rounded" style="max-height: 240px; object-fit: contain;">
                 </div>
-                <div id="reemplazo-pdf-box" class="rounded overflow-hidden d-none" style="height: 260px;">
-                  <iframe id="reemplazo-pdf-iframe" src="" class="w-100 h-100 border-0"></iframe>
+                <div id="reemplazo-pdf-box" class="rounded overflow-hidden d-none" style="height: 320px;">
+                  <div id="reemplazo-pdf-container" style="width: 100%; height: 100%;"></div>
                 </div>
                 <div id="reemplazo-otro-box" class="p-2 text-center text-muted small d-none">
                   <i class="bi bi-file-earmark-check fs-2 text-primary d-block"></i>
@@ -258,7 +264,6 @@
   const boxImg = document.getElementById("reemplazo-img-box");
   const tagImg = document.getElementById("reemplazo-img-tag");
   const boxPdf = document.getElementById("reemplazo-pdf-box");
-  const iframePdf = document.getElementById("reemplazo-pdf-iframe");
   const boxOtro = document.getElementById("reemplazo-otro-box");
   const nombreOtro = document.getElementById("reemplazo-otro-nombre");
 
@@ -269,7 +274,8 @@
       replacementPreviewUrl = null;
     }
     if (tagImg) tagImg.src = "";
-    if (iframePdf) iframePdf.src = "";
+    const pdfCont = document.getElementById("reemplazo-pdf-container");
+    if (pdfCont) pdfCont.innerHTML = "";
     if (boxReemplazo) boxReemplazo.classList.add("d-none");
     if (boxImg) boxImg.classList.add("d-none");
     if (boxPdf) boxPdf.classList.add("d-none");
@@ -295,8 +301,14 @@
           tagImg.src = replacementPreviewUrl;
           boxImg.classList.remove("d-none");
         } else if (ext === 'pdf' || file.type === 'application/pdf') {
-          iframePdf.src = replacementPreviewUrl;
           boxPdf.classList.remove("d-none");
+          if (window.SandiaPdfViewer) {
+            SandiaPdfViewer.render('reemplazo-pdf-container', file, {
+              height: '100%',
+              title: file.name,
+              showToolbar: true
+            });
+          }
         } else {
           nombreOtro.textContent = file.name + ' (' + (file.size / (1024*1024)).toFixed(2) + ' MB)';
           boxOtro.classList.remove("d-none");

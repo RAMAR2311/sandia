@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="{{ static_url('css/sandia.css') }}">
   
   <style>
     :root {
@@ -201,10 +202,15 @@
 
       </div>
 
-      <!-- Botón de Descarga PDF -->
-      <div class="p-4 bg-light border-top text-center">
-        <a href="{{ cert.url_pdf() }}" target="_blank" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
-          <i class="bi bi-file-earmark-pdf-fill me-1"></i> Descargar Documento PDF Oficial
+      <!-- Botones de Previsualización y Descarga PDF -->
+      <div class="p-4 bg-light border-top text-center d-flex flex-wrap justify-content-center gap-2">
+        <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm btn-preview-pdf"
+                data-pdf-url="{{ cert.url_pdf() }}"
+                data-pdf-title="Certificado Oficial {{ cert.consecutivo }} · {{ cert.mascota.nombre }}">
+          <i class="bi bi-eye-fill me-1"></i> Previsualizar Documento Oficial
+        </button>
+        <a href="{{ cert.url_pdf() }}" download class="btn btn-outline-danger rounded-pill px-3 fw-bold">
+          <i class="bi bi-download me-1"></i> Descargar PDF
         </a>
       </div>
 
@@ -218,5 +224,8 @@
 
   </div>
 
+  <script src="{{ static_url('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ static_url('vendor/pdfjs/pdf.min.js') }}"></script>
+  <script src="{{ static_url('js/pdf_viewer.js') }}"></script>
 </body>
 </html>
